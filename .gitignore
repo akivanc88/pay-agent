@@ -1,0 +1,44 @@
+# Environment — never commit. A live Stripe key in a public repo is a real incident.
+.env
+.env.*
+!.env.example
+
+# Secrets / keys
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Local databases (SQLite)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# WSL/Windows metadata streams created when files are copied in from Windows
+*:Zone.Identifier
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
