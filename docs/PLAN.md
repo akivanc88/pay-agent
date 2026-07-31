@@ -398,7 +398,7 @@ Supabase + RLS migration, and the x402 adapter.
 4. `demo:overlimit` — assert the run halts pending approval with **no** ledger write beforehand.
 5. Tamper one byte of a signed CheckoutMandate → assert rejection.
 5a. **Scoped-token binds** (against Stripe's test helpers where the destination is Stripe-backed): replay a storefront token elsewhere → refused; mint for $20 and attempt $200 → refused; present an expired token → refused; present the same token twice → refused.
-5b. **No-PAN invariant** *(done — `packages/db/test/invariants.test.ts`)*: grep the entire schema and all logs for any stored 16-digit sequence; assert zero matches. Run this in CI so it can't regress. A companion test guards the guard, after the first version matched a comment of my own containing the words "No PAN".
+5b. **No-PAN invariant** *(done — `packages/db/test/invariants.test.ts`, enforced in CI)*: grep the entire schema and all logs for any stored 16-digit sequence; assert zero matches. It runs as its own named step in `.github/workflows/ci.yml`, ahead of the full suite, so the check the PCI posture rests on fails first and loudly. A companion test guards the guard, after the first version matched a comment of my own containing the words "No PAN".
 5c. *(Only once Supabase lands)* **RLS:** as user B, attempt to read user A's wallet, mandates, tokens and ledger — every one must return empty, not filtered-in-app. Test against the anon key, since that is what an attacker holds.
 6. Break StreamCo's markup → assert the agent reports inability rather than paying a guessed amount.
 7. **UCP conformance suite** run against our storefront — this is the headline evidence that the project follows the standard, and is worth citing directly in the writeup.
