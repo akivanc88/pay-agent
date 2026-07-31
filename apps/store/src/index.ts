@@ -6,6 +6,7 @@ import { pinoHttp } from "pino-http";
 
 import { CheckoutService } from "./api/checkout";
 import { DiscoveryService } from "./api/discovery";
+import { FundingService } from "./api/funding";
 import { OrderService } from "./api/order";
 import { TestingService } from "./api/testing";
 import { initDbs } from "./data/db";
@@ -35,6 +36,7 @@ initDbs("databases/products.db", "databases/transactions.db");
 const checkoutService = new CheckoutService();
 const orderService = new OrderService();
 const discoveryService = new DiscoveryService();
+const fundingService = new FundingService();
 const testingService = new TestingService(checkoutService);
 
 // Setup logging for each request
@@ -140,6 +142,14 @@ app.put(
   zValidator("json", OrderSchema, prettyValidation),
   orderService.updateOrder
 );
+
+/* Funding endpoints — the merchant-side surface, not part of the UCP contract.
+   An agent never touches these: enrolling a card is something the *user* does, once,
+   before any agent is asked to spend from it. */
+app.get("/enroll", fundingService.getEnrollPage);
+app.post("/funding/setup-intents", fundingService.createSetupIntent);
+app.post("/funding/cards", fundingService.enrollOpenLoopCard);
+app.get("/funding/cards", fundingService.listCards);
 
 /* Testing endpoints */
 app.post(

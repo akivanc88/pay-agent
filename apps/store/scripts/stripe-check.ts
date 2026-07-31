@@ -7,11 +7,12 @@
  * **Stripe** what happened rather than asking our own code. The PaymentIntent it prints back
  * was created by Stripe, and its `livemode` flag is Stripe's word, not ours.
  *
- * Two runs, because one of them is the interesting one:
+ * Three parts:
  *
- *   1. A gift card plus a card that works — the card is charged the remainder, and the order
+ *   1. Enrolling an open-loop prepaid card, through the same endpoints the browser calls.
+ *   2. A gift card plus a card that works — the card is charged the remainder, and the order
  *      is placed.
- *   2. The same cart with a card that declines for insufficient funds — the gift card comes
+ *   3. The same cart with a card that declines for insufficient funds — the gift card comes
  *      back to exactly where it started, and Stripe holds no captured charge.
  *
  *   pnpm --filter @pay-agent/store seed
@@ -26,6 +27,7 @@ import type Stripe from "stripe";
 import { format, minorUnits } from "@pay-agent/db";
 
 import { CheckoutService } from "../src/api/checkout";
+import { FundingService } from "../src/api/funding";
 import { initDbs } from "../src/data/db";
 import {
   CheckoutCompleteRequestSchema,
@@ -48,6 +50,8 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
  */
 const PM_SUCCESS = "pm_card_visa";
 const PM_INSUFFICIENT_FUNDS = "pm_card_chargeDeclinedInsufficientFunds";
+/** The one Stripe reports as `funding: prepaid`, which is what an open-loop gift card is. */
+const PM_PREPAID = "pm_card_mastercard_prepaid";
 
 const stripe = testClient();
 if (!stripe) {
@@ -99,6 +103,10 @@ app.post(
   zValidator("json", CheckoutCompleteRequestSchema, prettyValidation),
   svc.completeCheckout,
 );
+
+const funding_ = new FundingService();
+app.post("/funding/setup-intents", funding_.createSetupIntent);
+app.post("/funding/cards", funding_.enrollOpenLoopCard);
 
 // Port 0 asks the OS for a free one, so this cannot collide with a running `pnpm dev`.
 const server = serve({ fetch: app.fetch, port: 0 });
@@ -220,10 +228,69 @@ async function run(label: string, paymentMethodId: string) {
   return { status: res.status, opening, closing, intent };
 }
 
+/**
+ * Enroll a prepaid card the way the page does.
+ *
+ * The one step performed differently is the confirmation: in the browser that happens inside
+ * a Stripe-hosted iframe with a real card number, and here it is `setupIntents.confirm` with
+ * one of Stripe's published test PaymentMethods. That difference is the point — the card
+ * number is Stripe's business in both cases, and this script has no way to see one either.
+ */
+async function enrollPrepaidCard() {
+  console.log(`\n── enrolling an open-loop card ${"─".repeat(30)}`);
+
+  const setup = (await (
+    await fetch(`${base}/funding/setup-intents`, { method: "POST" })
+  ).json()) as { client_secret: string };
+
+  // The id is the part of the client secret before the separator. The browser gets it back
+  // from `confirmSetup` instead; only this script has to take it apart.
+  const setupIntentId = setup.client_secret.split("_secret_")[0]!;
+  await stripe!.setupIntents.confirm(setupIntentId, { payment_method: PM_PREPAID });
+
+  const res = await fetch(`${base}/funding/cards`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ setup_intent_id: setupIntentId, enrolled_balance: 50 }),
+  });
+
+  const card = (await res.json()) as {
+    brand?: string;
+    last4?: string;
+    payment_method_id?: string;
+    enrolled_balance_display?: string;
+    balance_verified?: boolean;
+    funding?: string;
+    detail?: string;
+  };
+
+  if (!res.ok) {
+    console.log(`  HTTP ${res.status}  ${card.detail}`);
+    return card;
+  }
+
+  console.log(
+    `  HTTP ${res.status}  ${card.brand} ••••${card.last4}  ${card.payment_method_id}\n` +
+      `  funding=${card.funding}  balance ${card.enrolled_balance_display} ` +
+      `(verified=${card.balance_verified})`,
+  );
+  return card;
+}
+
+const enrolled = await enrollPrepaidCard();
+
 const ok = await run("card that works", PM_SUCCESS);
 const declined = await run("card that declines: insufficient funds", PM_INSUFFICIENT_FUNDS);
 
 console.log("\n── what this proves " + "─".repeat(41));
+console.log(
+  `  we hold a payment method, never a card number:  ` +
+    `${enrolled.payment_method_id?.startsWith("pm_") ? "yes, " + enrolled.payment_method_id : "NO"}`,
+);
+console.log(
+  `  the enrolled balance is stored as a claim:      ` +
+    `${enrolled.balance_verified === false ? "yes, unverified" : "NO"}`,
+);
 console.log(
   `  the card was asked for the remainder only:      ` +
     `${ok.intent ? format(minorUnits(ok.intent.amount)) : "—"}`,

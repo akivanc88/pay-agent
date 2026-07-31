@@ -45,6 +45,10 @@ happened rather than asking our own code:
 ```
 Stripe key accepted  livemode=false  settlement_currencies=CAD
 
+── enrolling an open-loop card ──────────────────────────────
+  HTTP 201  mastercard ••••5100  pm_1Tz7wMBaji74YJFkzFvcOwoX
+  funding=prepaid  balance $50.00 (verified=false)
+
 ── card that works ─────────────────────────────────────────
   cart $35.00   gift card ••••8909 $25.00
   HTTP 200  order ord_38f338ee-e1bb-4ccc-9280-d1642ed85abd
@@ -64,8 +68,33 @@ with nothing captured on the rail.
 
     pnpm --filter @pay-agent/store seed          # catalogue
     pnpm --filter @pay-agent/store issue-card GC-DEMO-0001 1234 25.00
+    pnpm --filter @pay-agent/store dev           # then http://localhost:3000/enroll
     pnpm --filter @pay-agent/store stripe-check  # real split checkout, both outcomes
     pnpm --filter @pay-agent/store show-ledger   # before/after
+
+### Enrolling a card without ever seeing it
+
+`/enroll` is the one page in the project, and its whole shape follows from a single
+constraint: **the card number must never reach this server.**
+
+1. The browser asks us for a SetupIntent. We hand back only its client secret, which is
+   useless for anything except confirming this one enrollment.
+2. The browser confirms it against Stripe. The number goes browser → Stripe, inside a frame
+   Stripe serves. It does not pass through here, and there is no code path by which it could
+   — self-hosting `js.stripe.com` would break exactly that property, which is why it is
+   loaded from Stripe's domain.
+3. The browser tells us the setup succeeded. We do **not** believe it. We fetch the
+   SetupIntent from Stripe and read the PaymentMethod id off Stripe's response, because a
+   client that could name any PaymentMethod on the account could enroll someone else's card.
+   A SetupIntent without our own enrollment marker is refused outright.
+
+What lands in the ledger is `pm_…`, a brand, an expiry and four digits.
+
+The balance is a different matter and the UI says so on every row: **no API can query the
+balance of an open-loop prepaid card.** The figure is what the user typed. It is stored
+beside `balanceVerified: false` and rendered with an `unverified` tag, because a number the
+system cannot check must never be displayed as though it could — that would be the single
+most misleading thing this interface could do.
 
 ### Authorize now, capture last
 
@@ -93,7 +122,7 @@ never placed.
 | Card rail (`com.stripe.payments`) | Stripe PaymentIntents | **Real** — test mode, authorize/capture, genuine decline codes |
 | Split payment across both rails | UCP `instruments[]` | **Real** — the card is authorized for the remainder only |
 | Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key; five tests |
-| Open-loop card enrollment | Stripe Elements | **Planned** — the ledger holds the record; nothing captures a `pm_…` yet |
+| Open-loop card enrollment | Stripe Elements + SetupIntents | **Real** — the card number is collected by Stripe in the browser; we store only a `pm_…` |
 | Mock token handler | Upstream sample | **Simulated** — retained so the reference merchant's own tests still pass |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
@@ -176,7 +205,8 @@ These are invariants, and each has a test in `PLAN.md`'s verification list.
 - **No PAN ever reaches our server.** Open-loop cards are captured via Stripe Elements
   (browser→Stripe); we store only a `pm_…`. Storing a PAN — even encrypted — would move
   the project from PCI SAQ-A to SAQ-D: key management, rotation, access logging, quarterly
-  ASV scans, annual pen test. Enormous cost, zero demo value.
+  ASV scans, annual pen test. Enormous cost, zero demo value. **Implemented**, and there is
+  a test asserting no secret key and no `sk_` prefix can appear in the page's markup.
 - **Closed-loop credentials are hashed, never encrypted.** The merchant only ever
   *verifies* a presented code; it never needs to re-present it, so one-way is correct. If
   the agent could recover the number it would be a card vault, and building one badly is
@@ -201,7 +231,8 @@ they prevent cannot be undone by noticing it afterwards.
 Recorded so they are never mistaken for oversights:
 
 - No real authentication until the Supabase migration; multi-tenant isolation is
-  therefore untested.
+  therefore untested. `/enroll` acts for a fixture `demo-user` and is not access-controlled
+  — it must not be exposed on the deployed demo as it stands.
 - Destinations do not verify agent identity until RFC 9421 signing lands.
 - Enrolled prepaid balance is **a hint, not a fact** — no API can query an open-loop
   prepaid balance. The planner must handle a decline gracefully regardless of what the
