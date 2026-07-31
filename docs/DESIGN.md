@@ -24,23 +24,24 @@ record of what was actually built. Where they disagree, this document is right.
 The three that matter are **Simplified** and **Simulated** versus **Real** — those are
 the lines a reader would otherwise have to guess at.
 
-## Status: nothing implemented yet
+## Status
 
-As of **2026-07-30** this repository contains `README.md`, `docs/PLAN.md` and this file.
-No application code exists. Every row below is therefore **Planned**, and this document's
-job right now is to fix the reporting rules *before* there is anything to spin.
+**M1 in progress.** The funding core's storage layer is built and tested; nothing is
+served over HTTP yet and no payment rail has been touched.
 
-The table gets filled in as milestones land, not reconstructed at the end.
+Run `pnpm --filter @pay-agent/db demo` to see the funding core end to end: three cards,
+a split draw across them including an empty one, a decline, and the exact reversal.
 
 ## Component map
 
 | Component | Source of truth | Status |
 |---|---|---|
+| Gift-card ledger (`packages/db`) | UCP redeemables semantics | **Standard** — open-amount draws, $0 contributions, exact reversal |
+| Storage boundary (`packages/db`) | This project's own design | **Real** — enforced by a test that scans the tree |
+| Closed-loop card credentials | ACP "agent never holds a raw credential" | **Real** — HMAC lookup + salted slow KDF |
+| Open-loop card record | Ordinary card rails via Stripe | **Simplified** — record only; no Stripe call yet |
 | UCP storefront (`apps/store`) | UCP spec; adapted from the official `samples/rest/nodejs` | Planned |
 | UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | Planned |
-| Gift-card ledger (`packages/db`) | UCP redeemables semantics | Planned |
-| Closed-loop gift card | UCP redeemables; ACP `dev.acp.seller_backed.gift_card` | Planned |
-| Open-loop prepaid card | Ordinary card rails via Stripe | Planned |
 | Payment instruments (`instruments[]`) | Stripe `com.stripe.payments` UCP handler | Planned |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
@@ -48,6 +49,25 @@ The table gets filled in as milestones land, not reconstructed at the end.
 | Stripe payment link destination | Stripe | Planned |
 | StreamCo biller destination | — (no spec; it's a simulation) | Planned |
 | Agent request signing (`packages/tap`) | RFC 9421, as profiled by Visa TAP | Planned — stretch goal |
+
+### What the ledger guarantees, and how
+
+Three properties are structural rather than maintained by convention, because each is
+something the demo has to be able to *prove* rather than assert:
+
+- **No balance column exists.** A balance is the signed sum of a card's entries, so it
+  cannot drift away from them, and a reversal restores it exactly.
+- **The ledger is append-only, enforced by database triggers.** `UPDATE` and `DELETE` on
+  `ledger_entries` are rejected outright; a reversal is a new compensating row. Tests
+  assert this against raw SQL that bypasses the repository, since the guarantee needs to
+  hold against callers that skip our code.
+- **A draw can be reversed at most once**, enforced by a unique index — a declined payment
+  can legitimately be reported twice, and the second report must not hand out free money.
+
+Entries carry a monotonic `seq`. Ordering by timestamp was not sufficient: several
+entries in one run land inside the same millisecond, and the original tie-break on a
+random id returned the trail shuffled. An audit trail that cannot reproduce its own
+sequence is not an audit trail.
 
 ## What is simulated, and why
 
