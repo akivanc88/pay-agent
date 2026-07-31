@@ -1,0 +1,43 @@
+pay-agent
+Copyright 2026 pay-agent contributors
+
+This product includes software developed by the UCP Authors.
+
+------------------------------------------------------------------------------
+Universal Commerce Protocol — Node.js reference implementation
+------------------------------------------------------------------------------
+
+`apps/store` is derived from the UCP Node.js server reference implementation:
+
+    https://github.com/Universal-Commerce-Protocol/samples
+    rest/nodejs
+
+    Copyright 2026 UCP Authors
+    Licensed under the Apache License, Version 2.0
+
+Retrieved 2026-07-30. At that revision the upstream sample passed 28/28 of its
+own tests with 0 reported vulnerabilities.
+
+Modifications made by this project, relative to upstream:
+
+  - The catalogue is seeded by `scripts/seed.ts` rather than shipped as committed
+    `products.db` / `transactions.db` binaries. Upstream has no seeding code, so
+    without this the storefront would start with an empty catalogue once `*.db`
+    is gitignored.
+  - `package.json` renamed to `@pay-agent/store` and joined to the pnpm
+    workspace; `better-sqlite3` moved from ^9.4.3 to ^11.7.0 to match the rest of
+    the workspace and avoid building the native module twice.
+  - Further modifications for gift-card funding are described in `docs/DESIGN.md`
+    and were made in commits after the vendoring commit, so `git log` shows
+    precisely what diverges from upstream.
+
+The full Apache License 2.0 text is in `LICENSE`.
+
+------------------------------------------------------------------------------
+Standards referenced but not vendored
+------------------------------------------------------------------------------
+
+`visa/trusted-agent-protocol` is cited as a reference only. Its LICENSE.md binds
+use to the Visa Developer Center Terms of Use and it is not open source, so no
+code from it appears in this repository. Where HTTP message signing is
+implemented, the normative source is RFC 9421 (IETF).

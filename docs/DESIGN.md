@@ -24,30 +24,131 @@ record of what was actually built. Where they disagree, this document is right.
 The three that matter are **Simplified** and **Simulated** versus **Real** — those are
 the lines a reader would otherwise have to guess at.
 
-## Status: nothing implemented yet
+## Status
 
-As of **2026-07-30** this repository contains `README.md`, `docs/PLAN.md` and this file.
-No application code exists. Every row below is therefore **Planned**, and this document's
-job right now is to fix the reporting rules *before* there is anything to spin.
+**M1 substantially working, and the card rail is now real.** Gift cards are a live UCP
+payment instrument: the storefront advertises the handler, settles a whole `instruments[]`
+array, and gives every cent back when a payment fails. Whatever the gift cards cannot cover
+is authorized against **Stripe in test mode** — real API calls, real PaymentIntents, real
+decline codes. The remaining simulation on this path is Stripe's test issuer, not our code.
 
-The table gets filled in as milestones land, not reconstructed at the end.
+Currency is **CAD** throughout, matching the Stripe account and the physical gift card used
+for the eventual live decline. Charging in another presentment currency would put a
+conversion between the enrolled balance and the amount authorised, making
+"the charge exceeds the balance" approximate — and that comparison is the entire basis of
+the guarded live path.
+
+Verified end to end over HTTP against the real Stripe API, not just in tests. `stripe-check`
+starts the storefront on a socket, completes a split checkout, and then asks **Stripe** what
+happened rather than asking our own code:
+
+```
+Stripe key accepted  livemode=false  settlement_currencies=CAD
+
+── enrolling an open-loop card ──────────────────────────────
+  HTTP 201  mastercard ••••5100  pm_1Tz7wMBaji74YJFkzFvcOwoX
+  funding=prepaid  balance $50.00 (verified=false)
+
+── card that works ─────────────────────────────────────────
+  cart $35.00   gift card ••••8909 $25.00
+  HTTP 200  order ord_38f338ee-e1bb-4ccc-9280-d1642ed85abd
+  Stripe pi_3Tz7fRBaji74YJFk0sAviohQ  $10.00 CAD  status=succeeded  captured=$10.00  livemode=false
+  gift card $25.00 → $0.00
+
+── card that declines: insufficient funds ──────────────────
+  cart $35.00   gift card ••••2000 $25.00
+  HTTP 402  insufficient_funds Card authorization failed: Your card has insufficient funds.
+  Stripe pi_3Tz7fUBaji74YJFk1zf8Z9wl  $10.00 CAD  status=requires_payment_method  captured=$0.00
+  gift card $25.00 → $25.00
+```
+
+The two numbers that matter: the card was asked for **$10.00**, not $35.00 — the remainder,
+not the total — and the declined run left the gift card at **exactly** its opening balance
+with nothing captured on the rail.
+
+    pnpm --filter @pay-agent/store seed          # catalogue
+    pnpm --filter @pay-agent/store issue-card GC-DEMO-0001 1234 25.00
+    pnpm --filter @pay-agent/store dev           # then http://localhost:3000/enroll
+    pnpm --filter @pay-agent/store stripe-check  # real split checkout, both outcomes
+    pnpm --filter @pay-agent/store show-ledger   # before/after
+
+### Enrolling a card without ever seeing it
+
+`/enroll` is the one page in the project, and its whole shape follows from a single
+constraint: **the card number must never reach this server.**
+
+1. The browser asks us for a SetupIntent. We hand back only its client secret, which is
+   useless for anything except confirming this one enrollment.
+2. The browser confirms it against Stripe. The number goes browser → Stripe, inside a frame
+   Stripe serves. It does not pass through here, and there is no code path by which it could
+   — self-hosting `js.stripe.com` would break exactly that property, which is why it is
+   loaded from Stripe's domain.
+3. The browser tells us the setup succeeded. We do **not** believe it. We fetch the
+   SetupIntent from Stripe and read the PaymentMethod id off Stripe's response, because a
+   client that could name any PaymentMethod on the account could enroll someone else's card.
+   A SetupIntent without our own enrollment marker is refused outright.
+
+What lands in the ledger is `pm_…`, a brand, an expiry and four digits.
+
+The balance is a different matter and the UI says so on every row: **no API can query the
+balance of an open-loop prepaid card.** The figure is what the user typed. It is stored
+beside `balanceVerified: false` and rendered with an `unverified` tag, because a number the
+system cannot check must never be displayed as though it could — that would be the single
+most misleading thing this interface could do.
+
+### Authorize now, capture last
+
+Both legs of a payment are provisional until the order exists, and for the same reason. A
+gift-card draw is undone by a compensating ledger entry; a card authorization is undone by
+cancelling it. So the card is authorized with `capture_method: "manual"` **before** stock is
+reserved, and captured only once the order is certain — the last thing that can fail is
+already done.
+
+The failure this exists for: a cart goes out of stock between authorization and fulfilment.
+Money is committed on two rails before the merchant knows it can ship, and both have to come
+back. Capturing at authorization time would have charged a real card for an order that was
+never placed.
 
 ## Component map
 
 | Component | Source of truth | Status |
 |---|---|---|
-| UCP storefront (`apps/store`) | UCP spec; adapted from the official `samples/rest/nodejs` | Planned |
-| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | Planned |
-| Gift-card ledger (`packages/db`) | UCP redeemables semantics | Planned |
-| Closed-loop gift card | UCP redeemables; ACP `dev.acp.seller_backed.gift_card` | Planned |
-| Open-loop prepaid card | Ordinary card rails via Stripe | Planned |
-| Payment instruments (`instruments[]`) | Stripe `com.stripe.payments` UCP handler | Planned |
+| Gift-card ledger (`packages/db`) | UCP redeemables semantics | **Standard** — open-amount draws, $0 contributions, exact reversal |
+| Storage boundary (`packages/db`) | This project's own design | **Real** — enforced by a test that scans the tree |
+| Closed-loop card credentials | ACP "agent never holds a raw credential" | **Real** — HMAC lookup + salted slow KDF |
+| UCP storefront (`apps/store`) | Adapted from the official `samples/rest/nodejs` | **Standard** — upstream's 28 tests still pass |
+| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | **Standard** — advertises `dev.acp.seller_backed.gift_card` and `com.stripe.payments` |
+| Gift-card instrument settlement | ACP seller-backed handler RFC | **Standard** — settles the whole `instruments[]` array |
+| Card rail (`com.stripe.payments`) | Stripe PaymentIntents | **Real** — test mode, authorize/capture, genuine decline codes |
+| Split payment across both rails | UCP `instruments[]` | **Real** — the card is authorized for the remainder only |
+| Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key; five tests |
+| Open-loop card enrollment | Stripe Elements + SetupIntents | **Real** — the card number is collected by Stripe in the browser; we store only a `pm_…` |
+| Mock token handler | Upstream sample | **Simulated** — retained so the reference merchant's own tests still pass |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
 | Policy gate + approval inbox | This project's own design | Planned |
 | Stripe payment link destination | Stripe | Planned |
 | StreamCo biller destination | — (no spec; it's a simulation) | Planned |
 | Agent request signing (`packages/tap`) | RFC 9421, as profiled by Visa TAP | Planned — stretch goal |
+
+### What the ledger guarantees, and how
+
+Three properties are structural rather than maintained by convention, because each is
+something the demo has to be able to *prove* rather than assert:
+
+- **No balance column exists.** A balance is the signed sum of a card's entries, so it
+  cannot drift away from them, and a reversal restores it exactly.
+- **The ledger is append-only, enforced by database triggers.** `UPDATE` and `DELETE` on
+  `ledger_entries` are rejected outright; a reversal is a new compensating row. Tests
+  assert this against raw SQL that bypasses the repository, since the guarantee needs to
+  hold against callers that skip our code.
+- **A draw can be reversed at most once**, enforced by a unique index — a declined payment
+  can legitimately be reported twice, and the second report must not hand out free money.
+
+Entries carry a monotonic `seq`. Ordering by timestamp was not sufficient: several
+entries in one run land inside the same millisecond, and the original tie-break on a
+random id returned the trail shuffled. An audit trail that cannot reproduce its own
+sequence is not an audit trail.
 
 ## What is simulated, and why
 
@@ -79,6 +180,8 @@ it**.
 
 | Area | Spec says | We do | Why |
 |---|---|---|---|
+| Gift-card tokenization | ACP's seller-backed handlers tokenize via a `delegate_payment` endpoint | The code and PIN are presented directly on the instrument | `delegate_payment` is not yet implemented, so the agent does briefly hold the raw card credential — the one place this project currently falls short of "the agent never holds a raw credential". Recorded rather than glossed. |
+| Card credential | Stripe's handler is designed around a scoped **Shared Payment Token**, granted per payment | A `pm_…` PaymentMethod id on `credential.token` | Same class of gap as the row above: the merchant charges a stored payment method rather than redeeming a token scoped to this destination and amount. It works, and it is genuinely Stripe — but the *scoping* is what Shared Payment Tokens exist for, so nothing here should be read as demonstrating them. |
 | Mandate format | `PaymentMandate` is an SD-JWT-VC | Plain JWS, correct field semantics | SD-JWT-VC is a large dependency for a demo whose point is the funding and consent *flow*. Full VC is a stretch goal. |
 | User identity | A verified session establishes `user_id` | Fixture `user_id` until Supabase lands | Storage starts on SQLite; without real auth, "the agent acts for *this* user" is asserted, not proven. Stated rather than papered over. |
 | Agent request signing | Visa TAP profiles RFC 9421 signatures | Not implemented initially | Stretch goal. Until it exists, destinations do not authenticate the agent — do not claim they do. |
@@ -102,7 +205,8 @@ These are invariants, and each has a test in `PLAN.md`'s verification list.
 - **No PAN ever reaches our server.** Open-loop cards are captured via Stripe Elements
   (browser→Stripe); we store only a `pm_…`. Storing a PAN — even encrypted — would move
   the project from PCI SAQ-A to SAQ-D: key management, rotation, access logging, quarterly
-  ASV scans, annual pen test. Enormous cost, zero demo value.
+  ASV scans, annual pen test. Enormous cost, zero demo value. **Implemented**, and there is
+  a test asserting no secret key and no `sk_` prefix can appear in the page's markup.
 - **Closed-loop credentials are hashed, never encrypted.** The merchant only ever
   *verifies* a presented code; it never needs to re-present it, so one-way is correct. If
   the agent could recover the number it would be a card vault, and building one badly is
@@ -112,12 +216,23 @@ These are invariants, and each has a test in `PLAN.md`'s verification list.
 - **The deployed demo is test-mode only** — the build fails at startup if a live key is
   present. Mechanical, not a matter of discipline.
 
+The last two are now enforced in code rather than described. `assertSafeStripeConfig` runs
+before the server binds a port and refuses four configurations: a live key in
+`STRIPE_SECRET_KEY`, a live key present under `NODE_ENV=production` or any of five platform
+markers (`VERCEL`, `RENDER`, `FLY_APP_NAME`, `RAILWAY_ENVIRONMENT`, `K_SERVICE`, `DYNO`), and
+a test key parked in the live variable — which would silently disarm every guard that keys
+off its presence. The live client is a separate function that checkout cannot reach.
+
+These tests were written *before* a live key ever touched the machine, because the failure
+they prevent cannot be undone by noticing it afterwards.
+
 ### Known gaps
 
 Recorded so they are never mistaken for oversights:
 
 - No real authentication until the Supabase migration; multi-tenant isolation is
-  therefore untested.
+  therefore untested. `/enroll` acts for a fixture `demo-user` and is not access-controlled
+  — it must not be exposed on the deployed demo as it stands.
 - Destinations do not verify agent identity until RFC 9421 signing lands.
 - Enrolled prepaid balance is **a hint, not a fact** — no API can query an open-loop
   prepaid balance. The planner must handle a decline gracefully regardless of what the
