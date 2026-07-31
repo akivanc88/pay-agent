@@ -1,5 +1,9 @@
 import { type Context } from "hono";
 import { UCP_VERSION } from "../utils/config";
+import {
+  GIFT_CARD_HANDLER_NAME,
+  giftCardHandlerDeclaration,
+} from "../payments/gift-card";
 
 type DiscoveryCapability = {
   version: string;
@@ -57,6 +61,11 @@ export class DiscoveryService {
    */
   getMerchantProfile = (c: Context) => {
     const payment_handlers = {
+      // Seller-backed gift cards, resolved against this merchant's own ledger. Declared
+      // first because it is the handler this project exists to demonstrate: it is
+      // open-amount and combinable, so an agent can pay with a gift card *and* a card in
+      // a single `instruments[]` array.
+      [GIFT_CARD_HANDLER_NAME]: [giftCardHandlerDeclaration(this.ucpVersion)],
       "com.shopify.shop_pay": [
         {
           id: "shop_pay",
@@ -185,6 +194,7 @@ export class DiscoveryService {
       ucp,
       payment: {
         handlers: [
+          ...payment_handlers[GIFT_CARD_HANDLER_NAME],
           ...payment_handlers["com.shopify.shop_pay"],
           ...payment_handlers["google.pay"],
           ...payment_handlers["dev.ucp.mock_payment"],

@@ -18,11 +18,17 @@ build/
 out/
 *.tsbuildinfo
 
-# Local databases (SQLite)
+# Local databases (SQLite).
+# The -wal and -shm files are WAL-mode sidecars — the store opens connections with
+# journal_mode=WAL, so these appear next to every database file.
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
 
 # Logs
 *.log

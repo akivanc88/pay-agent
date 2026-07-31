@@ -41,6 +41,13 @@ import {
   type PostalAddress,
 } from "../models";
 import { type IdParamContext } from "../utils/validation";
+import { minorUnits } from "@pay-agent/db";
+import {
+  GiftCardError,
+  reverseSettlement,
+  settleGiftCards,
+  type SettlementResult,
+} from "../payments/gift-card";
 
 // zCompleteCheckoutRequest and CompleteCheckoutRequest are now imported from SDK models
 
@@ -771,13 +778,83 @@ export class CheckoutService {
     if (!payment || !payment.instruments || payment.instruments.length === 0) {
       return c.json({ detail: "Missing payment data" }, 400);
     }
-    const selectedInstrument = payment.instruments[0];
+
+    /**
+     * Settle gift cards across the *whole* instruments array.
+     *
+     * Upstream reads only `payment.instruments[0]`, so a cart paid with a gift card and a
+     * card is expressible in UCP but unhandled by the reference implementation. Drawing
+     * every gift card first, then leaving a remainder for another rail, is the split
+     * payment this project exists to demonstrate.
+     *
+     * `runId` groups the draws so that any later failure can hand every cent back.
+     */
+    const runId = `run_${uuidv4()}`;
+    const amountDue = minorUnits(
+      checkout.totals?.find((t) => t.type === "total")?.amount ??
+        checkout.totals?.find((t) => t.type === "subtotal")?.amount ??
+        0,
+    );
+
+    let settlement: SettlementResult | undefined;
+    const giftCardInstruments = payment.instruments.filter(
+      (i: { type?: string }) => i?.type === "gift_card",
+    );
+
+    if (giftCardInstruments.length > 0) {
+      try {
+        settlement = await settleGiftCards(payment.instruments, amountDue, runId);
+      } catch (err) {
+        // Nothing has been drawn if resolution failed, but reverse anyway: a partially
+        // applied array must never leave money taken for a checkout that did not complete.
+        await reverseSettlement(runId).catch(() => undefined);
+        if (err instanceof GiftCardError) {
+          return c.json({ detail: err.message }, err.status);
+        }
+        throw err;
+      }
+
+      // A remainder is not an error — it is what the other instruments are for. But if the
+      // gift cards fall short and nothing else was presented, the cart cannot be paid.
+      const hasOtherInstrument = payment.instruments.some(
+        (i: { type?: string }) => i?.type !== "gift_card",
+      );
+      if (settlement.remaining > 0 && !hasOtherInstrument) {
+        await reverseSettlement(runId);
+        return c.json(
+          {
+            detail:
+              `Gift cards covered ${settlement.covered} of ${amountDue}; ` +
+              `${settlement.remaining} remains and no other payment instrument was supplied`,
+            code: "insufficient_funds",
+          },
+          402,
+        );
+      }
+    }
+
+    /**
+     * Fail the checkout, giving back anything the gift cards already contributed.
+     *
+     * Every failure path below has to route through this. Money drawn for a checkout that
+     * does not complete must not simply stay drawn, and "remember to reverse" repeated at
+     * six return sites is a bug waiting to happen.
+     */
+    const failPayment = async (detail: string, status: 400 | 402 | 403 | 409) => {
+      if (settlement) await reverseSettlement(runId).catch(() => undefined);
+      return c.json({ detail }, status);
+    };
+
+    // Non-gift-card instruments keep the upstream handler behaviour.
+    const selectedInstrument = payment.instruments.find(
+      (i: { type?: string }) => i?.type !== "gift_card",
+    );
 
     if (selectedInstrument) {
       const handlerId = selectedInstrument.handler_id;
       const credential = selectedInstrument.credential;
       if (!credential) {
-        return c.json({ detail: "Missing credentials in instrument" }, 400);
+        return failPayment("Missing credentials in instrument", 400);
       }
 
       if (selectedInstrument.type === "card" && credential.type === "card") {
@@ -793,17 +870,11 @@ export class CheckoutService {
           if (token === "success_token") {
             // Success
           } else if (token === "fail_token") {
-            return c.json(
-              { detail: "Payment Failed: Insufficient Funds (Mock)" },
-              402
-            );
+            return failPayment("Payment Failed: Insufficient Funds (Mock)", 402);
           } else if (token === "fraud_token") {
-            return c.json(
-              { detail: "Payment Failed: Fraud Detected (Mock)" },
-              403
-            );
+            return failPayment("Payment Failed: Fraud Detected (Mock)", 403);
           } else {
-            return c.json({ detail: `Unknown mock token: ${token}` }, 400);
+            return failPayment(`Unknown mock token: ${token}`, 400);
           }
         } else if (
           handlerId === "google_pay" ||
@@ -812,10 +883,7 @@ export class CheckoutService {
         ) {
           // Mock success
         } else {
-          return c.json(
-            { detail: `Unsupported payment handler: ${handlerId}` },
-            400
-          );
+          return failPayment(`Unsupported payment handler: ${handlerId}`, 400);
         }
       }
     }
@@ -833,10 +901,7 @@ export class CheckoutService {
             for (const reserved of reservedItems) {
               releaseStock(reserved.id, reserved.qty);
             }
-            return c.json(
-              { detail: `Item ${line.item.id} is out of stock` },
-              409
-            );
+            return failPayment(`Item ${line.item.id} is out of stock`, 409);
           }
           reservedItems.push({ id: line.item.id, qty: line.quantity });
         }

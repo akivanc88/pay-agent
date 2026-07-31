@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
     "seed": "tsx scripts/seed.ts",
+    "issue-card": "tsx scripts/issue-card.ts",
+    "show-ledger": "tsx scripts/show-ledger.ts",
     "start": "node dist/index.js"
   },
   "dependencies": {

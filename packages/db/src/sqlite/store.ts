@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 
 import { hashCode, hashPin, last4 as codeLast4, verifyPin } from "../credentials.js";
-import { minorUnits, type MinorUnits, ZERO } from "../money.js";
+import { DEFAULT_CURRENCY, minorUnits, type MinorUnits, ZERO } from "../money.js";
 import type {
   EnrollOpenLoopCardInput,
   GiftCardRepository,
@@ -130,7 +130,7 @@ class SqliteGiftCardRepository implements GiftCardRepository {
     const pin = await hashPin(input.pin);
     const id = randomUUID();
     const now = new Date().toISOString();
-    const currency = input.currency ?? "USD";
+    const currency = input.currency ?? DEFAULT_CURRENCY;
 
     // The card and its opening balance land together: a card that exists but has no
     // issue entry would read as a zero balance, which is a different thing entirely.
@@ -179,7 +179,7 @@ class SqliteGiftCardRepository implements GiftCardRepository {
       .run(
         id,
         input.userId,
-        input.currency ?? "USD",
+        input.currency ?? DEFAULT_CURRENCY,
         input.last4,
         now,
         input.paymentMethodId,

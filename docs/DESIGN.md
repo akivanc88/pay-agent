@@ -26,11 +26,25 @@ the lines a reader would otherwise have to guess at.
 
 ## Status
 
-**M1 in progress.** The funding core's storage layer is built and tested; nothing is
-served over HTTP yet and no payment rail has been touched.
+**M1 substantially working.** Gift cards are a live UCP payment instrument: the storefront
+advertises the handler, settles a whole `instruments[]` array, and gives every cent back
+when a payment fails. No real payment rail has been touched yet — the non-gift-card leg is
+still the upstream mock handler.
 
-Run `pnpm --filter @pay-agent/db demo` to see the funding core end to end: three cards,
-a split draw across them including an empty one, a decline, and the exact reversal.
+Currency is **CAD** throughout, matching the Stripe account and the physical gift card used
+for the eventual live decline. Charging in another presentment currency would put a
+conversion between the enrolled balance and the amount authorised, making
+"the charge exceeds the balance" approximate — and that comparison is the entire basis of
+the guarded live path.
+
+Verified end to end over HTTP, not just in tests: `$25.00` gift card + card covering the
+`$10.00` remainder completes; the same cart with a declining card returns 402 and restores
+the gift card to exactly `$25.00`, with the draw still visible in the trail.
+
+    pnpm --filter @pay-agent/store seed         # catalogue
+    pnpm --filter @pay-agent/store issue-card GC-DEMO-0001 1234 25.00
+    pnpm --filter @pay-agent/store dev          # then POST a checkout
+    pnpm --filter @pay-agent/store show-ledger  # before/after
 
 ## Component map
 
@@ -39,10 +53,12 @@ a split draw across them including an empty one, a decline, and the exact revers
 | Gift-card ledger (`packages/db`) | UCP redeemables semantics | **Standard** — open-amount draws, $0 contributions, exact reversal |
 | Storage boundary (`packages/db`) | This project's own design | **Real** — enforced by a test that scans the tree |
 | Closed-loop card credentials | ACP "agent never holds a raw credential" | **Real** — HMAC lookup + salted slow KDF |
+| UCP storefront (`apps/store`) | Adapted from the official `samples/rest/nodejs` | **Standard** — upstream's 28 tests still pass |
+| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | **Standard** — advertises `dev.acp.seller_backed.gift_card` |
+| Gift-card instrument settlement | ACP seller-backed handler RFC | **Standard** — settles the whole `instruments[]` array |
 | Open-loop card record | Ordinary card rails via Stripe | **Simplified** — record only; no Stripe call yet |
-| UCP storefront (`apps/store`) | UCP spec; adapted from the official `samples/rest/nodejs` | Planned |
-| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | Planned |
-| Payment instruments (`instruments[]`) | Stripe `com.stripe.payments` UCP handler | Planned |
+| Card/non-gift-card leg | — | **Simulated** — still upstream's mock token handler |
+| Payment instruments via Stripe | Stripe `com.stripe.payments` UCP handler | Planned |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
 | Policy gate + approval inbox | This project's own design | Planned |
@@ -99,6 +115,7 @@ it**.
 
 | Area | Spec says | We do | Why |
 |---|---|---|---|
+| Gift-card tokenization | ACP's seller-backed handlers tokenize via a `delegate_payment` endpoint | The code and PIN are presented directly on the instrument | `delegate_payment` is not yet implemented, so the agent does briefly hold the raw card credential — the one place this project currently falls short of "the agent never holds a raw credential". Recorded rather than glossed. |
 | Mandate format | `PaymentMandate` is an SD-JWT-VC | Plain JWS, correct field semantics | SD-JWT-VC is a large dependency for a demo whose point is the funding and consent *flow*. Full VC is a stretch goal. |
 | User identity | A verified session establishes `user_id` | Fixture `user_id` until Supabase lands | Storage starts on SQLite; without real auth, "the agent acts for *this* user" is asserted, not proven. Stated rather than papered over. |
 | Agent request signing | Visa TAP profiles RFC 9421 signatures | Not implemented initially | Stretch goal. Until it exists, destinations do not authenticate the agent — do not claim they do. |

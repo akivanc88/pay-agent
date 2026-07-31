@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS gift_cards (
   id                TEXT PRIMARY KEY,
   family            TEXT NOT NULL CHECK (family IN ('closed_loop', 'open_loop')),
   user_id           TEXT NOT NULL,
-  currency          TEXT NOT NULL DEFAULT 'USD',
+  currency          TEXT NOT NULL DEFAULT 'CAD',
   last4             TEXT NOT NULL,
   created_at        TEXT NOT NULL,
 

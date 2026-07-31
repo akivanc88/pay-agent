@@ -1,5 +1,5 @@
 /**
- * Money is always integer minor units (cents for USD). Never floats.
+ * Money is always integer minor units (cents). Never floats.
  *
  * Floating point is wrong for money in a way that is quiet: 0.1 + 0.2 !== 0.3, and a
  * gift-card ledger that drifts by a fraction of a cent per operation will not reconcile
@@ -12,6 +12,20 @@
 declare const brand: unique symbol;
 
 export type MinorUnits = number & { readonly [brand]: "MinorUnits" };
+
+/**
+ * The project's currency.
+ *
+ * CAD, because the Stripe account settles in CAD and the physical Visa gift card used for
+ * the live decline is Canadian. Charging in another presentment currency would put a
+ * conversion between the enrolled balance and the amount actually authorised, which would
+ * make "the charge exceeds the balance" approximate — and that comparison is the entire
+ * basis of the guarded live path.
+ *
+ * Declared once so the default cannot drift between the schema, the repositories and the
+ * demos.
+ */
+export const DEFAULT_CURRENCY = "CAD";
 
 export class MoneyError extends Error {
   constructor(message: string) {
@@ -57,6 +71,6 @@ export function isZero(a: MinorUnits): boolean {
 }
 
 /** Display only — never feed the result back into arithmetic. */
-export function format(a: MinorUnits, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(a / 100);
+export function format(a: MinorUnits, currency = DEFAULT_CURRENCY): string {
+  return new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(a / 100);
 }
