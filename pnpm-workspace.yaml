@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# better-sqlite3 is a native module and must compile its binding on install.
+onlyBuiltDependencies:
+  - better-sqlite3
+  - esbuild

@@ -13,10 +13,53 @@ out of it is that *the better the destination's protocol, the less the agent has
 
 ## Status
 
-**Design phase — no application code yet.** The repository currently contains the plan and
-the design record. See [`docs/DESIGN.md`](docs/DESIGN.md) for exactly what is built, what
-is simulated, and what is simplified; it is kept honest as milestones land rather than
-written at the end.
+**M1 done — a gift card pays for something, and the card covers the rest.**
+
+The storefront is UCP's official TypeScript sample, adapted. It advertises
+`dev.acp.seller_backed.gift_card` at `/.well-known/ucp` and settles the whole
+`payment.instruments[]` array — the upstream reference reads only `instruments[0]`, so a
+cart paid with a gift card *and* a card is expressible in the protocol but unhandled there.
+Whatever the gift cards cannot cover is authorized against Stripe in test mode: real
+PaymentIntents, real decline codes.
+
+```
+cart $35.00   gift card ••••8909 $25.00
+HTTP 200  order ord_38f338ee…
+Stripe pi_3Tz7fR…  $10.00 CAD  succeeded  captured=$10.00
+
+same cart, declining card
+HTTP 402  insufficient_funds
+gift card $25.00 → $25.00        ← restored exactly, draw still in the trail
+```
+
+Next: **M2**, a second destination, so the same planner pays a Stripe payment link as well
+as the storefront.
+
+See [`docs/DESIGN.md`](docs/DESIGN.md) for exactly what is built, what is simulated, and
+what is simplified. It is kept honest as milestones land rather than written at the end —
+including the places this project currently falls short of its own rules.
+
+## Running it
+
+Requires Node ≥ 20, pnpm, and a Stripe **test** key.
+
+```bash
+pnpm install
+cp .env.example .env                          # then fill in STRIPE_SECRET_KEY / _PUBLISHABLE_KEY
+pnpm --filter @pay-agent/db build
+
+pnpm --filter @pay-agent/store seed            # catalogue
+pnpm --filter @pay-agent/store issue-card GC-DEMO-0001 1234 25.00
+pnpm --filter @pay-agent/store stripe-check    # real split checkout, both outcomes
+pnpm --filter @pay-agent/store show-ledger     # balances and the audit trail
+
+pnpm --filter @pay-agent/store dev             # http://localhost:3000/enroll
+pnpm -r test                                   # 81 tests
+```
+
+`stripe-check` is the one to run first: it starts the storefront on a socket, completes a
+real split checkout over HTTP, and then asks **Stripe** what happened rather than asking our
+own code.
 
 ## Documents
 

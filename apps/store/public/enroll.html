@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enroll a card — pay-agent</title>
+    <!--
+      Stripe.js is loaded from Stripe's own domain, and must be: self-hosting it breaks PCI
+      SAQ-A eligibility, which is the entire reason this page exists. The card number is
+      collected inside a Stripe-hosted iframe and posted to Stripe directly. It never
+      reaches this server, and there is no code here that could capture it if it tried.
+    -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfaf8;
+        --panel: #ffffff;
+        --ink: #1c1a17;
+        --muted: #6b655c;
+        --line: #e5e0d8;
+        --accent: #1a5c3a;
+        --warn: #8a5a00;
+        --warn-bg: #fdf6e6;
+        --err: #9b2c2c;
+        --radius: 10px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #16151300;
+          --bg: #161513;
+          --panel: #1f1e1b;
+          --ink: #eae6df;
+          --muted: #9a938a;
+          --line: #33302b;
+          --accent: #6ec49a;
+          --warn: #e0b25c;
+          --warn-bg: #2a2318;
+          --err: #e08b8b;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 2.5rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 46rem; margin: 0 auto; }
+      h1 { font-size: 1.6rem; margin: 0 0 0.35rem; letter-spacing: -0.01em; }
+      h2 { font-size: 1rem; margin: 0 0 0.75rem; letter-spacing: -0.005em; }
+      p { margin: 0 0 0.9rem; }
+      .lede { color: var(--muted); margin-bottom: 2rem; }
+      code, .mono {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        font-size: 0.875em;
+      }
+      a { color: var(--accent); }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 1.4rem 1.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .note {
+        border-left: 3px solid var(--accent);
+        background: transparent;
+        padding: 0.1rem 0 0.1rem 1rem;
+        color: var(--muted);
+        margin: 0 0 1.5rem;
+      }
+      .note strong { color: var(--ink); font-weight: 600; }
+
+      label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+      .hint { color: var(--muted); font-weight: 400; font-size: 0.875rem; }
+      input[type="number"] {
+        width: 100%;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--bg);
+        color: var(--ink);
+        font: inherit;
+      }
+      .field { margin-bottom: 1.25rem; }
+      #payment-element { margin-bottom: 1.25rem; }
+
+      button {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 0;
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      @media (prefers-color-scheme: dark) { button { color: #10231a; } }
+      button:disabled { opacity: 0.55; cursor: default; }
+
+      .warn {
+        background: var(--warn-bg);
+        border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+        color: var(--warn);
+        border-radius: 7px;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.9rem;
+        margin-bottom: 1.25rem;
+      }
+      .error { color: var(--err); margin-top: 1rem; min-height: 1.4rem; }
+
+      table { width: 100%; border-collapse: collapse; }
+      th, td {
+        text-align: left;
+        padding: 0.55rem 0.6rem 0.55rem 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.9rem;
+      }
+      th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+      tr:last-child td { border-bottom: 0; }
+      td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+      .tag {
+        display: inline-block;
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        border: 1px solid currentColor;
+        vertical-align: 1px;
+      }
+      .tag.unverified { color: var(--warn); }
+      .empty { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Enroll a card</h1>
+      <p class="lede">
+        Add an open-loop prepaid card to the funding pool, so an agent can spend from it
+        later without you being present.
+      </p>
+
+      <p class="note">
+        <strong>The card number never reaches this server.</strong> It is collected in a
+        frame served by Stripe and posted straight to them. What comes back here is a
+        PaymentMethod id — <span class="mono">pm_…</span> — and that is all this project
+        ever stores. Storing the number itself, even encrypted, would put the whole
+        codebase in scope for PCI SAQ-D.
+      </p>
+
+      <div class="panel">
+        <h2>Card details</h2>
+        <div id="test-mode" class="warn" hidden>
+          Test mode. Use Stripe's test card <code>4242 4242 4242 4242</code>, any future
+          expiry, any CVC. Real card numbers do not belong here.
+        </div>
+
+        <form id="enroll-form">
+          <div id="payment-element"><p class="empty">Loading Stripe…</p></div>
+
+          <div class="field">
+            <label for="balance">
+              Balance on the card
+              <span class="hint"
+                >— what you believe is on it. Nobody can check this: no API can query the
+                balance of an open-loop prepaid card, so this is a planning hint and is
+                stored as an unverified figure.</span
+              >
+            </label>
+            <input id="balance" type="number" min="0" step="0.01" placeholder="25.00" required />
+          </div>
+
+          <button id="submit" type="submit" disabled>Enroll card</button>
+          <p id="error" class="error" role="alert"></p>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Funding pool</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Card</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody id="cards">
+            <tr><td colspan="2" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <script>
+      const PUBLISHABLE_KEY = "__STRIPE_PUBLISHABLE_KEY__";
+
+      const errorBox = document.getElementById("error");
+      const submitButton = document.getElementById("submit");
+      const balanceInput = document.getElementById("balance");
+
+      const fail = (message) => {
+        errorBox.textContent = message;
+        submitButton.disabled = false;
+        submitButton.textContent = "Enroll card";
+      };
+
+      /** Render the funding pool. Closed-loop cards appear too — the contrast is the point. */
+      async function refreshCards() {
+        const body = document.getElementById("cards");
+        const { cards } = await (await fetch("/funding/cards")).json();
+
+        if (!cards.length) {
+          body.innerHTML = '<tr><td colspan="2" class="empty">No cards enrolled yet.</td></tr>';
+          return;
+        }
+
+        body.innerHTML = cards
+          .map((card) => {
+            const name =
+              card.family === "open_loop"
+                ? `${card.brand} ••••${card.last4} <span class="hint">exp ${card.exp}</span>`
+                : `Gift card ••••${card.last4} <span class="hint">closed-loop</span>`;
+            // An unverified figure is labelled everywhere it is shown. A balance the
+            // system cannot check must never be displayed as though it could.
+            const tag = card.balance_verified
+              ? ""
+              : ` <span class="tag unverified">${card.balance_stale ? "stale" : "unverified"}</span>`;
+            return `<tr><td>${name}</td><td class="amount">${card.balance_display}${tag}</td></tr>`;
+          })
+          .join("");
+      }
+
+      let stripe;
+      let elements;
+
+      /**
+       * Mount a fresh card form.
+       *
+       * Called again after every successful enrollment, because a SetupIntent is spent once
+       * it succeeds. Reusing the confirmed one would fail on the second card with an error
+       * about the intent's state, which reads like a bug in the page rather than what it is.
+       */
+      async function mountCardForm() {
+        const mount = document.getElementById("payment-element");
+        const setup = await fetch("/funding/setup-intents", { method: "POST" });
+        if (!setup.ok) {
+          mount.innerHTML = `<p class="empty">${(await setup.json()).detail}</p>`;
+          return false;
+        }
+        const { client_secret: clientSecret } = await setup.json();
+
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        elements = stripe.elements({
+          clientSecret,
+          appearance: { theme: dark ? "night" : "stripe", variables: { borderRadius: "7px" } },
+        });
+        const paymentElement = elements.create("payment");
+        mount.innerHTML = "";
+        paymentElement.mount("#payment-element");
+        paymentElement.on("ready", () => {
+          submitButton.disabled = false;
+          submitButton.textContent = "Enroll card";
+        });
+        return true;
+      }
+
+      async function onSubmit(event) {
+        event.preventDefault();
+        errorBox.textContent = "";
+        submitButton.disabled = true;
+        submitButton.textContent = "Enrolling…";
+
+        // `redirect: "if_required"` keeps the whole thing on this page for cards, which
+        // never need one. It is not a way of skipping a redirect that was needed.
+        const { error, setupIntent } = await stripe.confirmSetup({
+          elements,
+          redirect: "if_required",
+        });
+
+        if (error) return fail(error.message);
+
+        // Only the SetupIntent id is sent. The server asks Stripe for the PaymentMethod
+        // rather than taking our word for it, so nothing here can name someone else's card.
+        const res = await fetch("/funding/cards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            setup_intent_id: setupIntent.id,
+            enrolled_balance: Number(balanceInput.value),
+          }),
+        });
+
+        if (!res.ok) return fail((await res.json()).detail ?? "Enrollment failed");
+
+        const card = await res.json();
+        if (card.funding !== "prepaid") {
+          // Said plainly rather than hidden: the M4 decline story only means something on a
+          // card that can actually run out of money.
+          errorBox.textContent =
+            `Enrolled ${card.brand} ••••${card.last4}, but Stripe reports it as a ` +
+            `${card.funding} card rather than prepaid.`;
+        }
+
+        balanceInput.value = "";
+        await refreshCards();
+        await mountCardForm();
+      }
+
+      async function start() {
+        await refreshCards();
+
+        if (!PUBLISHABLE_KEY) {
+          document.getElementById("payment-element").innerHTML =
+            '<p class="empty">STRIPE_PUBLISHABLE_KEY is not configured, so no card can be collected.</p>';
+          return;
+        }
+        document.getElementById("test-mode").hidden = !PUBLISHABLE_KEY.startsWith("pk_test_");
+
+        stripe = Stripe(PUBLISHABLE_KEY);
+        if (await mountCardForm()) {
+          document.getElementById("enroll-form").addEventListener("submit", onSubmit);
+        }
+      }
+
+      start().catch((e) => fail(e.message));
+    </script>
+  </body>
+</html>
