@@ -1,0 +1,21 @@
+{
+  "name": "pay-agent",
+  "version": "0.0.0",
+  "private": true,
+  "description": "POC agent that can use gift cards to make payments on behalf of a user",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
