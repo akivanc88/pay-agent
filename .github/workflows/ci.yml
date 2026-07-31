@@ -36,7 +36,11 @@ jobs:
       fail-fast: false
       matrix:
         # 22 is what the project is developed on; 24 is the forward check. better-sqlite3
-        # is a native module, so a new Node major is a real risk rather than a formality.
+        # is a native module, so a new Node major is a real risk rather than a formality —
+        # and the first run proved it: there are no prebuilt binaries for Node 24, so it
+        # falls back to `node-gyp rebuild` and compiles from source. It works, and it takes
+        # roughly three times as long. If that job ever fails at "Install" rather than at a
+        # test, this is why.
         node: [22, 24]
 
     steps:
