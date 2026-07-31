@@ -16,7 +16,25 @@ import { SCHEMA_SQL } from "../src/sqlite/schema.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..", "..");
-const SQLITE_IMPL_DIR = join("packages", "db", "src", "sqlite");
+
+/**
+ * Where a database driver may be imported, and why.
+ *
+ * The rule protects the **funding core** — gift cards, the ledger, and later mandates and
+ * tokens. That is the user-owned data whose migration to Supabase buys the Auth and RLS
+ * story, so it must not know which driver sits underneath it.
+ *
+ * `apps/store/src/data` is the vendored UCP reference implementation's own catalogue,
+ * inventory and checkout-session storage. It is merchant-owned data with no per-user
+ * isolation requirement, it is not what the Supabase migration is for, and rewriting it
+ * would fork us from the upstream sample we deliberately build on. It is allowlisted
+ * explicitly rather than by widening the rule, so adding a third location is a visible
+ * decision instead of an accident.
+ */
+const DRIVER_ALLOWED_DIRS = [
+  join("packages", "db", "src", "sqlite"),
+  join("apps", "store", "src", "data"),
+];
 
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "coverage"]);
 
@@ -34,21 +52,41 @@ function sourceFiles(dir: string, acc: string[] = []): string[] {
 }
 
 describe("storage boundary", () => {
-  it("confines better-sqlite3 to the SQLite implementation", () => {
-    // The plan commits to "SQLite now, Supabase later". That migration is only cheap if
-    // nothing outside the driver-specific directory knows which driver is in use — get
-    // this wrong and the migration becomes a rewrite.
+  it("confines the database driver to explicitly allowed directories", () => {
+    // "SQLite now, Supabase later" is only cheap if nothing else knows which driver is in
+    // use — get this wrong and the migration becomes a rewrite.
     const offenders = sourceFiles(REPO_ROOT)
-      .filter((file) => /from\s+["']better-sqlite3["']|require\(["']better-sqlite3["']\)/.test(
-        readFileSync(file, "utf8"),
-      ))
+      .filter((file) =>
+        /from\s+["']better-sqlite3["']|require\(["']better-sqlite3["']\)/.test(
+          readFileSync(file, "utf8"),
+        ),
+      )
       .map((file) => relative(REPO_ROOT, file))
-      .filter((rel) => !rel.startsWith(SQLITE_IMPL_DIR + sep));
+      .filter((rel) => !DRIVER_ALLOWED_DIRS.some((dir) => rel.startsWith(dir + sep)));
 
     assert.deepEqual(
       offenders,
       [],
-      `better-sqlite3 may only be imported inside ${SQLITE_IMPL_DIR}. ` +
+      `better-sqlite3 may only be imported inside: ${DRIVER_ALLOWED_DIRS.join(", ")}. ` +
+        `Offending files: ${offenders.join(", ")}`,
+    );
+  });
+
+  it("keeps the funding core reachable only through the repository interface", () => {
+    // The narrower rule that actually matters: gift cards and the ledger are reached via
+    // @pay-agent/db and nothing else. The storefront may own its catalogue tables, but it
+    // must not grow its own private route to the funding data.
+    const offenders = sourceFiles(join(REPO_ROOT, "apps"))
+      .filter((file) => {
+        const src = readFileSync(file, "utf8");
+        return /\b(gift_cards|ledger_entries)\b/.test(src);
+      })
+      .map((file) => relative(REPO_ROOT, file));
+
+    assert.deepEqual(
+      offenders,
+      [],
+      "Apps must not reference funding-core tables directly — go through @pay-agent/db. " +
         `Offending files: ${offenders.join(", ")}`,
     );
   });
