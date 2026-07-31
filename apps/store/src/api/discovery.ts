@@ -4,6 +4,10 @@ import {
   GIFT_CARD_HANDLER_NAME,
   giftCardHandlerDeclaration,
 } from "../payments/gift-card";
+import {
+  STRIPE_HANDLER_NAME,
+  stripeHandlerDeclaration,
+} from "../payments/stripe";
 
 type DiscoveryCapability = {
   version: string;
@@ -66,6 +70,10 @@ export class DiscoveryService {
       // open-amount and combinable, so an agent can pay with a gift card *and* a card in
       // a single `instruments[]` array.
       [GIFT_CARD_HANDLER_NAME]: [giftCardHandlerDeclaration(this.ucpVersion)],
+      // The card rail the gift-card remainder falls through to. Declared second because the
+      // pair is the point: an agent reading this profile can see that both handlers are
+      // combinable, which is what licenses it to send them in one `instruments[]` array.
+      [STRIPE_HANDLER_NAME]: [stripeHandlerDeclaration(this.ucpVersion)],
       "com.shopify.shop_pay": [
         {
           id: "shop_pay",
@@ -195,6 +203,7 @@ export class DiscoveryService {
       payment: {
         handlers: [
           ...payment_handlers[GIFT_CARD_HANDLER_NAME],
+          ...payment_handlers[STRIPE_HANDLER_NAME],
           ...payment_handlers["com.shopify.shop_pay"],
           ...payment_handlers["google.pay"],
           ...payment_handlers["dev.ucp.mock_payment"],

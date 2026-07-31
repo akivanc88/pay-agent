@@ -5,14 +5,15 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts",
+    "test": "tsx --test --env-file-if-exists=../../.env test/*.test.ts",
     "seed": "tsx scripts/seed.ts",
     "issue-card": "tsx scripts/issue-card.ts",
     "show-ledger": "tsx scripts/show-ledger.ts",
-    "start": "node dist/index.js"
+    "stripe-check": "tsx --env-file-if-exists=../../.env scripts/stripe-check.ts",
+    "start": "node --env-file-if-exists=../../.env dist/index.js"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.10",
@@ -24,6 +25,7 @@
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
     "pino-http-print": "^4.0.0",
+    "stripe": "^22.4.0",
     "uuid": "^14.0.0",
     "zod": "^3.23.8"
   },

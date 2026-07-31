@@ -26,10 +26,11 @@ the lines a reader would otherwise have to guess at.
 
 ## Status
 
-**M1 substantially working.** Gift cards are a live UCP payment instrument: the storefront
-advertises the handler, settles a whole `instruments[]` array, and gives every cent back
-when a payment fails. No real payment rail has been touched yet — the non-gift-card leg is
-still the upstream mock handler.
+**M1 substantially working, and the card rail is now real.** Gift cards are a live UCP
+payment instrument: the storefront advertises the handler, settles a whole `instruments[]`
+array, and gives every cent back when a payment fails. Whatever the gift cards cannot cover
+is authorized against **Stripe in test mode** — real API calls, real PaymentIntents, real
+decline codes. The remaining simulation on this path is Stripe's test issuer, not our code.
 
 Currency is **CAD** throughout, matching the Stripe account and the physical gift card used
 for the eventual live decline. Charging in another presentment currency would put a
@@ -37,14 +38,47 @@ conversion between the enrolled balance and the amount authorised, making
 "the charge exceeds the balance" approximate — and that comparison is the entire basis of
 the guarded live path.
 
-Verified end to end over HTTP, not just in tests: `$25.00` gift card + card covering the
-`$10.00` remainder completes; the same cart with a declining card returns 402 and restores
-the gift card to exactly `$25.00`, with the draw still visible in the trail.
+Verified end to end over HTTP against the real Stripe API, not just in tests. `stripe-check`
+starts the storefront on a socket, completes a split checkout, and then asks **Stripe** what
+happened rather than asking our own code:
 
-    pnpm --filter @pay-agent/store seed         # catalogue
+```
+Stripe key accepted  livemode=false  settlement_currencies=CAD
+
+── card that works ─────────────────────────────────────────
+  cart $35.00   gift card ••••8909 $25.00
+  HTTP 200  order ord_38f338ee-e1bb-4ccc-9280-d1642ed85abd
+  Stripe pi_3Tz7fRBaji74YJFk0sAviohQ  $10.00 CAD  status=succeeded  captured=$10.00  livemode=false
+  gift card $25.00 → $0.00
+
+── card that declines: insufficient funds ──────────────────
+  cart $35.00   gift card ••••2000 $25.00
+  HTTP 402  insufficient_funds Card authorization failed: Your card has insufficient funds.
+  Stripe pi_3Tz7fUBaji74YJFk1zf8Z9wl  $10.00 CAD  status=requires_payment_method  captured=$0.00
+  gift card $25.00 → $25.00
+```
+
+The two numbers that matter: the card was asked for **$10.00**, not $35.00 — the remainder,
+not the total — and the declined run left the gift card at **exactly** its opening balance
+with nothing captured on the rail.
+
+    pnpm --filter @pay-agent/store seed          # catalogue
     pnpm --filter @pay-agent/store issue-card GC-DEMO-0001 1234 25.00
-    pnpm --filter @pay-agent/store dev          # then POST a checkout
-    pnpm --filter @pay-agent/store show-ledger  # before/after
+    pnpm --filter @pay-agent/store stripe-check  # real split checkout, both outcomes
+    pnpm --filter @pay-agent/store show-ledger   # before/after
+
+### Authorize now, capture last
+
+Both legs of a payment are provisional until the order exists, and for the same reason. A
+gift-card draw is undone by a compensating ledger entry; a card authorization is undone by
+cancelling it. So the card is authorized with `capture_method: "manual"` **before** stock is
+reserved, and captured only once the order is certain — the last thing that can fail is
+already done.
+
+The failure this exists for: a cart goes out of stock between authorization and fulfilment.
+Money is committed on two rails before the merchant knows it can ship, and both have to come
+back. Capturing at authorization time would have charged a real card for an order that was
+never placed.
 
 ## Component map
 
@@ -54,11 +88,13 @@ the gift card to exactly `$25.00`, with the draw still visible in the trail.
 | Storage boundary (`packages/db`) | This project's own design | **Real** — enforced by a test that scans the tree |
 | Closed-loop card credentials | ACP "agent never holds a raw credential" | **Real** — HMAC lookup + salted slow KDF |
 | UCP storefront (`apps/store`) | Adapted from the official `samples/rest/nodejs` | **Standard** — upstream's 28 tests still pass |
-| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | **Standard** — advertises `dev.acp.seller_backed.gift_card` |
+| UCP discovery (`/.well-known/ucp`) | UCP spec + Stripe's handler doc | **Standard** — advertises `dev.acp.seller_backed.gift_card` and `com.stripe.payments` |
 | Gift-card instrument settlement | ACP seller-backed handler RFC | **Standard** — settles the whole `instruments[]` array |
-| Open-loop card record | Ordinary card rails via Stripe | **Simplified** — record only; no Stripe call yet |
-| Card/non-gift-card leg | — | **Simulated** — still upstream's mock token handler |
-| Payment instruments via Stripe | Stripe `com.stripe.payments` UCP handler | Planned |
+| Card rail (`com.stripe.payments`) | Stripe PaymentIntents | **Real** — test mode, authorize/capture, genuine decline codes |
+| Split payment across both rails | UCP `instruments[]` | **Real** — the card is authorized for the remainder only |
+| Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key; five tests |
+| Open-loop card enrollment | Stripe Elements | **Planned** — the ledger holds the record; nothing captures a `pm_…` yet |
+| Mock token handler | Upstream sample | **Simulated** — retained so the reference merchant's own tests still pass |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
 | Policy gate + approval inbox | This project's own design | Planned |
@@ -116,6 +152,7 @@ it**.
 | Area | Spec says | We do | Why |
 |---|---|---|---|
 | Gift-card tokenization | ACP's seller-backed handlers tokenize via a `delegate_payment` endpoint | The code and PIN are presented directly on the instrument | `delegate_payment` is not yet implemented, so the agent does briefly hold the raw card credential — the one place this project currently falls short of "the agent never holds a raw credential". Recorded rather than glossed. |
+| Card credential | Stripe's handler is designed around a scoped **Shared Payment Token**, granted per payment | A `pm_…` PaymentMethod id on `credential.token` | Same class of gap as the row above: the merchant charges a stored payment method rather than redeeming a token scoped to this destination and amount. It works, and it is genuinely Stripe — but the *scoping* is what Shared Payment Tokens exist for, so nothing here should be read as demonstrating them. |
 | Mandate format | `PaymentMandate` is an SD-JWT-VC | Plain JWS, correct field semantics | SD-JWT-VC is a large dependency for a demo whose point is the funding and consent *flow*. Full VC is a stretch goal. |
 | User identity | A verified session establishes `user_id` | Fixture `user_id` until Supabase lands | Storage starts on SQLite; without real auth, "the agent acts for *this* user" is asserted, not proven. Stated rather than papered over. |
 | Agent request signing | Visa TAP profiles RFC 9421 signatures | Not implemented initially | Stretch goal. Until it exists, destinations do not authenticate the agent — do not claim they do. |
@@ -148,6 +185,16 @@ These are invariants, and each has a test in `PLAN.md`'s verification list.
   the live path refuses to run unless the charge *exceeds* the enrolled balance.
 - **The deployed demo is test-mode only** — the build fails at startup if a live key is
   present. Mechanical, not a matter of discipline.
+
+The last two are now enforced in code rather than described. `assertSafeStripeConfig` runs
+before the server binds a port and refuses four configurations: a live key in
+`STRIPE_SECRET_KEY`, a live key present under `NODE_ENV=production` or any of five platform
+markers (`VERCEL`, `RENDER`, `FLY_APP_NAME`, `RAILWAY_ENVIRONMENT`, `K_SERVICE`, `DYNO`), and
+a test key parked in the live variable — which would silently disarm every guard that keys
+off its presence. The live client is a separate function that checkout cannot reach.
+
+These tests were written *before* a live key ever touched the machine, because the failure
+they prevent cannot be undone by noticing it afterwards.
 
 ### Known gaps
 

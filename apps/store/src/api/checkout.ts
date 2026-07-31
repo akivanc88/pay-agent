@@ -41,13 +41,22 @@ import {
   type PostalAddress,
 } from "../models";
 import { type IdParamContext } from "../utils/validation";
-import { minorUnits } from "@pay-agent/db";
+import { DEFAULT_CURRENCY, minorUnits } from "@pay-agent/db";
 import {
   GiftCardError,
   reverseSettlement,
   settleGiftCards,
   type SettlementResult,
 } from "../payments/gift-card";
+import {
+  STRIPE_HANDLER_ID,
+  authorizeCard,
+  cancelAuthorization,
+  captureAuthorization,
+  testClient,
+  type Authorization,
+} from "../payments/stripe";
+import type Stripe from "stripe";
 
 // zCompleteCheckoutRequest and CompleteCheckoutRequest are now imported from SDK models
 
@@ -557,7 +566,13 @@ export class CheckoutService {
           },
         },
         status: CheckoutResponseStatusSchema.enum.incomplete,
-        currency: "USD",
+        // The merchant is authoritative on currency, and the request's value is advisory
+        // (upstream hardcoded "USD" here for the same reason). It must match the funding
+        // ledger: a gift card drawn in one currency against a total quoted in another puts
+        // an exchange rate between the balance and the amount authorized, which would make
+        // "the charge exceeds the balance" approximate — and that comparison is the entire
+        // basis of the guarded live path.
+        currency: DEFAULT_CURRENCY,
         line_items: lineItems,
         totals: [],
         links: [],
@@ -834,15 +849,31 @@ export class CheckoutService {
     }
 
     /**
-     * Fail the checkout, giving back anything the gift cards already contributed.
+     * The card rail's provisional state, mirroring the gift cards'.
      *
-     * Every failure path below has to route through this. Money drawn for a checkout that
-     * does not complete must not simply stay drawn, and "remember to reverse" repeated at
-     * six return sites is a bug waiting to happen.
+     * A gift-card draw is undone by a compensating ledger entry; a card authorization is
+     * undone by cancelling it. Both are held open until the order exists, so that neither
+     * can outlive a checkout that failed.
      */
-    const failPayment = async (detail: string, status: 400 | 402 | 403 | 409) => {
+    let stripe: Stripe | null = null;
+    let authorization: Authorization | undefined;
+
+    /**
+     * Fail the checkout, giving back everything already committed to it.
+     *
+     * Every failure path below has to route through this. Money taken for a checkout that
+     * does not complete must not simply stay taken, and "remember to reverse" repeated at
+     * seven return sites is a bug waiting to happen. The card leg is released before the
+     * gift cards because it is the one holding a real issuer's funds.
+     */
+    const failPayment = async (
+      detail: string,
+      status: 400 | 402 | 403 | 409,
+      code?: string,
+    ) => {
+      if (stripe && authorization) await cancelAuthorization(stripe, authorization);
       if (settlement) await reverseSettlement(runId).catch(() => undefined);
-      return c.json({ detail }, status);
+      return c.json(code ? { detail, code } : { detail }, status);
     };
 
     // Non-gift-card instruments keep the upstream handler behaviour.
@@ -857,7 +888,59 @@ export class CheckoutService {
         return failPayment("Missing credentials in instrument", 400);
       }
 
-      if (selectedInstrument.type === "card" && credential.type === "card") {
+      if (handlerId === STRIPE_HANDLER_ID) {
+        /**
+         * The card rail, for real.
+         *
+         * It is authorized for **what the gift cards could not cover**, not for the cart
+         * total — that remainder is the whole point of settling the instruments array. When
+         * the gift cards covered everything the rail is not touched at all: a zero-amount
+         * authorization is not a thing, and asking for one would fail the checkout at the
+         * moment it had actually succeeded.
+         */
+        const amountToAuthorize = settlement ? settlement.remaining : amountDue;
+
+        const parsedCredential =
+          ExtendedPaymentCredentialSchema.safeParse(credential);
+        const paymentMethodId = parsedCredential.success
+          ? parsedCredential.data.token
+          : undefined;
+
+        if (!paymentMethodId?.startsWith("pm_")) {
+          return failPayment(
+            "Stripe instrument requires a PaymentMethod id (pm_…) as its credential token",
+            400,
+          );
+        }
+
+        if (amountToAuthorize > 0) {
+          stripe = testClient();
+          if (!stripe) {
+            return failPayment(
+              "Stripe handler requested but STRIPE_SECRET_KEY is not configured",
+              400,
+            );
+          }
+
+          const outcome = await authorizeCard({
+            stripe,
+            paymentMethodId,
+            amount: amountToAuthorize,
+            currency: checkout.currency,
+            runId,
+            checkoutId: checkout.id,
+          });
+
+          if (!outcome.ok) {
+            return failPayment(
+              `Card authorization failed: ${outcome.message}`,
+              outcome.status,
+              outcome.code,
+            );
+          }
+          authorization = outcome.authorization;
+        }
+      } else if (selectedInstrument.type === "card" && credential.type === "card") {
         // success
       } else {
         const parsedCredential =
@@ -1003,6 +1086,28 @@ export class CheckoutService {
         },
         currency: checkout.currency,
       };
+
+      /**
+       * Take the money, last.
+       *
+       * Everything above this line is reversible; nothing below it can fail. Capturing here
+       * rather than at authorization time means a checkout that falls over between the two
+       * — out of stock, a bad line item — releases the hold instead of charging for an order
+       * that was never placed.
+       */
+      if (stripe && authorization) {
+        const captured = await captureAuthorization(stripe, authorization);
+        if (!captured.ok) {
+          for (const reserved of reservedItems) {
+            releaseStock(reserved.id, reserved.qty);
+          }
+          return failPayment(
+            `Card capture failed: ${captured.message}`,
+            captured.status,
+            captured.code,
+          );
+        }
+      }
 
       saveOrder(order.id, order);
 

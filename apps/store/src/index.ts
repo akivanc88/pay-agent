@@ -15,7 +15,18 @@ import {
   CheckoutCompleteRequestSchema,
   OrderSchema,
 } from "./models";
+import { assertSafeStripeConfig } from "./payments/stripe";
 import { IdParamSchema, prettyValidation } from "./utils/validation";
+
+/**
+ * Before anything else, and before any port is bound.
+ *
+ * A deployed build refuses to start when a live Stripe key is present. Making that a
+ * startup failure rather than a runtime check is the point: there is no request to get
+ * wrong, no branch to forget, and the demo cannot quietly come up in a state where a public
+ * URL sits in front of live card rails.
+ */
+assertSafeStripeConfig();
 
 const app = new Hono();
 
