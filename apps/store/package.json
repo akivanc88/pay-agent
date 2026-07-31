@@ -8,7 +8,7 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test --env-file-if-exists=../../.env test/*.test.ts",
+    "test": "tsx --test test/*.test.ts",
     "seed": "tsx scripts/seed.ts",
     "issue-card": "tsx scripts/issue-card.ts",
     "show-ledger": "tsx scripts/show-ledger.ts",
