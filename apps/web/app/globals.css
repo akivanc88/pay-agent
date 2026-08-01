@@ -1,0 +1,209 @@
+/*
+ * pay-agent design system
+ * ───────────────────────
+ * One restrained, editorial language for every surface. The rule the whole thing obeys:
+ * a payment interface earns trust by being calm, legible, and honest — never loud. Money
+ * is set in tabular figures; nothing that can't be verified is styled as though it can.
+ *
+ * Sub-agents building new surfaces consume these tokens and the primitives in
+ * components/ui — they must not invent new colors, radii, or shadows. Coherence across
+ * surfaces is the product.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Warm paper, botanical ink — a florist that grew up. Light theme is the default; the
+     dark values live in the media query and the [data-theme] overrides below. */
+  --paper: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f6f4ef;
+  --surface-sunk: #f1eee7;
+
+  --ink: #1b1a17;
+  --ink-2: #55504a;
+  --ink-3: #8a847a;
+
+  --line: #e8e3da;
+  --line-strong: #d9d3c7;
+
+  --brand: #1e5b3a;
+  --brand-ink: #16472d;
+  --brand-contrast: #ffffff;
+  --brand-tint: #eaf2ec;
+
+  /* Foil — reserved for the gift-card moment and nothing else. */
+  --gold: #a8791f;
+  --gold-tint: #f6efdd;
+
+  --danger: #a32c24;
+  --danger-tint: #fbeceb;
+  --warn: #8a5a00;
+  --warn-tint: #fdf6e6;
+  --success: #1e5b3a;
+  --success-tint: #eaf2ec;
+
+  /* Radii */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 13px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
+  /* Elevation — soft, warm, low-contrast. Shadows are tinted with the ink, never pure
+     black, so they read as depth on paper rather than a drop shadow from a UI kit. */
+  --shadow-sm: 0 1px 2px rgba(27, 26, 23, 0.04), 0 1px 1px rgba(27, 26, 23, 0.03);
+  --shadow-md: 0 2px 4px rgba(27, 26, 23, 0.04), 0 6px 16px rgba(27, 26, 23, 0.06);
+  --shadow-lg: 0 8px 24px rgba(27, 26, 23, 0.08), 0 2px 6px rgba(27, 26, 23, 0.05);
+  --shadow-ring: 0 0 0 1px var(--line);
+
+  /* Type */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-fraunces), "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: var(--font-mono-jetbrains), ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  /* Spacing scale (4px base) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4rem;
+  --sp-9: 6rem;
+
+  /* Motion — calm and quick. Nothing bounces on a payment screen. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 520ms;
+
+  --content: 68rem;
+  --content-narrow: 40rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14130f;
+    --surface: #1c1b17;
+    --surface-2: #23211c;
+    --surface-sunk: #100f0c;
+
+    --ink: #ede8df;
+    --ink-2: #a8a197;
+    --ink-3: #756f65;
+
+    --line: #302d27;
+    --line-strong: #423e36;
+
+    --brand: #6fc498;
+    --brand-ink: #8fd3ae;
+    --brand-contrast: #0e2117;
+    --brand-tint: #17241c;
+
+    --gold: #d9b36a;
+    --gold-tint: #241d10;
+
+    --danger: #e79289;
+    --danger-tint: #2a1614;
+    --warn: #e0b25c;
+    --warn-tint: #241d10;
+    --success: #6fc498;
+    --success-tint: #17241c;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.28), 0 8px 20px rgba(0, 0, 0, 0.34);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.44), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-ring: 0 0 0 1px var(--line);
+  }
+}
+
+/* Manual theme override wins over the system preference in both directions, so a toggle
+   can force either theme regardless of OS setting. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: #fbfaf7; --surface: #ffffff; --surface-2: #f6f4ef; --surface-sunk: #f1eee7;
+  --ink: #1b1a17; --ink-2: #55504a; --ink-3: #8a847a;
+  --line: #e8e3da; --line-strong: #d9d3c7;
+  --brand: #1e5b3a; --brand-ink: #16472d; --brand-contrast: #ffffff; --brand-tint: #eaf2ec;
+  --gold: #a8791f; --gold-tint: #f6efdd;
+  --danger: #a32c24; --danger-tint: #fbeceb; --warn: #8a5a00; --warn-tint: #fdf6e6;
+  --success: #1e5b3a; --success-tint: #eaf2ec;
+  --shadow-sm: 0 1px 2px rgba(27,26,23,0.04), 0 1px 1px rgba(27,26,23,0.03);
+  --shadow-md: 0 2px 4px rgba(27,26,23,0.04), 0 6px 16px rgba(27,26,23,0.06);
+  --shadow-lg: 0 8px 24px rgba(27,26,23,0.08), 0 2px 6px rgba(27,26,23,0.05);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #14130f; --surface: #1c1b17; --surface-2: #23211c; --surface-sunk: #100f0c;
+  --ink: #ede8df; --ink-2: #a8a197; --ink-3: #756f65;
+  --line: #302d27; --line-strong: #423e36;
+  --brand: #6fc498; --brand-ink: #8fd3ae; --brand-contrast: #0e2117; --brand-tint: #17241c;
+  --gold: #d9b36a; --gold-tint: #241d10;
+  --danger: #e79289; --danger-tint: #2a1614; --warn: #e0b25c; --warn-tint: #241d10;
+  --success: #6fc498; --success-tint: #17241c;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.28), 0 8px 20px rgba(0,0,0,0.34);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.44), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ── reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv05" 1, "ss01" 1;
+  min-height: 100dvh;
+}
+img, svg, canvas { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 500; line-height: 1.12; letter-spacing: -0.012em; }
+h1 { font-size: clamp(2rem, 1.4rem + 2.4vw, 3.1rem); }
+h2 { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem); }
+h3 { font-size: 1.24rem; letter-spacing: -0.006em; }
+
+/* Money and codes: tabular figures so digits never dance between states. */
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-feature-settings: normal; }
+
+::selection { background: color-mix(in srgb, var(--brand) 22%, transparent); }
+
+/* One focus ring for the whole app — visible, on-brand, keyboard-only. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Respect the setting. Motion is decoration here; it is never load-bearing, so removing
+   it costs nothing but a little delight. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── entrance animation, opt-in via .rise ─────────────────────────────── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise var(--dur-4) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }

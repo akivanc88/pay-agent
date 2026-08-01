@@ -1,0 +1,63 @@
+.hero {
+  position: relative;
+  padding-block: clamp(var(--sp-7), 6vw, var(--sp-9)) var(--sp-7);
+  overflow: hidden;
+}
+/* A soft botanical wash behind the hero — warm light from the top-left, nothing louder. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 130%;
+  background:
+    radial-gradient(60% 55% at 18% 12%, color-mix(in srgb, var(--brand) 11%, transparent), transparent 70%),
+    radial-gradient(50% 50% at 88% 0%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 72%);
+  pointer-events: none;
+}
+.heroInner { position: relative; }
+.heroCopy { max-width: 34rem; }
+
+.heroTitle {
+  margin-block: var(--sp-3) var(--sp-4);
+  font-size: clamp(2.2rem, 1.5rem + 3vw, 3.4rem);
+  line-height: 1.06;
+}
+.em { font-style: italic; color: var(--brand); }
+
+.heroLede {
+  color: var(--ink-2);
+  font-size: 1.06rem;
+  line-height: 1.65;
+  max-width: 32rem;
+}
+.heroTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+
+.gridHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  margin-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--line);
+}
+.gridTitle { font-size: 1.5rem; }
+.gridCount { color: var(--ink-3); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+  gap: var(--sp-5);
+  padding-bottom: var(--sp-9);
+}
+.gridItem { display: flex; }
+.gridItem > * { width: 100%; }
+
+@media (max-width: 34rem) {
+  .grid { grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+}

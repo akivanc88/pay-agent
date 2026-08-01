@@ -1,0 +1,56 @@
+.frame {
+  /* Shared defaults; each specimen overrides the palette below. */
+  --art-hi: #f3efe6;
+  --art-lo: #e7e0d2;
+  --art-stem: #4b6b45;
+  --art-leaf: #7d9e6b;
+  --art-bloom: #d8c9b0;
+  --art-bloom-ink: #8a7a5c;
+  --art-accent: #c98a3a;
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--art-lo);
+}
+.art {
+  width: 100%;
+  height: 100%;
+}
+
+/* Warm rose */
+.frame[data-art="bouquet_roses"] {
+  --art-hi: #f7ece9; --art-lo: #ecd6d0;
+  --art-bloom: #c65b57; --art-bloom-ink: #8f2f30; --art-stem: #4b6b45; --art-accent: #e0908c;
+}
+/* Sunflower gold */
+.frame[data-art="bouquet_sunflowers"] {
+  --art-hi: #f8f0da; --art-lo: #eedcac;
+  --art-bloom: #e0a52e; --art-bloom-ink: #5a3d16; --art-stem: #566e3f;
+}
+/* Spring tulip */
+.frame[data-art="bouquet_tulips"] {
+  --art-hi: #f6ecef; --art-lo: #e9cdd6;
+  --art-bloom: #cf6f8f; --art-bloom-ink: #8f3d5c; --art-stem: #4f7148;
+}
+/* White orchid */
+.frame[data-art="orchid_white"] {
+  --art-hi: #f4f1ee; --art-lo: #ded6d9;
+  --art-bloom: #f7f4f2; --art-bloom-ink: #b49bb0; --art-stem: #5a6b52; --art-accent: #b06a86;
+}
+/* Gardenia cream */
+.frame[data-art="gardenias"] {
+  --art-hi: #f4f2e8; --art-lo: #e2e0cd;
+  --art-bloom: #f6f3e7; --art-bloom-ink: #b6ac86; --art-leaf: #6f9160; --art-stem: #4f6b46; --art-accent: #d8c14e;
+}
+/* Ceramic pot / greenery */
+.frame[data-art="pot_ceramic"] {
+  --art-hi: #eef0e8; --art-lo: #d8ddca;
+  --art-bloom: #cf8f6b; --art-bloom-ink: #7d4a30; --art-leaf: #7ba05e; --art-stem: #4f6b3f; --art-accent: #e2b48a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .frame { --art-hi: color-mix(in srgb, var(--art-lo) 62%, #000 20%); }
+}
+:root[data-theme="dark"] .frame { --art-hi: color-mix(in srgb, var(--art-lo) 62%, #000 20%); }

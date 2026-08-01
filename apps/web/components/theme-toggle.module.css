@@ -1,0 +1,32 @@
+.toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+}
+.track {
+  width: 46px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  padding: 2px;
+  display: flex;
+  transition: background-color var(--dur-2) var(--ease-out);
+}
+.track[data-dark] { justify-content: flex-end; }
+.thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  place-items: center;
+  transition: transform var(--dur-3) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .track { transition: background-color var(--dur-2) var(--ease-out); }
+}
