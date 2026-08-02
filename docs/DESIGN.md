@@ -124,6 +124,9 @@ never placed.
 | Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key; five tests |
 | Open-loop card enrollment | Stripe Elements + SetupIntents | **Real** — the card number is collected by Stripe in the browser; we store only a `pm_…` |
 | Mock token handler | Upstream sample | **Simulated** — retained so the reference merchant's own tests still pass |
+| Storefront / wallet / checkout (`apps/web`) | This project's own design | **Real** — drives the same UCP endpoints an agent does; no mocked responses |
+| The funding plan shown before payment | Projected from `GET /funding/cards` | **Simplified** — a projection, not a quote. The merchant does the real draw at settlement; where a balance isn't readable the UI says so instead of guessing |
+| Card selection at checkout | Stripe's published test PaymentMethods | **Standard** — real authorize/capture in test mode against Stripe's test issuer |
 | Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
 | `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
 | Policy gate + approval inbox | This project's own design | Planned |
@@ -171,6 +174,20 @@ to guess.** Any writeup that implies real-biller coverage is lying.
 The closed-loop cards are issued by our own storefront against our own ledger. That is
 *why* they are redeemable there — a real closed-loop card works the same way, but nobody
 should read this as integration with an external gift-card processor.
+
+### The card picker at checkout
+
+`apps/web` offers a short list of cards to pay with rather than a card form, and every
+entry is one of Stripe's published test PaymentMethods. The authorization and capture are
+real API calls that return genuine decline codes; what is simulated is Stripe's test
+*issuer*, not the integration — which is why the surface says "test mode" rather than
+implying a live card.
+
+It is a picker and not a form for a reason that outlives the demo: **this app must never
+have a field that takes a card number.** Enrolment already collects PANs the only way it
+is allowed to, through Stripe Elements in the browser, and the server holds nothing but a
+`pm_…`. A checkout form that posted a raw PAN to our own API would put the project on the
+wrong side of the one boundary it is most careful about.
 
 ## What is simplified, and why
 
