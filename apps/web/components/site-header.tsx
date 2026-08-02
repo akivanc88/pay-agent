@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CartIndicator } from "./cart-indicator";
 import { NavLinks } from "./nav-links";
 import styles from "./site-header.module.css";
 
@@ -33,7 +34,10 @@ export function SiteHeader({ themeToggle }: { themeToggle: ReactNode }) {
 
         <NavLinks />
 
-        <div className={styles.right}>{themeToggle}</div>
+        <div className={styles.right}>
+          <CartIndicator />
+          {themeToggle}
+        </div>
       </div>
     </header>
   );

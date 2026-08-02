@@ -1,0 +1,281 @@
+/*
+ * The wallet's layout.
+ *
+ * One rule runs through it: a verified amount and an unverified one never get the same
+ * treatment. Verified money is set in the serif at display size; unverified money is set
+ * smaller, in the body colour, and always beside a badge. The hierarchy carries the claim
+ * so a visitor reads it before they read any label.
+ */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--sp-8);
+  align-items: center;
+  padding: var(--sp-8) 0 var(--sp-7);
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.022em;
+  margin: var(--sp-3) 0 var(--sp-4);
+  /* The serif's side bearings sit the glyph in from its box; pulling back by that much
+     lines the headline's visual left edge up with the sans paragraph beneath it. */
+  margin-left: -0.03em;
+}
+
+.lead {
+  max-width: 46ch;
+  color: var(--ink-2);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+/* ── the two totals ─────────────────────────────────────────────────────── */
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6) var(--sp-7);
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+.total {
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.totalLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.75rem;
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.totalValue {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3.6vw, 2.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-top: var(--sp-2);
+  color: var(--ink);
+}
+
+/* The count of unverifiable cards is not money and must not be dressed as money. */
+.totalValueMuted {
+  color: var(--ink-2);
+  font-size: clamp(1.5rem, 2.4vw, 1.8rem);
+}
+
+.totalNote {
+  margin-top: var(--sp-2);
+  max-width: 34ch;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* ── the featured card ──────────────────────────────────────────────────── */
+
+.heroCard {
+  min-width: 0;
+}
+
+.noCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-2);
+  aspect-ratio: 400 / 252;
+  padding: var(--sp-6);
+  text-align: center;
+}
+
+.noCardTitle {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.noCardBody {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 0.1em 0.35em;
+  /* A long command must not push the page sideways on a phone. */
+  overflow-wrap: anywhere;
+}
+
+/* ── sections ───────────────────────────────────────────────────────────── */
+
+.section {
+  padding-bottom: var(--sp-7);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-5);
+  margin-bottom: var(--sp-4);
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+
+.sectionNote {
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+}
+
+/* A spent card stays legible but stops competing for attention. Opacity would dim the
+   badge too, and the badge is the part that must never be hard to read. */
+.row[data-empty] .rowTitle,
+.row[data-empty] .amount {
+  color: var(--ink-3);
+}
+
+.rowMain {
+  min-width: 0;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.brand {
+  text-transform: capitalize;
+}
+
+.last4 {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.rowNote {
+  margin-top: var(--sp-1);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 48ch;
+}
+
+.rowAmount {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.amount {
+  font-size: 1.125rem;
+  font-weight: 580;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* Unverified money is never set at the weight verified money gets. */
+.amountUnverified {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.unknown {
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+.footnote {
+  margin-top: var(--sp-4);
+  padding-left: var(--sp-4);
+  border-left: 2px solid var(--line-strong);
+  max-width: 62ch;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: var(--ink-3);
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+    padding-top: var(--sp-6);
+  }
+  /* The card leads on a phone: it is the thing worth seeing first, and it explains what
+     the numbers underneath are about. */
+  .heroCard {
+    order: -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .row {
+    /* Below this the amount and the badge start colliding with the title, so the row
+       becomes two stacked lines with the amount on its own baseline. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+  .rowAmount {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .totals {
+    gap: var(--sp-5);
+  }
+}

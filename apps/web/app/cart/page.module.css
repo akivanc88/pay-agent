@@ -1,0 +1,331 @@
+.page {
+  width: 100%;
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-9);
+}
+
+/* ── head ── */
+.head {
+  margin-bottom: var(--sp-6);
+}
+.title {
+  margin-top: var(--sp-2);
+  font-size: clamp(2rem, 1.5rem + 2vw, 2.7rem);
+}
+.count {
+  margin-top: var(--sp-2);
+  color: var(--ink-2);
+  font-size: 1rem;
+}
+
+/* ── layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  gap: clamp(var(--sp-4), 3vw, var(--sp-6));
+  align-items: start;
+}
+
+.lines {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.lines li {
+  display: block;
+}
+
+/* ── line item ── */
+.row {
+  display: flex;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+}
+.thumb {
+  flex: none;
+  width: 6.5rem;
+  aspect-ratio: 1 / 1;
+  align-self: flex-start;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+/* `product-art` hashes its own class names; `[data-art]` is the stable hook. */
+.thumb [data-art] {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.rowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.rowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.rowInfo {
+  min-width: 0;
+}
+.rowTitle {
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-size: 1.14rem;
+  letter-spacing: -0.008em;
+  color: var(--ink);
+  transition: color var(--dur-2) var(--ease-out);
+}
+.rowTitle:hover {
+  color: var(--brand-ink);
+}
+.rowUnit {
+  margin-top: 0.15rem;
+  color: var(--ink-3);
+  font-size: 0.88rem;
+}
+.rowTotal {
+  flex: none;
+  font-size: 1.05rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.rowControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: auto;
+}
+
+/* stepper (shared visual language with the product page) */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.2rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+}
+.stepBtn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+}
+.stepBtn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.stepBtn:disabled {
+  color: var(--ink-3);
+  opacity: 0.5;
+  cursor: default;
+}
+.stepValue {
+  min-width: 1.8ch;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 0.86rem;
+  font-weight: 520;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+}
+.remove:hover {
+  color: var(--danger);
+  background: var(--danger-tint);
+}
+
+/* ── summary ── */
+.summaryCol {
+  position: sticky;
+  top: var(--sp-7);
+}
+.summary {
+  padding: var(--sp-5);
+}
+.summaryTitle {
+  font-size: 1.2rem;
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+.summaryRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-block: var(--sp-4);
+}
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: 0.95rem;
+}
+.summaryRow dt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--ink);
+}
+.summaryRow dd {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.summaryRow[data-muted] dt,
+.summaryRow[data-muted] dd {
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+.summaryHint {
+  color: var(--ink-3);
+  font-size: 0.82rem;
+}
+
+.summaryTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+  font-size: 1rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+.totalAmount {
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+}
+.summaryNote {
+  margin-top: var(--sp-3);
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.checkoutBtn {
+  margin-top: var(--sp-5);
+}
+.continueLink {
+  display: block;
+  text-align: center;
+  margin-top: var(--sp-3);
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  font-weight: 520;
+  padding: 0.3rem;
+  transition: color var(--dur-2) var(--ease-out);
+}
+.continueLink:hover {
+  color: var(--ink);
+}
+
+/* ── empty state ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-8);
+}
+.emptyArt {
+  width: 7.5rem;
+  height: 7.5rem;
+  margin-bottom: var(--sp-2);
+}
+.emptyArt svg {
+  width: 100%;
+  height: 100%;
+}
+.emptyTitle {
+  font-size: 1.7rem;
+}
+.emptyLede {
+  max-width: 30rem;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+.emptyBtn {
+  margin-top: var(--sp-3);
+}
+
+/* ── skeleton ── */
+.skel {
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  animation: pulse 1.4s var(--ease-in-out) infinite;
+}
+.rowSkeleton {
+  align-items: stretch;
+}
+.rowSkeleton .thumb {
+  height: 5rem;
+  border: none;
+}
+.skelLine {
+  height: 0.85rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  animation: pulse 1.4s var(--ease-in-out) infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel, .skelLine { animation: none; }
+}
+
+/* ── responsive ── */
+@media (max-width: 52rem) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .summaryCol {
+    position: static;
+  }
+}
+
+@media (max-width: 30rem) {
+  .row {
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+  }
+  .thumb {
+    width: 4.5rem;
+  }
+  .rowControls {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+}

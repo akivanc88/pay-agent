@@ -1,0 +1,731 @@
+/*
+ * Checkout.
+ *
+ * Denser than the storefront on purpose. A browse page can breathe; a payment page should
+ * feel like an instrument — tight rhythm, one column of decisions, and the amount due
+ * always the largest thing in view. The reference is Stripe's own checkout: nothing
+ * decorative competes with the number being agreed to.
+ */
+
+.head {
+  padding: var(--sp-7) 0 var(--sp-5);
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 3.6vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  margin-top: var(--sp-3);
+  margin-left: -0.03em;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 23rem);
+  gap: var(--sp-7);
+  align-items: start;
+  padding-bottom: var(--sp-9);
+}
+
+/* ── steps ──────────────────────────────────────────────────────────────── */
+
+.steps {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.step {
+  min-width: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* A step that isn't reachable yet is dimmed, but never hidden — the buyer should be able to
+   see what is coming and why it is waiting. */
+.step[data-muted] {
+  opacity: 0.62;
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.stepIndex {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-3);
+  font-size: 0.75rem;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.stepIndex[data-done] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.stepTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  color: var(--ink);
+}
+
+/* Indented to the step title's text, so the numbers form a spine down the left. */
+.stepBody {
+  padding-left: calc(1.5rem + var(--sp-3));
+}
+
+.stepHint {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 54ch;
+}
+
+/* ── choices ────────────────────────────────────────────────────────────── */
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border: 0;
+}
+
+.fieldset:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  /* 44px minimum target, met by the row itself rather than by padding the input. */
+  min-height: 2.75rem;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+.choice:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.choice[data-selected] {
+  border-color: var(--brand);
+  background: var(--brand-tint);
+  /* One extra hairline rather than a shadow: the selection reads as a thicker border
+     without the row shifting by a pixel. */
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.choice[data-selected]:hover {
+  background: var(--brand-tint);
+}
+
+/* The label carries the focus ring, because the input itself is a 1px dot in the corner. */
+.choice:has(.radio:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.radio {
+  margin-top: 0.2rem;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.choiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.choiceTitle {
+  font-size: 0.9375rem;
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.choiceNote {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.choiceAmount {
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--ink);
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.last4 {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+
+.fields {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldPin {
+  flex: 0 0 7rem;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: 0.8125rem;
+  font-weight: 560;
+  color: var(--ink-2);
+}
+
+.optional {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+  opacity: 0.7;
+}
+
+.input:hover {
+  border-color: var(--ink-3);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-tint);
+}
+
+.giftStatus {
+  margin-top: var(--sp-3);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  min-height: 1.25rem;
+}
+
+.giftFound {
+  color: var(--brand-ink);
+  font-size: 0.8125rem;
+}
+
+.giftFound strong {
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── card rail ──────────────────────────────────────────────────────────── */
+
+.cardRail {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-size: 0.8125rem;
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.railNote {
+  margin-top: var(--sp-3);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 58ch;
+}
+
+/* ── summary ────────────────────────────────────────────────────────────── */
+
+.aside {
+  min-width: 0;
+  position: sticky;
+  top: var(--sp-5);
+}
+
+.summary {
+  padding: var(--sp-5);
+}
+
+.summaryTitle {
+  font-size: 0.75rem;
+  font-weight: 620;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-4);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  list-style: none;
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+  align-items: baseline;
+  font-size: 0.875rem;
+}
+
+.itemQty {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+}
+
+.itemTitle {
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.itemAmount {
+  color: var(--ink);
+  font-weight: 540;
+}
+
+.subtotals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.subtotalRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.subtotalRow :last-child {
+  color: var(--ink);
+  font-weight: 520;
+}
+
+/* ── the funding plan ───────────────────────────────────────────────────── */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-5);
+}
+
+.planRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: 0.875rem;
+}
+
+.planRow dt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.planRow dd {
+  color: var(--ink);
+  font-weight: 560;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The amount actually being authorized is the commitment, so it is the one that is set
+   large. Everything above it is arithmetic leading here. */
+.planRowFinal {
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  align-items: baseline;
+}
+
+.planRowFinal dt {
+  color: var(--ink);
+  font-weight: 560;
+}
+
+.planRowFinal dd {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.planRowShort dt,
+.planRowShort dd {
+  color: var(--danger);
+}
+
+.planHint {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+
+.planDraw {
+  color: var(--brand-ink);
+}
+
+.planUnknown {
+  font-size: 0.8125rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.planNote {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--line-strong);
+}
+
+.payNote {
+  margin-top: var(--sp-3);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* ── failure ────────────────────────────────────────────────────────────── */
+
+.declined {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-md);
+  background: var(--danger-tint);
+}
+
+.declinedTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: 0.9375rem;
+  font-weight: 620;
+  color: var(--danger);
+}
+
+.declinedCode {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.15em 0.45em;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.declinedBody {
+  margin-top: var(--sp-2);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.declinedRestore {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.inlineError {
+  padding: var(--sp-4);
+  border-color: var(--danger);
+  background: var(--danger-tint);
+}
+
+.inlineErrorTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.inlineErrorBody {
+  margin-top: var(--sp-1);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* ── standalone states ──────────────────────────────────────────────────── */
+
+.standalone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-9) 0;
+  max-width: 40rem;
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-left: -0.03em;
+}
+
+.emptyBody {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--ink-2);
+  max-width: 48ch;
+}
+
+.paidMark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.paidTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin-left: -0.04em;
+}
+
+.orderPanel {
+  padding: var(--sp-4) var(--sp-5);
+  width: 100%;
+}
+
+.orderLabel {
+  font-size: 0.6875rem;
+  font-weight: 620;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.orderId {
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.paidActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+
+.paidLink {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-color: var(--line-strong);
+}
+
+.paidLink:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+/* ── skeleton ───────────────────────────────────────────────────────────── */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  width: 100%;
+  max-width: 22rem;
+}
+
+.bar {
+  height: 0.75rem;
+  border-radius: var(--r-xs);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-sunk) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s var(--ease-in-out) infinite;
+  width: 60%;
+}
+
+.barWide { width: 85%; }
+.barShort { width: 40%; }
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ── utility ────────────────────────────────────────────────────────────── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 940px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+  }
+  /* The summary stops being a rail and becomes the last thing you read before paying. */
+  .aside {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .stepBody {
+    /* The numbered spine costs too much width on a phone; the step number stays as the
+       heading's marker and the body goes full width. */
+    padding-left: 0;
+  }
+  .fields {
+    flex-direction: column;
+  }
+  .fieldPin {
+    flex: 1;
+  }
+  .choice {
+    padding: var(--sp-3);
+  }
+  .paidActions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+    background: var(--surface-2);
+  }
+  .choice,
+  .stepIndex,
+  .step,
+  .input {
+    transition: none;
+  }
+}

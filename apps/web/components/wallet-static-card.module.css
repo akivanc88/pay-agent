@@ -1,0 +1,108 @@
+/*
+ * Featured-card palette.
+ *
+ * A physical card does not invert when the room's lights change, so this object stays a
+ * dark, gold-foiled slab in both themes. It gets there without any new hex: the card's
+ * local variables are re-pointed at existing global tokens per theme — dark grounds that
+ * are dark in both, a light "ink" that is light on the card in both, and `--gold` for foil.
+ * The 3D showpiece reads these same variables off the DOM so the two renderings match.
+ */
+.wrap {
+  --card-bg-1: var(--ink);
+  --card-bg-2: var(--brand-ink);
+  --card-bg-3: var(--ink);
+  --card-ink: var(--paper);
+  --card-ink-dim: var(--line);
+  --card-foil-hi: var(--gold-tint);
+  --card-foil-lo: var(--gold);
+
+  width: 100%;
+  aspect-ratio: 400 / 252;
+  filter: drop-shadow(var(--shadow-lg));
+}
+
+@media (prefers-color-scheme: dark) {
+  .wrap {
+    --card-bg-1: var(--surface-sunk);
+    --card-bg-2: var(--brand-tint);
+    --card-bg-3: var(--paper);
+    --card-ink: var(--ink);
+    --card-ink-dim: var(--ink-2);
+    --card-foil-hi: var(--gold);
+    --card-foil-lo: var(--brand-ink);
+  }
+}
+
+:root[data-theme="light"] .wrap {
+  --card-bg-1: var(--ink);
+  --card-bg-2: var(--brand-ink);
+  --card-bg-3: var(--ink);
+  --card-ink: var(--paper);
+  --card-ink-dim: var(--line);
+  --card-foil-hi: var(--gold-tint);
+  --card-foil-lo: var(--gold);
+}
+
+:root[data-theme="dark"] .wrap {
+  --card-bg-1: var(--surface-sunk);
+  --card-bg-2: var(--brand-tint);
+  --card-bg-3: var(--paper);
+  --card-ink: var(--ink);
+  --card-ink-dim: var(--ink-2);
+  --card-foil-hi: var(--gold);
+  --card-foil-lo: var(--brand-ink);
+}
+
+.card {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-lg);
+}
+
+/* Type on the card. Serif wordmark, mono for the number, so the digits read as an account
+   number and not as prose. */
+.brandMark {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.brandDot { opacity: 0.7; }
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 640;
+  letter-spacing: 0.18em;
+}
+
+.digits {
+  font-family: var(--font-mono);
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.dots { font-size: 21px; letter-spacing: 0.02em; }
+
+.footLabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.16em;
+}
+
+.balance {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.issuer {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}

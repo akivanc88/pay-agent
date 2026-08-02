@@ -15,12 +15,37 @@ const BASE = process.env.WEB_URL ?? "http://localhost:3001";
 const outDir = process.argv[2] ?? "/tmp/pay-agent-shots";
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 
-/** Surfaces to capture. `prep` runs before the shot for flows that need driving. */
+/* A cart, seeded before page scripts run. Surfaces downstream of the shop are only worth
+   looking at with something in them — an empty checkout screenshots its empty state, which
+   is a different surface with a different job. Both are captured. */
+const SEEDED_CART = [
+  { id: "bouquet_roses", title: "Bouquet of Red Roses", price: 3500, currency: "CAD", quantity: 1 },
+  { id: "gardenias", title: "Gardenias", price: 2000, currency: "CAD", quantity: 2 },
+];
+
+/** Surfaces to capture. `prep` runs after load, for flows that need driving. */
 const SURFACES = [
   { name: "home", path: "/" },
   { name: "product", path: "/product/bouquet_roses" },
   { name: "wallet", path: "/wallet" },
-  { name: "checkout", path: "/checkout" },
+  { name: "cart-empty", path: "/cart" },
+  { name: "cart", path: "/cart", cart: SEEDED_CART },
+  { name: "checkout-empty", path: "/checkout" },
+  {
+    name: "checkout",
+    path: "/checkout",
+    cart: SEEDED_CART,
+    // Drive the flow to the state worth judging: the funding plan with a real split on it.
+    prep: async (page) => {
+      await page.locator('input[name="destination"]').first().check();
+      await page.waitForSelector('input[name="shipping"]', { timeout: 10000 });
+      await page.locator('input[name="shipping"]').first().check();
+      await page.waitForTimeout(900);
+      await page.fill("#gift-code", process.env.GIFT_CODE ?? "GC-DEMO-9111");
+      await page.fill("#gift-pin", "1234");
+      await page.waitForTimeout(300);
+    },
+  },
 ];
 
 const VIEWPORTS = [
@@ -34,7 +59,7 @@ await mkdir(outDir, { recursive: true });
 
 let shots = 0;
 for (const surface of SURFACES) {
-  if (only && surface.path !== only) continue;
+  if (only && surface.path !== only && surface.name !== only) continue;
 
   for (const vp of VIEWPORTS) {
     for (const theme of THEMES) {
@@ -51,6 +76,15 @@ for (const surface of SURFACES) {
         try { localStorage.setItem("pa-theme", t); } catch {}
       }, theme);
 
+      // The cart is seeded before any page script runs, so the surface renders filled on
+      // its first paint rather than flickering from empty.
+      await page.addInitScript((cart) => {
+        try {
+          if (cart) localStorage.setItem("pa-cart", JSON.stringify(cart));
+          else localStorage.removeItem("pa-cart");
+        } catch {}
+      }, surface.cart ?? null);
+
       const url = `${BASE}${surface.path}`;
       const res = await page.goto(url, { waitUntil: "networkidle", timeout: 45000 }).catch(() => null);
 
@@ -58,6 +92,14 @@ for (const surface of SURFACES) {
         console.log(`  ✗ ${surface.name} ${vp.tag}/${theme} → ${res ? res.status() : "no response"}`);
         await context.close();
         continue;
+      }
+
+      if (surface.prep) {
+        try {
+          await surface.prep(page);
+        } catch (e) {
+          console.log(`  ! ${surface.name} ${vp.tag}/${theme} prep: ${e.message.split("\n")[0]}`);
+        }
       }
 
       // Let fonts settle and entrance animations finish so nothing is caught mid-fade.

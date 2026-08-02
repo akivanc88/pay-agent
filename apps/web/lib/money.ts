@@ -31,3 +31,21 @@ export function formatAmount(minor: number): string {
     maximumFractionDigits: 2,
   });
 }
+
+/**
+ * Read a formatted balance back into minor units.
+ *
+ * The funding endpoint reports balances as display strings (`"$25.00"`), so anything that
+ * needs to add them up has to parse them back. Done on the digits — `"$25.00"` → `2500` —
+ * so no float ever exists: `parseFloat("25.00") * 100` is the exact class of bug this
+ * project's ledger is built to avoid. Anything not matching the expected shape returns
+ * `null`, and the caller must then say the amount is unknown rather than invent one.
+ */
+export function minorFromDisplay(display: string): number | null {
+  const match = /^(-?)[^\d-]*(\d+)\.(\d{2})$/.exec(display.trim());
+  if (!match) return null;
+  const [, sign, whole, cents] = match;
+  const minor = Number.parseInt(whole ?? "", 10) * 100 + Number.parseInt(cents ?? "", 10);
+  if (!Number.isSafeInteger(minor)) return null;
+  return sign === "-" ? -minor : minor;
+}
