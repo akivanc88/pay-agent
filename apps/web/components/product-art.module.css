@@ -6,25 +6,94 @@
  * may use them. They are still declared once, as tokens, at the top of the file — the rule
  * they answer to is "no loose hex values in markup", not "every colour is global".
  *
- * Each specimen states a raw pair (`--art-h`, `--art-l`). The theme blocks below derive the
- * two stops that actually get painted from that pair. Deriving rather than restating is
- * what keeps the dark theme honest: an earlier version themed only `--art-hi` and left
- * `--art-l` — which is both the tile's background *and* the gradient's outer stop — at its
- * full light value, so on a `#14130f` page every tile was a pastel slab glowing five steps
- * above the surface. Anything painted here has to be grounded against `--surface`.
+ * ── How the ramps are built ──────────────────────────────────────────────────────────
+ * Each specimen states six raw colours and nothing else:
+ *
+ *   --art-h / --art-l   the studio sweep's light and shadow ends
+ *   --art-b / --art-bd  the bloom's body and its deepest shadow
+ *   --art-lf            foliage
+ *   --art-st            stem / vein ink
+ *   --art-ac            the one accent (a stamen, a lip, a glaze)
+ *
+ * Everything the SVG actually paints — four sweep stops, four bloom stops, three foliage
+ * stops — is *derived* from those below, once, and the theme blocks only move the five
+ * survival percentages. That matters more than it sounds: an earlier version themed only
+ * `--art-hi` and left the sweep's outer stop at its full light value, so on a `#14130f`
+ * page every tile was a pastel slab glowing five steps above the surface. Deriving against
+ * `--art-ground` makes it impossible to theme one stop and forget its neighbour.
+ *
+ * In dark, the *ground* goes dark and the *subject* stays lit — that is what happens when
+ * you shoot the same flower on a black sweep, and it is why the blooms only lose ~12% of
+ * themselves while the backdrop loses ~85%.
  */
 .frame {
-  /* Shared defaults; each specimen overrides the pair below. */
+  /* Shared defaults; each specimen overrides these six. */
   --art-h: #f3efe6;
   --art-l: #e7e0d2;
-  --art-stem: #4b6b45;
-  --art-leaf: #7d9e6b;
-  --art-bloom: #d8c9b0;
-  --art-bloom-ink: #8a7a5c;
-  --art-accent: #c98a3a;
+  --art-b: #d8c9b0;
+  --art-bd: #8a7a5c;
+  --art-lf: #7d9e6b;
+  --art-st: #4b6b45;
+  --art-ac: #c98a3a;
 
-  --art-hi: var(--art-h);
-  --art-lo: var(--art-l);
+  /*
+   * Light and shade — the lamp and the shadow it leaves. Not palette colours: they are
+   * only ever painted at low alpha on top of, or underneath, something else, which is why
+   * they are one warm off-white and one warm near-black rather than #fff and #000. A pure
+   * black shadow on warm paper is the classic UI-kit tell.
+   */
+  --art-light: #fffdf7;
+  --art-shade: #16120b;
+
+  /* Theme switches. 100% = "keep all of the raw colour"; the dark block dims these. */
+  --art-ground: var(--surface);
+  --art-ground-sunk: var(--surface-sunk);
+  --art-g1: 100%; /* sweep highlight */
+  --art-g2: 100%; /* sweep midtone   */
+  --art-g3: 100%; /* sweep shadow    */
+  --art-g4: 100%; /* sweep corner    */
+  --art-bm: 100%; /* bloom + foliage */
+
+  /* ── derived, once ── */
+  --art-hi: color-mix(in srgb, var(--art-h) var(--art-g1), var(--art-ground));
+  --art-mid: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-h) 46%, var(--art-l)) var(--art-g2),
+    var(--art-ground)
+  );
+  --art-lo: color-mix(in srgb, var(--art-l) var(--art-g3), var(--art-ground));
+  --art-deep: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-l) 88%, var(--art-bd)) var(--art-g4),
+    var(--art-ground-sunk)
+  );
+
+  --art-bloom: color-mix(in srgb, var(--art-b) var(--art-bm), var(--art-ground));
+  --art-bloom-hi: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-b) 62%, var(--art-light)) var(--art-bm),
+    var(--art-ground)
+  );
+  --art-bloom-lo: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-b) 66%, var(--art-bd)) var(--art-bm),
+    var(--art-ground)
+  );
+  --art-bloom-ink: color-mix(in srgb, var(--art-bd) var(--art-bm), var(--art-ground));
+
+  --art-leaf: color-mix(in srgb, var(--art-lf) var(--art-bm), var(--art-ground));
+  --art-leaf-hi: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-lf) 68%, var(--art-light)) var(--art-bm),
+    var(--art-ground)
+  );
+  --art-leaf-lo: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--art-lf) 55%, var(--art-st)) var(--art-bm),
+    var(--art-ground)
+  );
+  --art-stem: color-mix(in srgb, var(--art-st) var(--art-bm), var(--art-ground));
+  --art-accent: color-mix(in srgb, var(--art-ac) var(--art-bm), var(--art-ground));
 
   position: relative;
   width: 100%;
@@ -32,61 +101,99 @@
   overflow: hidden;
   background: var(--art-lo);
 }
+
 .art {
   width: 100%;
   height: 100%;
+  /*
+   * The key light and the grain blend with what is under them. Isolating the SVG keeps
+   * that blending inside the frame — without it the grain would reach through to the card
+   * and the page behind it.
+   */
+  isolation: isolate;
 }
 
-/* Warm rose */
+/* The single key light, in frame space, over everything including the sweep. Soft-light
+   lifts what is already light and deepens what is already dark, which is what a lamp does;
+   a plain alpha wash just fogs the image. */
+.key {
+  mix-blend-mode: soft-light;
+}
+
+/* Film grain. Overlay so it modulates rather than veils; it has to be present enough to
+   break the vector cleanliness and quiet enough that you only notice it if you look. */
+.grain {
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+/* ── the six specimens ─────────────────────────────────────────────────────────────── */
+
+/* Deep garden rose on blush */
 .frame[data-art="bouquet_roses"] {
-  --art-h: #f7ece9; --art-l: #ecd6d0;
-  --art-bloom: #c65b57; --art-bloom-ink: #8f2f30; --art-stem: #4b6b45; --art-accent: #e0908c;
+  --art-h: #f8ece8; --art-l: #ecd3cc;
+  --art-b: #b8353c; --art-bd: #5e1519; --art-lf: #62834f; --art-st: #3c5636; --art-ac: #e0908c;
 }
-/* Sunflower gold */
+/* Sunflower gold on wheat */
 .frame[data-art="bouquet_sunflowers"] {
-  --art-h: #f8f0da; --art-l: #eedcac;
-  --art-bloom: #e0a52e; --art-bloom-ink: #5a3d16; --art-stem: #566e3f;
+  --art-h: #faf1d9; --art-l: #ecd9a4;
+  --art-b: #e2a41f; --art-bd: #4a2f0c; --art-lf: #789a52; --art-st: #46602f; --art-ac: #f0cd63;
 }
-/* Spring tulip */
+/* Spring tulip on pale rose */
 .frame[data-art="bouquet_tulips"] {
-  --art-h: #f6ecef; --art-l: #e9cdd6;
-  --art-bloom: #cf6f8f; --art-bloom-ink: #8f3d5c; --art-stem: #4f7148;
+  --art-h: #f7ecef; --art-l: #e8c9d4;
+  --art-b: #d05e85; --art-bd: #6d1f3e; --art-lf: #6f9455; --art-st: #41613a; --art-ac: #f0b3c6;
 }
-/* White orchid */
+/* White orchid on stone */
 .frame[data-art="orchid_white"] {
-  --art-h: #f4f1ee; --art-l: #ded6d9;
-  --art-bloom: #f7f4f2; --art-bloom-ink: #b49bb0; --art-stem: #5a6b52; --art-accent: #b06a86;
+  --art-h: #f6f2ef; --art-l: #ddd3d6;
+  --art-b: #f4eeea; --art-bd: #9a8290; --art-lf: #5e7b52; --art-st: #3d5438; --art-ac: #b0567f;
 }
-/* Gardenia cream */
+/* Gardenia cream on sage */
 .frame[data-art="gardenias"] {
-  --art-h: #f4f2e8; --art-l: #e2e0cd;
-  --art-bloom: #f6f3e7; --art-bloom-ink: #b6ac86; --art-leaf: #6f9160; --art-stem: #4f6b46; --art-accent: #d8c14e;
+  --art-h: #f6f4ea; --art-l: #dedcc6;
+  --art-b: #f4f0e0; --art-bd: #9d9067; --art-lf: #4f7248; --art-st: #34512f; --art-ac: #d8c14e;
 }
-/* Ceramic pot / greenery */
+/* Glazed terracotta and greenery */
 .frame[data-art="pot_ceramic"] {
-  --art-h: #eef0e8; --art-l: #d8ddca;
-  --art-bloom: #cf8f6b; --art-bloom-ink: #7d4a30; --art-leaf: #7ba05e; --art-stem: #4f6b3f; --art-accent: #e2b48a;
+  --art-h: #f0f1e7; --art-l: #d3d9c3;
+  --art-b: #c47f57; --art-bd: #63331d; --art-lf: #6d9a4e; --art-st: #3f622f; --art-ac: #e2b48a;
 }
 
 /*
- * Dark: keep each specimen's hue, lose its brightness. Both stops are mixed down onto
- * `--surface`, so a tile sits one step above the page instead of five, and the blooms —
- * which are saturated mid-tones — keep their contrast against it. The bloom and foliage
- * colours are left alone: they are the drawing, and they read on either ground.
+ * Dark: same lamp, a black sweep. The five percentages below are the whole theme — the
+ * derivations above do the rest, so a stop cannot be themed and its neighbour forgotten.
+ * Grain gets a little more presence because `overlay` has less to work with on a dark
+ * ground, and the frame's own fallback background follows the sweep down.
  */
 @media (prefers-color-scheme: dark) {
   .frame {
-    --art-hi: color-mix(in srgb, var(--art-h) 20%, var(--surface));
-    --art-lo: color-mix(in srgb, var(--art-l) 13%, var(--surface));
+    --art-g1: 21%;
+    --art-g2: 14%;
+    --art-g3: 11%;
+    --art-g4: 6%;
+    --art-bm: 88%;
+    --art-shade: #05040a;
   }
+  .grain { opacity: 0.62; }
 }
 
 :root[data-theme="light"] .frame {
-  --art-hi: var(--art-h);
-  --art-lo: var(--art-l);
+  --art-g1: 100%;
+  --art-g2: 100%;
+  --art-g3: 100%;
+  --art-g4: 100%;
+  --art-bm: 100%;
+  --art-shade: #16120b;
 }
+:root[data-theme="light"] .grain { opacity: 0.5; }
 
 :root[data-theme="dark"] .frame {
-  --art-hi: color-mix(in srgb, var(--art-h) 20%, var(--surface));
-  --art-lo: color-mix(in srgb, var(--art-l) 13%, var(--surface));
+  --art-g1: 21%;
+  --art-g2: 14%;
+  --art-g3: 11%;
+  --art-g4: 6%;
+  --art-bm: 88%;
+  --art-shade: #05040a;
 }
+:root[data-theme="dark"] .grain { opacity: 0.62; }

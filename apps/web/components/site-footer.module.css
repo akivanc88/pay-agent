@@ -1,17 +1,24 @@
 .footer {
-  margin-top: var(--sp-9);
+  margin-top: var(--sp-8);
   border-top: 1px solid var(--line);
   background: var(--surface-2);
 }
 
+/*
+ * `align-items: baseline`, not `start`. The first column opens with an 18px serif wordmark
+ * and the other two with an 11px uppercase eyebrow; hung from their tops, the three first
+ * lines sit on three different baselines about 8px apart, which is the sort of thing that
+ * reads as "slightly off" without the reader locating why. Grid baseline alignment does the
+ * optical correction without a magic number in it.
+ */
 .inner {
   max-width: var(--content);
   margin-inline: auto;
-  padding: var(--sp-7) var(--sp-5);
+  padding: var(--sp-7) var(--sp-5) var(--sp-6);
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.6fr) minmax(0, 1.4fr);
   gap: var(--sp-6) var(--sp-7);
-  align-items: start;
+  align-items: baseline;
 }
 
 .col {
@@ -25,8 +32,12 @@
   font-family: var(--font-serif);
   font-size: var(--text-xl);
   font-weight: 600;
+  line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--ink);
+  /* The serif's side bearing, so the wordmark's visual left edge sits on the same vertical
+     as the sans paragraph beneath it. Same correction as the global h1–h4 rule. */
+  margin-left: -0.03em;
 }
 
 .dot {
@@ -41,6 +52,9 @@
   text-transform: uppercase;
   color: var(--ink-3);
   margin-bottom: var(--sp-1);
+  /* Cancels the trailing letter-space so the label's optical right edge is where its box
+     says it is. */
+  margin-inline-end: -0.1em;
 }
 
 .note {
@@ -48,6 +62,7 @@
   line-height: 1.6;
   color: var(--ink-2);
   max-width: 44ch;
+  text-wrap: pretty;
 }
 
 .note strong {
@@ -65,6 +80,7 @@
   line-height: 1.6;
   color: var(--ink-3);
   max-width: 44ch;
+  text-wrap: pretty;
 }
 
 .disclosure strong {
@@ -78,24 +94,76 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  align-items: flex-start;
 }
 
+/*
+ * The underline grows in from transparent rather than the colour simply changing. It is the
+ * one hover in the footer, so it carries the whole "this is a link" argument, and a colour
+ * shift alone on 13px secondary ink is close to invisible.
+ */
+/* 2.5.5 asks for 44 in *both* axes. The min-height alone left "Cart" a 27px-wide target —
+   tall enough to pass a glance, too narrow to hit with a thumb. */
 .link {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   min-height: 2.75rem;
+  min-width: 2.75rem;
   font-size: var(--text-base);
   color: var(--ink-2);
-  transition: color var(--dur-2) var(--ease-out);
+  border-radius: var(--r-xs);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur-2) var(--ease-out),
+    text-decoration-color var(--dur-2) var(--ease-out);
 }
 
 .link:hover {
   color: var(--brand-ink);
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/*
+ * The base rule. Without it the footer ends on whichever column happens to be tallest and
+ * the page stops on a ragged edge — the single most common tell that a layout was assembled
+ * rather than composed.
+ */
+.baseline {
+  border-top: 1px solid var(--line);
+}
+.baselineInner {
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-5);
+}
+.fine {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+.fine strong {
+  font-weight: 600;
+  color: var(--ink-2);
 }
 
 @media (max-width: 52rem) {
   .inner {
     grid-template-columns: 1fr;
     gap: var(--sp-6);
+    /* One column: there are no neighbouring first lines left to align to, and baseline
+       alignment on a single-column grid only introduces stray leading. */
+    align-items: start;
   }
+}
+
+@media (max-width: 30rem) {
+  .inner { padding-inline: var(--sp-4); }
+  .baselineInner { padding-inline: var(--sp-4); }
 }

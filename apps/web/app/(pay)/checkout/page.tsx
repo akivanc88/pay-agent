@@ -17,10 +17,10 @@ import {
   createSession,
   fetchFundingCards,
   fulfillmentIsComplete,
-  matchGiftCard,
   optionAmount,
   pay,
   planFallsShort,
+  resolveGiftCard,
   selectDestination,
   selectShippingOption,
   shippingGroupOf,
@@ -29,6 +29,7 @@ import {
   totalOf,
   type Destination,
   type FundingCard,
+  type GiftUnknown,
   type Session,
   type StoreError,
 } from "./session";
@@ -145,34 +146,40 @@ export default function CheckoutPage() {
   const selectedDestinationId = pendingDestination ?? method?.selected_destination_id ?? null;
   const selectedOptionId = pendingOption ?? group?.selected_option_id ?? null;
 
-  const matchedGift = useMemo(
-    () => (giftCode.trim() ? matchGiftCard(giftCode, cards) : null),
-    [giftCode, cards],
-  );
+  const match = useMemo(() => resolveGiftCard(giftCode, cards), [giftCode, cards]);
+  const matchedGift = match.kind === "matched" ? match.card : null;
 
   const hasGift = giftCode.trim().length > 0 && giftPin.trim().length > 0;
   const hasCard = cardToken.length > 0;
 
   /*
-   * A balance only feeds the projected split when the ledger currently vouches for it. An
-   * unverified or stale figure is a claim, not a fact, and `buildPlan` already knows how to
-   * say "not yet known" — so the honest move is to withhold the number rather than let a
-   * claim harden into the `−$20.00` the buyer reads as settled. Today every closed-loop
-   * card comes back verified, so this changes nothing on screen; it is here so that the day
-   * one doesn't, the UI degrades instead of lying.
+   * A balance only feeds the projected split when the ledger currently vouches for it *and*
+   * the code resolves to exactly one enrolled card. An unverified figure is a claim rather
+   * than a fact; an ambiguous last-four is somebody else's balance half the time. Both must
+   * render as "not yet known" — but for different stated reasons, which is what `giftUnknown`
+   * carries. Withholding the number is the honest move; withholding the reason is not.
    */
-  const giftBalanceTrusted =
-    matchedGift && matchedGift.balance_verified && !matchedGift.balance_stale;
+  const giftBalance = useMemo(() => {
+    if (!matchedGift) return null;
+    if (!matchedGift.balance_verified || matchedGift.balance_stale) return null;
+    return minorFromDisplay(matchedGift.balance_display);
+  }, [matchedGift]);
+
+  const giftUnknown: GiftUnknown | null = useMemo(() => {
+    if (!hasGift || giftBalance !== null) return null;
+    if (match.kind === "ambiguous") {
+      return { reason: "ambiguous", last4: match.last4, count: match.count };
+    }
+    if (match.kind === "unmatched") return { reason: "unmatched", last4: match.last4 };
+    if (match.kind === "empty") return { reason: "tooShort" };
+    if (match.card.balance_stale) return { reason: "stale" };
+    if (!match.card.balance_verified) return { reason: "unverified" };
+    return { reason: "unreadable" };
+  }, [hasGift, giftBalance, match]);
 
   const plan = useMemo(
-    () =>
-      buildPlan({
-        due,
-        giftBalance: giftBalanceTrusted ? minorFromDisplay(matchedGift.balance_display) : null,
-        hasGift,
-        hasCard,
-      }),
-    [due, matchedGift, giftBalanceTrusted, hasGift, hasCard],
+    () => buildPlan({ due, giftBalance, hasGift, hasCard }),
+    [due, giftBalance, hasGift, hasCard],
   );
 
   const fulfilled = session ? fulfillmentIsComplete(session) : false;
@@ -218,20 +225,25 @@ export default function CheckoutPage() {
         body="A checkout session is opened from a cart, so there is nothing for the store to quote until something is in one."
         action={{ href: "/", label: "Browse the shop" }}
         /* The two rails, drawn: a gift card drawn first and a card behind it for the rest.
-           An empty checkout is the one place worth showing what this checkout is *for*. */
+           An empty checkout is the one place worth showing what this checkout is *for*.
+           Bare strokes — `StatePage` supplies the disc it sits on, and a drawing that brings
+           its own fills would fight the plinth's ground instead of sitting on it. */
         art={
-          <svg viewBox="0 0 96 96" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            <rect
-              x="26" y="26" width="58" height="37" rx="6"
-              fill="var(--surface-2)" stroke="var(--line-strong)" strokeWidth="2"
-            />
-            <path d="M26 38h58" stroke="var(--line-strong)" strokeWidth="2" />
-            <rect
-              x="12" y="38" width="58" height="37" rx="6"
-              fill="var(--brand-tint)" stroke="currentColor" strokeWidth="2"
-            />
-            <path d="M12 50h58" stroke="currentColor" strokeWidth="2" />
-            <rect x="20" y="58" width="14" height="9" rx="2" fill="var(--foil-mid)" opacity="0.85" />
+          <svg
+            viewBox="0 0 96 96"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <g opacity="0.42">
+              <rect x="30" y="21" width="56" height="36" rx="7" />
+              <path d="M30 33h56" />
+            </g>
+            <rect x="10" y="39" width="56" height="36" rx="7" />
+            <path d="M10 51h56" />
+            <path d="M20 62h11" stroke="var(--gold)" strokeWidth="6" />
           </svg>
         }
       />
@@ -384,13 +396,15 @@ export default function CheckoutPage() {
             )}
           </Step>
 
-          {/* ── 3. funding ── */}
-          <Step index={3} title="Payment" done={false}>
-            <p className={styles.stepHint}>
-              Gift cards are presented open-amount and drawn first. Whatever they can&rsquo;t
-              cover is authorized on the card.
-            </p>
-
+          {/* ── 3. funding ──
+              "Done" here means the step has an answer, not that money has moved — the same
+              thing it means on the two steps above it. A card is preselected, so this one
+              usually arrives already answered, and marking it open would leave the spine
+              permanently unfinished for no reason the buyer could act on. */}
+          <Step index={3} title="Payment" done={hasGift || hasCard} last>
+            {/* No lead-in paragraph. What the two rails do to each other is explained once,
+                in the summary column, beside the numbers it is explaining — saying it here as
+                well put two versions of the same sentence on one screen. */}
             <div className={styles.fields}>
               <div className={styles.field}>
                 <label htmlFor="gift-code" className={styles.label}>
@@ -422,30 +436,38 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/*
+              What this line may and may not say is the whole honesty argument in miniature.
+              The browser can only ever see the last four digits of an enrolled card, so it
+              states which of the three things is actually true — one match, several, or none
+              — and never dresses "we can't tell" up as "it can't be looked up".
+            */}
             <p className={styles.giftStatus} aria-live="polite">
               {!giftCode.trim() ? (
                 <span className={styles.stepHint}>
                   No gift card — the card covers the whole amount.
                 </span>
-              ) : matchedGift ? (
+              ) : giftBalance !== null && matchedGift ? (
                 <span className={styles.giftFound}>
-                  Matches an enrolled card ending {matchedGift.last4},{" "}
-                  {giftBalanceTrusted ? (
-                    <>
-                      balance <strong>{matchedGift.balance_display}</strong>.
-                    </>
-                  ) : (
-                    <>
-                      but its balance{" "}
-                      {matchedGift.balance_stale ? "was last read a while ago" : "isn’t verified"}
-                      , so the store settles the draw at payment.
-                    </>
-                  )}
+                  <CheckMark />
+                  Matches the enrolled card ending {matchedGift.last4}, holding{" "}
+                  <strong>{matchedGift.balance_display}</strong> right now.
+                </span>
+              ) : match.kind === "ambiguous" ? (
+                <span className={styles.giftAmbiguous}>
+                  {match.count} enrolled cards end {match.last4}. This page can&rsquo;t tell
+                  them apart, so it won&rsquo;t project a draw — the store resolves the code
+                  when you pay.
+                </span>
+              ) : match.kind === "matched" ? (
+                <span className={styles.giftAmbiguous}>
+                  Matches the card ending {matchedGift?.last4}, but the ledger doesn&rsquo;t
+                  currently vouch for its balance, so the draw is settled at payment.
                 </span>
               ) : (
                 <span className={styles.stepHint}>
-                  Codes are stored hashed, so this one can&rsquo;t be looked up from here. The
-                  store will verify it at payment.
+                  Nothing enrolled in this wallet ends in these digits. The store still checks
+                  the code and PIN when you pay.
                 </span>
               )}
             </p>
@@ -459,10 +481,13 @@ export default function CheckoutPage() {
               </p>
               <fieldset className={styles.fieldset} disabled={busy}>
                 <legend className={styles.srOnly}>Card</legend>
+                {/* One line per card. The outcome is the thing that distinguishes these four
+                    rows and it is three words long, so it sits on the row's right edge rather
+                    than costing a second line each and 100px of the column's height. */}
                 {TEST_CARDS.map((c) => (
                   <label
                     key={c.token}
-                    className={styles.choice}
+                    className={`${styles.choice} ${styles.choiceTight}`}
                     data-selected={cardToken === c.token || undefined}
                   >
                     <input
@@ -477,15 +502,15 @@ export default function CheckoutPage() {
                       <span className={styles.choiceTitle}>
                         {c.brand} <span className={styles.last4}>····&thinsp;{c.last4}</span>
                       </span>
-                      <span className={styles.choiceNote}>
-                        {c.outcome}
-                        {c.code && <code className={styles.outcomeCode}>{c.code}</code>}
-                      </span>
+                    </span>
+                    <span className={styles.choiceMeta} data-declines={c.declines || undefined}>
+                      {c.outcome}
+                      {c.code && <code className={styles.outcomeCode}>{c.code}</code>}
                     </span>
                   </label>
                 ))}
                 <label
-                  className={styles.choice}
+                  className={`${styles.choice} ${styles.choiceTight}`}
                   data-selected={cardToken === "" || undefined}
                 >
                   <input
@@ -498,24 +523,31 @@ export default function CheckoutPage() {
                   />
                   <span className={styles.choiceBody}>
                     <span className={styles.choiceTitle}>No card</span>
-                    <span className={styles.choiceNote}>
-                      Gift card only. Succeeds only if it covers the whole amount.
-                    </span>
                   </span>
+                  <span className={styles.choiceMeta}>Gift card only</span>
                 </label>
               </fieldset>
               <p className={styles.railNote}>
-                These are Stripe&rsquo;s published test PaymentMethods. The authorization and
-                capture are real API calls in test mode; the issuer is Stripe&rsquo;s simulator.
-                No card number ever reaches this app.
+                Stripe&rsquo;s published test PaymentMethods. The authorization and capture are
+                real API calls in test mode against Stripe&rsquo;s simulated issuer — no card
+                number ever reaches this app.
               </p>
             </div>
           </Step>
         </div>
 
-        {/* ── summary ── */}
+        {/*
+          The summary column, not a summary card.
+          ──────────────────────────────────────
+          It used to be a bordered, shadowed Panel floating in a rail that ran out ~600px
+          above the bottom of the form beside it, which is what made the right-hand third of
+          the page read as dead. The panel is gone: this is a column of the page now, marked
+          off by one full-height hairline, so the space below it belongs to the column rather
+          than being left over. The only object with chrome inside it is the split itself —
+          one depth idea, spent on the thing the project exists to show.
+        */}
         <aside className={styles.aside}>
-          <Panel className={styles.summary}>
+          <div className={styles.summary}>
             <h2 className={styles.summaryTitle}>Order</h2>
 
             <ul className={styles.items}>
@@ -543,13 +575,16 @@ export default function CheckoutPage() {
                 ))}
             </div>
 
-            <FundingPlanRows plan={plan} />
+            <div className={styles.planWrap}>
+              <FundingPlanRows plan={plan} unknown={giftUnknown} />
+            </div>
 
-            {failure && <Declined error={failure} />}
+            {failure && <Declined error={failure} hadGift={hasGift} />}
 
             <Button
               size="lg"
               full
+              className={styles.payBtn}
               onClick={onPay}
               disabled={!canPay || phase === "paying"}
               aria-busy={phase === "paying"}
@@ -558,26 +593,37 @@ export default function CheckoutPage() {
                   bare text nodes inherit it — "Pay" and the amount drift apart and read as
                   two labels instead of one sentence. */}
               {phase === "paying" ? (
-                "Authorizing…"
+                <span className={styles.payBusy}>
+                  <span className={styles.spinner} aria-hidden />
+                  Authorizing…
+                </span>
               ) : (
                 <span>
-                  Pay <Money minor={due} />
+                  {failure ? "Try again — pay " : "Pay "}
+                  <Money minor={due} />
                 </span>
               )}
             </Button>
 
+            {/*
+              This line exists to answer one question: why can't I press that. It says nothing
+              when there is nothing stopping the buyer — a permanent caption under a button is
+              noise, and it trains people to stop reading the one time it matters.
+            */}
             <p className={styles.payNote} aria-live="polite">
               {phase === "paying"
-                ? "Drawing the gift card, then authorizing the card. Don't close this tab."
+                ? "Drawing the gift card, then authorizing the card. Don’t close this tab."
                 : !fulfilled
                   ? "Choose an address and a delivery speed to continue."
                   : !hasGift && !hasCard
                     ? "Add a gift card or choose a card to continue."
                     : planFallsShort(plan)
-                      ? "The gift card doesn't cover the total, and no card is selected."
-                      : "The card is authorized first and captured only once the gift cards settle."}
+                      ? "The gift card doesn’t cover the total, and no card is selected."
+                      : ""}
             </p>
-          </Panel>
+
+            <SettlementOrder hasGift={hasGift} hasCard={hasCard} />
+          </div>
         </aside>
       </div>
     </Container>
@@ -593,35 +639,111 @@ function labelForTotal(type: string): string {
   return type.replace(/_/g, " ");
 }
 
+/** The tick used both in a step marker and inline in the gift-card status line. */
+function CheckMark() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width="12"
+      height="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 8.5 6.2 11.7 13 4.9" />
+    </svg>
+  );
+}
+
+/**
+ * One step of the flow.
+ *
+ * The marker and the rule under it are the progress affordance — there is no separate
+ * stepper, because a stepper above a three-step form is a second copy of the form. The rule
+ * runs from each marker down to the next and turns brand-green once the step it leaves is
+ * answered, so the spine fills in as the buyer descends.
+ */
 function Step({
   index,
   title,
   done,
   muted,
+  last,
   children,
 }: {
   index: number;
   title: string;
   done: boolean;
   muted?: boolean;
+  /** The last step draws no connector — there is nothing below it to connect to. */
+  last?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className={styles.step} data-muted={muted || undefined}>
+    <section
+      className={styles.step}
+      data-muted={muted || undefined}
+      data-done={done || undefined}
+      data-last={last || undefined}
+    >
       <div className={styles.stepHead}>
         <span className={styles.stepIndex} data-done={done || undefined} aria-hidden>
-          {done ? (
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 8.5 6.2 11.7 13 4.9" />
-            </svg>
-          ) : (
-            index
-          )}
+          {done ? <CheckMark /> : index}
         </span>
         <h2 className={styles.stepTitle}>{title}</h2>
       </div>
       <div className={styles.stepBody}>{children}</div>
     </section>
+  );
+}
+
+/**
+ * What pressing the button actually does, in the order it does it.
+ *
+ * A split payment is an unfamiliar shape — two instruments, one order, and an amount on the
+ * gift card that nobody states up front — so the sequence is written out beside the numbers
+ * rather than left to be discovered by a decline. It describes the instruments that are
+ * actually configured: promising a gift-card draw to somebody who hasn't presented one is
+ * the same class of untruth as inventing its balance.
+ *
+ * It also pre-states the guarantee the failure path relies on. A buyer who has read "if
+ * anything fails, every draw is reversed" *before* pressing pay reads the decline notice as
+ * a confirmation rather than as a claim made by the party that just took their money.
+ */
+function SettlementOrder({ hasGift, hasCard }: { hasGift: boolean; hasCard: boolean }) {
+  if (!hasGift && !hasCard) return null;
+
+  const steps: string[] = [];
+  if (hasGift) {
+    steps.push(
+      "The gift card is drawn open-amount — the store takes what the card holds, up to the total, and never more.",
+    );
+  }
+  if (hasCard) {
+    steps.push(
+      hasGift
+        ? "The card is authorized for whatever the gift card left behind."
+        : "The card is authorized for the full amount.",
+    );
+  }
+  steps.push(
+    hasGift
+      ? "Both are captured against one order. If any part fails, every gift-card draw in the attempt is reversed."
+      : "It is captured against one order. If any part fails, nothing is captured.",
+  );
+
+  return (
+    <div className={styles.settlement}>
+      <p className={styles.settlementHead}>When you press pay</p>
+      <ol className={styles.settlementList}>
+        {steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -642,17 +764,43 @@ function SkeletonSummary() {
  * The store reverses every gift-card draw before it returns the error, so the one thing a
  * buyer needs to know — that their balance is intact — is said first and without hedging.
  */
-function Declined({ error }: { error: StoreError }) {
+function Declined({ error, hadGift }: { error: StoreError; hadGift: boolean }) {
   return (
     <div className={styles.declined} role="alert">
       <p className={styles.declinedTitle}>
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7.5v5.2M12 16.3v.2" />
+        </svg>
         Not paid
         {error.code && <code className={styles.declinedCode}>{error.code}</code>}
       </p>
       <p className={styles.declinedBody}>{error.detail}</p>
+      {/* The one thing a buyer needs to know is what happened to their money, and it is only
+          honest if it matches what was actually presented — claiming gift-card draws were
+          reversed when no gift card was submitted is reassurance about a thing that never
+          happened. */}
       <p className={styles.declinedRestore}>
-        Every gift-card draw in this attempt was reversed. Your balances are exactly what they
-        were before you pressed pay, and the card was not captured.
+        {hadGift ? (
+          <>
+            <strong>Every gift-card draw in this attempt was reversed.</strong> Your balances
+            are exactly what they were before you pressed pay, and no card was captured.
+          </>
+        ) : (
+          <>
+            <strong>Nothing was taken.</strong> No gift card was presented, and no card was
+            captured.
+          </>
+        )}
       </p>
     </div>
   );

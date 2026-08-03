@@ -419,19 +419,63 @@ export async function fetchFundingCards(): Promise<FundingCard[]> {
 export { minorFromDisplay } from "@/lib/money";
 
 /**
- * Find the enrolled gift card a typed code refers to, by its last four.
+ * What a typed gift-card code could be resolved to *from the browser*.
  *
- * Codes are hashed one-way in the ledger, so the browser cannot look one up — the last four
- * is the only part that is ever recoverable, and it is what the funding list reports. An
- * ambiguous match (two cards ending the same) resolves to nothing, because guessing which
- * one the buyer meant would put a number on screen that might not be theirs.
+ * Codes are hashed one-way in the ledger and the store deliberately exposes no
+ * balance-by-code endpoint — publishing one would be an oracle for enumerating live codes,
+ * which is the same reason `settleGiftCards` returns one message for "no such card" and
+ * "wrong PIN". So the only handle the browser has is the last four digits, which is the one
+ * part `GET /funding/cards` reports.
+ *
+ * That handle is not always enough, and the three ways it can fail are genuinely different
+ * facts about the world. Collapsing them into a single `null` is what made this surface
+ * claim "codes are stored hashed, so this one can't be looked up" for a code whose balance
+ * the ledger knows perfectly well — the ignorance was real, but the stated reason was not.
+ * Each outcome is named here so the UI can say the true one.
  */
-export function matchGiftCard(code: string, cards: FundingCard[]): FundingCard | null {
+export type GiftCardMatch =
+  /** Nothing typed yet, or too short to carry four digits. */
+  | { kind: "empty" }
+  /** No enrolled closed-loop card ends in those four. Nothing to project. */
+  | { kind: "unmatched"; last4: string }
+  /** More than one does. Picking one would put a number on screen that may not be theirs. */
+  | { kind: "ambiguous"; last4: string; count: number }
+  | { kind: "matched"; card: FundingCard };
+
+export function resolveGiftCard(code: string, cards: FundingCard[]): GiftCardMatch {
   const normalised = code.replace(/[\s-]/g, "").toUpperCase();
-  if (normalised.length < 4) return null;
+  if (normalised.length < 4) return { kind: "empty" };
+
   const last4 = normalised.slice(-4);
   const matches = cards.filter((c) => c.family === "closed_loop" && c.last4 === last4);
-  return matches.length === 1 ? (matches[0] ?? null) : null;
+
+  const only = matches[0];
+  if (matches.length === 1 && only) return { kind: "matched", card: only };
+  if (matches.length === 0) return { kind: "unmatched", last4 };
+  return { kind: "ambiguous", last4, count: matches.length };
+}
+
+/**
+ * Why a gift-card draw is being shown as unknown.
+ *
+ * The plan renders "not yet known" for all of these, but the sentence underneath has to name
+ * the actual cause — "we can't tell your card from another one ending 0001" and "the ledger
+ * has never confirmed this balance" are not the same admission.
+ */
+export type UnknownDrawReason =
+  /** Fewer than four characters typed — not enough to match anything. */
+  | "tooShort"
+  | "unmatched"
+  | "ambiguous"
+  | "unverified"
+  | "stale"
+  /** The ledger gave a balance string this app can't parse into minor units. */
+  | "unreadable";
+
+export interface GiftUnknown {
+  reason: UnknownDrawReason;
+  last4?: string;
+  count?: number;
 }
 
 /* ── the card rail ─────────────────────────────────────────────────────── */

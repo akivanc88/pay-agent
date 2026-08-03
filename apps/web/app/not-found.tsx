@@ -27,10 +27,10 @@ export default function NotFound() {
           body="The link may have a typo in it, or it may point at something we've since retired. The shop, the wallet and the checkout are all reachable from the header."
           action={{ href: "/", label: "Browse the shop" }}
           art={
-            <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               {/* an empty trellis — structure with nothing grown on it */}
-              <path d="M24 84V30M48 84V22M72 84V30" opacity="0.55" />
-              <path d="M18 46h60M18 62h60" opacity="0.3" />
+              <path d="M24 84V30M48 84V22M72 84V30" opacity="0.5" />
+              <path d="M18 46h60M18 62h60" opacity="0.28" />
               <path d="M48 22c0-7-5-13-13-14 0 8 5 14 13 14Zm0 0c0-6 4-11 11-12 0 7-5 12-11 12Z" />
             </svg>
           }

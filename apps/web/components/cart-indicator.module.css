@@ -6,12 +6,21 @@
   height: 44px;
   border-radius: var(--r-pill);
   color: var(--ink-2);
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
 }
 .link:hover {
   color: var(--ink);
   background: var(--surface-2);
 }
+
+/* The bag itself lifts a hair and settles — the same physics as the buttons, at a tenth the
+   amplitude, because it is a 20px glyph and not a slab. */
+.link svg {
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.link:hover svg { transform: translateY(-1px); }
+.link:active svg { transform: translateY(0.5px) scale(0.94); transition-duration: var(--dur-1); }
 
 .count {
   position: absolute;
@@ -28,8 +37,25 @@
   border-radius: var(--r-pill);
   background: var(--brand);
   color: var(--brand-contrast);
+  /* The header ground is `--paper` at 82% over the page, so a `--paper` ring is the one that
+     actually reads as a gap punched around the badge rather than a coloured outline. */
   border: 2px solid var(--paper);
   font-size: 0.66rem;
   font-weight: 700;
   line-height: 1;
+  animation: countIn var(--dur-3) var(--ease-out);
+}
+
+/*
+ * The badge arrives with a small overshoot when the count changes — the only confirmation a
+ * shopper gets that "Add to cart" on a product page did anything, since the cart itself is a
+ * page away. Keyed on the count in the component, so it replays on every change.
+ */
+@keyframes countIn {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.14); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .count { animation: none; }
 }

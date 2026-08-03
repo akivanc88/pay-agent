@@ -18,13 +18,15 @@ import styles from "./page.module.css";
  * to read — see `page.tsx`, which is the server half.
  */
 export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
-  const { lines, ready, count, total, setQuantity, remove } = useCart();
+  const { lines, ready, count, total, setQuantity, remove, add } = useCart();
 
   /* An empty cart is a whole page of its own, not a panel inside the cart layout — it has
      no summary, no line items, and nothing the cart's heading applies to. */
   if (ready && lines.length === 0) {
     return <EmptyCart suggestions={suggestions} />;
   }
+
+  const currency = lines[0]?.currency ?? "CAD";
 
   return (
     <div className={styles.page}>
@@ -33,7 +35,7 @@ export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
         <h1 className={styles.title}>Your cart</h1>
         {ready && count > 0 && (
           <p className={styles.count}>
-            {count} {count === 1 ? "item" : "items"} ready to go
+            {count} {count === 1 ? "item" : "items"}, held for you until you check out
           </p>
         )}
       </div>
@@ -42,13 +44,29 @@ export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
         <CartSkeleton />
       ) : (
         <div className={styles.layout}>
-          <ul className={styles.lines} aria-label="Items in your cart">
-            {lines.map((line) => (
-              <li key={line.id}>
-                <CartRow line={line} onQuantity={setQuantity} onRemove={remove} />
-              </li>
-            ))}
-          </ul>
+          <div className={styles.itemsCol}>
+            {/*
+             * One panel, ruled between rows — not a stack of cards. Nine separate bordered
+             * boxes with air between them says "nine unrelated things"; a cart is one list
+             * of one order, and the hairline is the only mark needed to say where a line
+             * ends.
+             */}
+            <Panel className={styles.lines}>
+              <ul aria-label="Items in your cart">
+                {lines.map((line) => (
+                  <li key={line.id}>
+                    <CartRow line={line} onQuantity={setQuantity} onRemove={remove} />
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+
+            <AlsoFromTheShop
+              suggestions={suggestions}
+              inCart={lines.map((l) => l.id)}
+              onAdd={add}
+            />
+          </div>
 
           <aside className={styles.summaryCol} aria-label="Order summary">
             <Panel className={styles.summary}>
@@ -63,7 +81,7 @@ export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
                     </span>
                   </dt>
                   <dd>
-                    <Money minor={total} currency={lines[0].currency} />
+                    <Money minor={total} currency={currency} />
                   </dd>
                 </div>
                 <div className={styles.summaryRow} data-muted>
@@ -76,13 +94,20 @@ export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
                 </div>
               </dl>
 
-              <div className={styles.summaryTotal}>
-                <span>Estimated total</span>
-                <Money minor={total} currency={lines[0].currency} className={styles.totalAmount} />
+              {/*
+               * The total gets its own band rather than a fourth row in the column above.
+               * It is the number this page exists to state, so it carries real size — and
+               * putting it in a separate ground is what lets it, because a 22px amount
+               * sitting in a 15px column would drag the decimal off the column's vertical.
+               */}
+              <div className={styles.totalBand}>
+                <span className={styles.totalLabel}>Estimated total</span>
+                <Money minor={total} currency={currency} className={styles.totalAmount} />
               </div>
+
               <p className={styles.summaryNote}>
-                The merchant is authoritative on the final total — delivery and taxes are
-                confirmed on the next step, before any payment is taken.
+                Delivery and taxes are quoted by the shop on the next step, before anything is
+                charged. You can pay with a gift card, a card, or both.
               </p>
 
               <Button href="/checkout" size="lg" full className={styles.checkoutBtn}>
@@ -113,75 +138,147 @@ function CartRow({
   onRemove: (id: string) => void;
 }) {
   return (
-    <Panel className={styles.row}>
+    <div className={styles.row}>
       <Link href={`/product/${line.id}`} className={styles.thumb} aria-hidden tabIndex={-1}>
         <ProductArt id={line.id} />
       </Link>
 
-      <div className={styles.rowBody}>
-        <div className={styles.rowTop}>
-          <div className={styles.rowInfo}>
-            <Link href={`/product/${line.id}`} className={styles.rowTitle}>
-              {line.title}
-            </Link>
-            {/* At quantity 1 the unit price is character-for-character the line total, two
-                inches away in the same row. It only carries information once there is
-                arithmetic to explain. */}
-            {line.quantity > 1 && (
-              <p className={styles.rowUnit}>
+      <div className={styles.rowInfo}>
+        <Link href={`/product/${line.id}`} className={styles.rowTitle}>
+          {line.title}
+        </Link>
+        <p className={styles.rowMeta}>
+          {/* At quantity 1 the unit price is character-for-character the line total, two
+              inches away in the same row. It only carries information once there is
+              arithmetic to explain. */}
+          {line.quantity > 1 && (
+            <>
+              <span className={styles.rowUnit}>
                 <Money minor={line.price} currency={line.currency} /> each
-              </p>
-            )}
-          </div>
-          <Money
-            minor={line.price * line.quantity}
-            currency={line.currency}
-            className={styles.rowTotal}
-          />
-        </div>
-
-        <div className={styles.rowControls}>
-          <div className={styles.stepper} role="group" aria-label={`Quantity for ${line.title}`}>
-            <button
-              type="button"
-              className={styles.stepBtn}
-              onClick={() => onQuantity(line.id, line.quantity - 1)}
-              disabled={line.quantity <= 1}
-              aria-label="Decrease quantity"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M5 12h14" />
-              </svg>
-            </button>
-            <span className={`${styles.stepValue} tnum`} aria-live="polite">
-              {line.quantity}
-            </span>
-            <button
-              type="button"
-              className={styles.stepBtn}
-              onClick={() => onQuantity(line.id, line.quantity + 1)}
-              aria-label="Increase quantity"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-          </div>
-
+              </span>
+              <span className={styles.metaDot} aria-hidden>
+                ·
+              </span>
+            </>
+          )}
           <button
             type="button"
             className={styles.remove}
             onClick={() => onRemove(line.id)}
             aria-label={`Remove ${line.title} from cart`}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
-            </svg>
             Remove
           </button>
-        </div>
+        </p>
       </div>
-    </Panel>
+
+      <div className={styles.stepper} role="group" aria-label={`Quantity for ${line.title}`}>
+        <button
+          type="button"
+          className={styles.stepBtn}
+          onClick={() => onQuantity(line.id, line.quantity - 1)}
+          disabled={line.quantity <= 1}
+          aria-label={`Decrease quantity of ${line.title}`}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M5 12h14" />
+          </svg>
+        </button>
+        <span className={`${styles.stepValue} tnum`} aria-live="polite">
+          {line.quantity}
+        </span>
+        <button
+          type="button"
+          className={styles.stepBtn}
+          onClick={() => onQuantity(line.id, line.quantity + 1)}
+          aria-label={`Increase quantity of ${line.title}`}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      <Money
+        minor={line.price * line.quantity}
+        currency={line.currency}
+        className={styles.rowTotal}
+      />
+    </div>
+  );
+}
+
+/* ── the shop, still open ──────────────────────────────────────────────── */
+/**
+ * A cart with two lines in it leaves a tall column of nothing beside a tall summary. Rather
+ * than pad the gap, it is filled with the only thing that honestly belongs there: the rest
+ * of the catalogue, at its real price, one press from being in the order.
+ *
+ * Anything already in the cart is filtered out — offering to add a second copy of the line
+ * directly above is the tell that the list is decorative — as is anything out of stock.
+ */
+function AlsoFromTheShop({
+  suggestions,
+  inCart,
+  onAdd,
+}: {
+  suggestions: CatalogProduct[];
+  inCart: string[];
+  onAdd: (line: Omit<CartLine, "quantity">, quantity?: number) => void;
+}) {
+  const offer = suggestions
+    .filter((p) => p.in_stock && !inCart.includes(p.id))
+    .slice(0, 2);
+  if (offer.length === 0) return null;
+
+  return (
+    <section className={styles.also} aria-label="More from the shop">
+      <SectionLabel>Cut this morning</SectionLabel>
+      <Panel className={styles.alsoPanel}>
+        <ul>
+          {offer.map((product) => (
+            <li key={product.id}>
+              <div className={styles.alsoRow}>
+                <Link
+                  href={`/product/${product.id}`}
+                  className={styles.alsoThumb}
+                  aria-hidden
+                  tabIndex={-1}
+                >
+                  <ProductArt id={product.id} />
+                </Link>
+                <div className={styles.alsoInfo}>
+                  <Link href={`/product/${product.id}`} className={styles.alsoTitle}>
+                    {product.title}
+                  </Link>
+                  <Money
+                    minor={product.price}
+                    currency={product.currency}
+                    className={styles.alsoPrice}
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className={styles.alsoAdd}
+                  onClick={() =>
+                    onAdd({
+                      id: product.id,
+                      title: product.title,
+                      price: product.price,
+                      currency: product.currency,
+                    })
+                  }
+                  aria-label={`Add ${product.title} to cart`}
+                >
+                  Add
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    </section>
   );
 }
 
@@ -199,14 +296,13 @@ function EmptyCart({ suggestions }: { suggestions: CatalogProduct[] }) {
       body="Nothing tied up yet. Pick something from this week’s cuttings and it’ll gather here, ready to check out with a gift card, a card, or both."
       action={suggestions.length === 0 ? { href: "/", label: "Browse the shop" } : undefined}
       art={
-        <svg viewBox="0 0 120 120" fill="none">
-          <circle cx="60" cy="60" r="56" fill="var(--surface-2)" />
-          {/* a single stem in a vase — quiet, hand-drawn */}
-          <path d="M44 66h32l-3 26a4 4 0 0 1-4 3.5H51a4 4 0 0 1-4-3.5L44 66Z" fill="var(--surface)" stroke="var(--line-strong)" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M42 66h36" stroke="var(--line-strong)" strokeWidth="2" strokeLinecap="round" />
-          <path d="M60 62V38" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" />
-          <path d="M60 50c-8-1-13-6-14-13 7 0 13 4 14 11M60 46c7-1 12-6 13-12-6 0-12 3-13 10" fill="var(--brand-tint)" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round" />
-          <circle cx="60" cy="33" r="6" fill="var(--brand-tint)" stroke="var(--brand)" strokeWidth="2" />
+        /* Bare strokes: the disc behind them is the StatePage's, shared with the 404 and the
+           error boundary so all three states are made of the same material. */
+        <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          {/* a single stem in a vase */}
+          <path d="M26 52h44l-5 32a5 5 0 0 1-5 4.5H36a5 5 0 0 1-5-4.5L26 52Z" opacity="0.5" />
+          <path d="M48 48V22" />
+          <path d="M48 40c-9-1-15-7-16-15 8 0 15 5 16 13M48 35c8-1 14-7 15-14-7 0-14 4-15 12" />
         </svg>
       }
     >
@@ -228,19 +324,21 @@ function EmptyCart({ suggestions }: { suggestions: CatalogProduct[] }) {
 function CartSkeleton() {
   return (
     <div className={styles.layout} aria-hidden>
-      <div className={styles.lines}>
-        {[0, 1].map((i) => (
-          <div key={i} className={`${styles.row} ${styles.rowSkeleton}`}>
-            <div className={`${styles.thumb} ${styles.skel}`} />
-            <div className={styles.rowBody}>
-              <div className={styles.skelLine} style={{ width: "55%" }} />
-              <div className={styles.skelLine} style={{ width: "30%" }} />
+      <div className={styles.itemsCol}>
+        <div className={`${styles.lines} ${styles.linesSkeleton}`}>
+          {[0, 1].map((i) => (
+            <div key={i} className={`${styles.row} ${styles.rowSkeleton}`}>
+              <div className={`${styles.thumb} ${styles.skel}`} />
+              <div className={styles.rowInfo}>
+                <div className={styles.skelLine} style={{ width: "55%" }} />
+                <div className={styles.skelLine} style={{ width: "24%" }} />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       <div className={styles.summaryCol}>
-        <div className={`${styles.summary} ${styles.skel}`} style={{ height: "16rem" }} />
+        <div className={`${styles.summary} ${styles.skel}`} style={{ height: "20rem" }} />
       </div>
     </div>
   );

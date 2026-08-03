@@ -22,13 +22,22 @@ export function StatePage({
   title,
   body,
   action,
+  secondary,
   children,
 }: {
+  /**
+   * A bare line drawing. The disc it sits on is drawn *here*, not in the caller — the cart's
+   * empty state used to bring its own filled circle while the 404 and the error boundary
+   * were unmounted strokes on paper, so three states that share a composition arrived in
+   * three different weights.
+   */
   art?: ReactNode;
   eyebrow: string;
   title: string;
   body: ReactNode;
   action?: { href: string; label: string };
+  /** A quieter action beneath the main one — "Try again" on the error boundary. */
+  secondary?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -42,11 +51,14 @@ export function StatePage({
         <SectionLabel>{eyebrow}</SectionLabel>
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.body}>{body}</p>
-        {action && (
+        {(action || secondary) && (
           <div className={styles.actions}>
-            <Button href={action.href} size="lg">
-              {action.label}
-            </Button>
+            {action && (
+              <Button href={action.href} size="lg">
+                {action.label}
+              </Button>
+            )}
+            {secondary}
           </div>
         )}
       </div>

@@ -1,80 +1,81 @@
+/* The cart uses the same gutter measurement as `Container` and the header — see the note in
+   ui.module.css. It is not a `Container` only because its head and its grid want different
+   maximum widths from each other. */
 .page {
   width: 100%;
   max-width: var(--content);
   margin-inline: auto;
-  padding: var(--sp-6) var(--sp-5) var(--sp-9);
+  padding: var(--sp-6) var(--sp-5) var(--sp-7);
+}
+@media (max-width: 30rem) {
+  .page { padding-inline: var(--sp-4); }
 }
 
 /* ── head ── */
 .head {
-  margin-bottom: var(--sp-6);
+  margin-bottom: var(--sp-5);
 }
 .title {
   margin-top: var(--sp-2);
-  font-size: clamp(2rem, 1.5rem + 2vw, 2.7rem);
+  font-size: var(--display-md);
 }
 .count {
   margin-top: var(--sp-2);
   color: var(--ink-2);
-  font-size: 1rem;
+  font-size: var(--text-lg);
 }
 
 /* ── layout ── */
 .layout {
   display: grid;
-  grid-template-columns: 1fr 20rem;
+  grid-template-columns: minmax(0, 1fr) 21rem;
   gap: clamp(var(--sp-4), 3vw, var(--sp-6));
   align-items: start;
 }
+.itemsCol {
+  min-width: 0;
+}
 
-.lines {
+/* ── the list ──
+ * One panel, rows ruled between. The rule is the *only* mark separating two lines — no gap,
+ * no second border, no shadow — which is what makes three items read as one order rather
+ * than three unrelated cards. */
+.lines ul {
   list-style: none;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+  margin: 0;
 }
-.lines li {
-  display: block;
+.lines li + li .row {
+  border-top: 1px solid var(--line);
 }
 
-/* ── line item ── */
-/* A hairline and a surface shift are enough to say "one item". The panel's shadow on top
-   of those is a third statement of the same thing, nine rows down a page. */
 .row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
   gap: var(--sp-4);
-  padding: var(--sp-4);
-  box-shadow: none;
+  padding: var(--sp-4) var(--sp-5);
 }
 .thumb {
   flex: none;
-  width: 6.5rem;
+  width: 4.75rem;
   aspect-ratio: 1 / 1;
-  align-self: flex-start;
   border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid var(--line);
 }
-/* `product-art` hashes its own class names; `[data-art]` is the stable hook. */
+/* `product-art` hashes its own class names; `[data-art]` is the stable hook. The art moves
+   inside its frame on hover; the frame itself does not, so the hairline stays a hairline. */
 .thumb [data-art] {
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
+  transition: transform var(--dur-4) var(--ease-out);
 }
-.rowBody {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
+.row:hover .thumb [data-art] {
+  transform: scale(1.05);
 }
-.rowTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
+
 .rowInfo {
   min-width: 0;
 }
@@ -82,43 +83,71 @@
   display: inline-block;
   font-family: var(--font-serif);
   font-size: var(--text-xl);
+  line-height: 1.25;
   letter-spacing: -0.008em;
   color: var(--ink);
+  /* The serif's own side bearing, corrected once here so the title's visual left edge lines
+     up with the sans meta line beneath it. Matches the global h1–h4 rule. */
+  margin-left: -0.03em;
   transition: color var(--dur-2) var(--ease-out);
 }
 .rowTitle:hover {
   color: var(--brand-ink);
 }
-.rowUnit {
-  margin-top: 0.15rem;
-  color: var(--ink-3);
-  font-size: var(--text-sm);
-}
-.rowTotal {
-  flex: none;
-  font-size: var(--text-lg);
-  font-weight: 560;
-  color: var(--ink);
-}
 
-/* `space-between` threw Remove ~470px from the stepper it sits with. They are one control
-   group — quantity and removal both act on this line — so they stay adjacent. */
-.rowControls {
+/* Unit price and Remove share one line. Stacking them made a three-line info column beside a
+   76px thumb, which is what made every row 180px tall. */
+.rowMeta {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  margin-top: auto;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.35rem;
+  margin-top: 0.1rem;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+.rowUnit {
+  color: var(--ink-3);
+}
+.metaDot {
+  color: var(--line-strong);
+}
+.remove {
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-radius: var(--r-xs);
+  /* An underline that grows from nothing on hover, rather than a colour swap alone. The
+     offset keeps it clear of the descenders. */
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur-2) var(--ease-out),
+    text-decoration-color var(--dur-2) var(--ease-out);
+}
+.remove:hover {
+  color: var(--danger);
+  text-decoration-color: currentColor;
 }
 
-/* stepper (shared visual language with the product page) */
+/* ── stepper ── */
+/* A single machined control: one border around the group, no border between the parts, and
+   the thumb pressed into the ground rather than floated over it. */
 .stepper {
   display: inline-flex;
   align-items: center;
-  gap: 0.1rem;
   padding: 0.2rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-pill);
   background: var(--surface);
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+.stepper:hover {
+  border-color: var(--ink-3);
 }
 .stepBtn {
   display: grid;
@@ -130,52 +159,125 @@
   background: transparent;
   color: var(--ink-2);
   cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+  transition: background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 }
 .stepBtn:hover:not(:disabled) {
   background: var(--surface-2);
   color: var(--ink);
 }
+/* The press is a real press: the glyph sinks into the well and comes back on the slower
+   ease. Nothing here is opacity. */
+.stepBtn:active:not(:disabled) {
+  background: var(--surface-sunk);
+  transform: scale(0.9);
+}
 .stepBtn:disabled {
-  color: var(--ink-3);
-  opacity: 0.5;
-  cursor: default;
+  color: var(--line-strong);
+  cursor: not-allowed;
+}
+.stepBtn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -1px;
 }
 .stepValue {
-  min-width: 1.8ch;
+  min-width: 2ch;
   text-align: center;
   font-size: var(--text-md);
   font-weight: 560;
   color: var(--ink);
 }
 
-.remove {
+/* The amount column. A fixed measure so every line total in the list shares one right edge
+   and therefore one decimal, whatever the quantity does to the digits. */
+.rowTotal {
+  min-width: 5.5ch;
+  text-align: right;
+  font-size: var(--text-lg);
+  font-weight: 560;
+  color: var(--ink);
+}
+
+/* ── the shop, still open ── */
+.also {
+  margin-top: var(--sp-5);
+}
+.alsoPanel {
+  margin-top: var(--sp-3);
+  background: var(--surface-sunk);
+}
+.alsoPanel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.alsoPanel li + li .alsoRow {
+  border-top: 1px solid var(--line);
+}
+.alsoRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+}
+.alsoThumb {
+  width: 3rem;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.alsoThumb [data-art] {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.alsoInfo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.5rem;
+  min-width: 0;
+}
+/* The title is the row's link, so it carries the row's tap target. Set as text alone it was
+   25.6px tall — a thumb-sized miss on the surface that exists to add things to the cart. */
+.alsoTitle {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
-  gap: 0.35rem;
-  border: none;
-  background: transparent;
-  color: var(--ink-3);
-  font-size: var(--text-base);
-  font-weight: 520;
-  cursor: pointer;
-  padding: 0.35rem 0.5rem;
-  border-radius: var(--r-sm);
-  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+  min-width: 2.75rem;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  letter-spacing: -0.008em;
+  color: var(--ink);
+  transition: color var(--dur-2) var(--ease-out);
 }
-.remove:hover {
-  color: var(--danger);
-  background: var(--danger-tint);
+.alsoTitle:hover {
+  color: var(--brand-ink);
+}
+.alsoPrice {
+  font-size: var(--text-base);
+  color: var(--ink-3);
+}
+.alsoAdd {
+  flex: none;
 }
 
 /* ── summary ── */
+/*
+ * Sticks *below* the sticky header, not under it. `--header-h` is published for exactly this
+ * — a hand-guessed offset here previously slid the panel's own heading behind the header on
+ * a long cart.
+ */
 .summaryCol {
   position: sticky;
-  top: var(--sp-7);
+  top: calc(var(--header-h) + var(--sp-4));
 }
 .summary {
   padding: var(--sp-5);
+  overflow: hidden;
 }
 .summaryTitle {
   font-size: var(--text-2xl);
@@ -215,36 +317,42 @@
   font-size: var(--text-sm);
 }
 
-.summaryTotal {
+/*
+ * The total's own ground, bled to the panel's inner edge. It is a different register from
+ * the column above — a conclusion, not another line — which is what lets it take real size
+ * without the decimal drifting off a column it is no longer part of.
+ */
+.totalBand {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding-top: var(--sp-4);
-  border-top: 1px solid var(--line);
+  margin-inline: calc(-1 * var(--sp-5));
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface-2);
+  border-block: 1px solid var(--line);
+}
+.totalLabel {
   font-size: var(--text-md);
   font-weight: 620;
   color: var(--ink);
 }
-/*
- * The total is the same size and weight as every amount above it. It sits directly beneath
- * the subtotal with a rule between them — the exact spot the eye compares two numbers — and
- * both a larger size and a heavier weight move the decimal point off the column's vertical.
- * The emphasis is carried by the rule and by the label, which cost nothing in alignment.
- */
 .totalAmount {
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--text-2xl);
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  color: var(--ink);
 }
 .summaryNote {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-4);
   color: var(--ink-3);
   font-size: var(--text-sm);
   line-height: 1.55;
+  text-wrap: pretty;
 }
 
 .checkoutBtn {
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
 }
 .continueLink {
   display: flex;
@@ -252,20 +360,22 @@
   justify-content: center;
   min-height: 2.75rem;
   text-align: center;
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
   color: var(--ink-2);
   font-size: var(--text-base);
   font-weight: 520;
   padding: 0.3rem;
-  transition: color var(--dur-2) var(--ease-out);
+  border-radius: var(--r-sm);
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
 }
 .continueLink:hover {
   color: var(--ink);
+  background: var(--surface-2);
 }
 
 /* ── empty state: the shop, offered ── */
 .suggest {
-  margin-top: var(--sp-8);
+  margin-top: var(--sp-7);
   padding-top: var(--sp-6);
   border-top: 1px solid var(--line);
 }
@@ -289,12 +399,21 @@
   border-radius: var(--r-md);
   animation: pulse 1.4s var(--ease-in-out) infinite;
 }
-.rowSkeleton {
-  align-items: stretch;
+.linesSkeleton {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.linesSkeleton .row + .row {
+  border-top: 1px solid var(--line);
 }
 .rowSkeleton .thumb {
-  height: 5rem;
   border: none;
+}
+.rowSkeleton .rowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 .skelLine {
   height: 0.85rem;
@@ -311,37 +430,74 @@
 }
 
 /* ── responsive ── */
+@media (max-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+  .row {
+    padding-inline: var(--sp-4);
+  }
+}
+
 @media (max-width: 52rem) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .summaryCol {
     position: static;
   }
 }
 
-@media (max-width: 30rem) {
+/*
+ * Below 34rem the row folds. The thumb spans both rows on the left, the title and amount
+ * share the first line, and the controls take the second — so the amount stays on the
+ * title's line where it is being compared, and the stepper gets its full 44px without
+ * squeezing anything.
+ */
+@media (max-width: 34rem) {
   .row {
-    gap: var(--sp-3);
-    padding: var(--sp-3);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb info total"
+      "thumb step step";
+    row-gap: var(--sp-3);
+    column-gap: var(--sp-3);
+    padding: var(--sp-4);
+    align-items: start;
   }
-  /* 44px is the floor for a thumb, and the stepper is the primary control on this row. */
+  .thumb {
+    grid-area: thumb;
+    width: 4rem;
+  }
+  .rowInfo { grid-area: info; }
+  .rowTotal { grid-area: total; align-self: start; }
+  .stepper { grid-area: step; justify-self: start; }
   .stepBtn {
     width: 2.75rem;
     height: 2.75rem;
   }
-  /* The title is a link to the product. A long one already clears 44px by wrapping; a short
-     one like "Gardenias" is a single 29px line, so the floor is set explicitly. */
+  /* The title is a link to the product; a short one like "Gardenias" is a single 29px line,
+     so the touch floor is set explicitly and the meta line sits under it. */
   .rowTitle {
     display: flex;
     align-items: center;
     min-height: 2.75rem;
   }
-  .thumb {
-    width: 4.5rem;
+  /* Both of these are inline controls on a desktop pointer and thumb targets on a phone.
+     They take the 44px floor here rather than carrying it everywhere and bloating the row. */
+  .rowMeta {
+    align-items: center;
   }
-  .rowControls {
-    flex-wrap: wrap;
-    gap: var(--sp-2);
+  .remove {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.15rem;
+  }
+  .alsoRow {
+    padding-inline: var(--sp-3);
+  }
+  .alsoAdd {
+    min-height: 2.75rem;
   }
 }

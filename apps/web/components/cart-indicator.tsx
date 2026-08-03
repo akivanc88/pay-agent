@@ -27,7 +27,9 @@ export function CartIndicator() {
         <path d="M9 8.5V6.6a3 3 0 0 1 6 0v1.9" />
       </svg>
       {show && (
-        <span className={`${styles.count} tnum`} aria-hidden>
+        /* Keyed on the count so React replaces the node rather than mutating it, which is
+           what re-triggers the arrival animation on every change. */
+        <span key={count} className={`${styles.count} tnum`} aria-hidden>
           {count > 99 ? "99+" : count}
         </span>
       )}

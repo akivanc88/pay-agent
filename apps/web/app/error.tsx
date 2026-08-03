@@ -6,7 +6,6 @@ import { Button } from "@/components/ui";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { StatePage } from "@/components/state-page";
-import stateStyles from "@/components/state-page.module.css";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
@@ -50,22 +49,21 @@ export default function GlobalError({
             </>
           }
           action={{ href: "/wallet", label: "Check the wallet" }}
-          art={
-            <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {/* a snapped stem */}
-              <path d="M48 86V56" />
-              <path d="M48 56 34 42" opacity="0.55" />
-              <path d="M52 50c6-10 3-22-6-30-5 10-2 22 6 30Z" />
-              <path d="M30 44c-7-3-11-10-11-18 8 1 14 7 15 15" opacity="0.55" />
-            </svg>
-          }
-        >
-          <div className={stateStyles.extra}>
-            <Button onClick={reset} variant="ghost">
+          secondary={
+            <Button onClick={reset} variant="ghost" size="lg">
               Try again
             </Button>
-          </div>
-        </StatePage>
+          }
+          art={
+            <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              {/* a snapped stem */}
+              <path d="M48 86V56" />
+              <path d="M48 56 34 42" opacity="0.5" />
+              <path d="M52 50c6-10 3-22-6-30-5 10-2 22 6 30Z" />
+              <path d="M30 44c-7-3-11-10-11-18 8 1 14 7 15 15" opacity="0.5" />
+            </svg>
+          }
+        />
       </main>
       <SiteFooter />
     </>

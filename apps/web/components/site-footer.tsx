@@ -29,6 +29,7 @@ export function SiteFooter() {
           <div className={styles.links}>
             <Link href="/" className={styles.link}>Shop</Link>
             <Link href="/cart" className={styles.link}>Cart</Link>
+            <Link href="/checkout" className={styles.link}>Checkout</Link>
             <Link href="/wallet" className={styles.link}>Wallet</Link>
           </div>
         </nav>
@@ -43,6 +44,19 @@ export function SiteFooter() {
           <p className={styles.disclosure}>
             Card payments run in <strong>Stripe test mode</strong>. No live card is ever
             charged, and no card number reaches this server.
+          </p>
+        </div>
+      </div>
+
+      {/* The base rule. Without it the footer's last line is whichever column happens to be
+          tallest, and the page ends on a ragged edge. */}
+      <div className={styles.baseline}>
+        <div className={styles.baselineInner}>
+          <p className={styles.fine}>
+            Fernbank &amp; Co is a fictional shop. Prices are in <span className="tnum">CAD</span>.
+          </p>
+          <p className={styles.fine}>
+            Built on <strong>pay-agent</strong> — one funding core, many destinations.
           </p>
         </div>
       </div>

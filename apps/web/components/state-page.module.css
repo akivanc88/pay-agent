@@ -1,5 +1,12 @@
+/*
+ * The wrap is asymmetric on purpose. A state page is read top-down and then left — the eye
+ * goes back to the header or on to whatever fills the space below — so the air above the art
+ * is the air that composes it, and an equal measure underneath only pushes the page's own
+ * content away from it.
+ */
 .wrap {
-  padding-block: var(--sp-9);
+  padding-top: clamp(var(--sp-7), 8vh, var(--sp-9));
+  padding-bottom: var(--sp-7);
 }
 
 /*
@@ -12,45 +19,59 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   max-width: 34rem;
   margin-inline: auto;
 }
 
+/*
+ * The plinth. One tinted disc, one hairline, the drawing centred inside it — the same
+ * material as every other quiet surface in the app, so the state reads as part of the
+ * product rather than as an error illustration bolted onto it. The art itself is supplied
+ * as bare strokes and inherits `--brand`.
+ */
 .art {
-  width: 7.5rem;
-  height: 7.5rem;
-  margin-bottom: var(--sp-2);
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  height: 7rem;
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
   color: var(--brand);
 }
 
 .art svg {
-  width: 100%;
-  height: 100%;
+  width: 60%;
+  height: 60%;
+  overflow: visible;
 }
 
 .title {
   font-family: var(--font-serif);
-  font-size: clamp(1.7rem, 3vw, 2.1rem);
+  font-size: var(--display-md);
   font-weight: 600;
-  line-height: 1.12;
+  line-height: 1.14;
   letter-spacing: -0.018em;
 }
 
 .body {
-  max-width: 42ch;
+  margin-top: var(--sp-1);
+  max-width: 44ch;
   color: var(--ink-2);
   font-size: var(--text-lg);
   line-height: 1.65;
+  text-wrap: pretty;
 }
 
+/* Primary and secondary sit on one row and wrap together, so the pair never becomes a
+   ladder on a phone. */
 .actions {
-  margin-top: var(--sp-3);
-}
-
-/* A secondary action beneath the main one — "Try again" on the error boundary. */
-.extra {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  margin-top: var(--sp-4);
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-5);
 }

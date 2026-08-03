@@ -1,6 +1,8 @@
 import { PayFooter } from "@/components/pay-footer";
 import { PayHeader } from "@/components/pay-header";
 
+import styles from "./layout.module.css";
+
 /**
  * The payment frame. See `components/pay-header.tsx` for why it is this bare.
  *
@@ -11,10 +13,10 @@ import { PayHeader } from "@/components/pay-header";
  */
 export default function PayLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className={styles.shell}>
       <PayHeader />
-      <main>{children}</main>
+      <main className={styles.main}>{children}</main>
       <PayFooter />
-    </>
+    </div>
   );
 }

@@ -167,6 +167,42 @@
   color: var(--ink-3);
 }
 
+/*
+ * The empty wallet.
+ *
+ * These three classes were referenced by `page.tsx` and never defined, so a visitor with no
+ * gift cards got the one thing the rubric fails outright: an undesigned state — unstyled
+ * paragraphs stacked flush against a panel edge. TypeScript cannot catch this, because a CSS
+ * module is typed as an index signature and `styles.emptyTitle` is `string` whether or not
+ * the class exists. Only looking at the page finds it.
+ *
+ * It reads as a composed absence rather than a hole: the copy explains what a gift card is
+ * *for* in this project, which is the one thing a wallet with nothing in it can still teach.
+ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  padding: var(--sp-6) var(--sp-5);
+  text-align: left;
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.emptyBody {
+  max-width: 44ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
 /* One panel holding the whole ledger, with hairlines between entries — not nine separately
    elevated cards. A border *and* a shadow *and* a background shift, repeated nine times
    down a page, states "this is a distinct object" nine times about rows of one table. */

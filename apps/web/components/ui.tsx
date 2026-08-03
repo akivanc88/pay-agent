@@ -16,11 +16,14 @@ export function Money({
   currency?: string;
   className?: string;
 }) {
-  return <span className={`tnum ${className}`}>{formatMoney(minor, currency)}</span>;
+  return (
+    <span className={`${styles.money} tnum ${className}`}>{formatMoney(minor, currency)}</span>
+  );
 }
 
 /* ── Panel ─────────────────────────────────────────────────────────────
-   The base surface. `tone` shifts the ground; `inset` sinks it. */
+   The base surface. `tone` shifts the ground; `inset` sinks it. Depth is one idea — see the
+   note in ui.module.css. */
 export function Panel({
   children,
   tone = "surface",
@@ -52,11 +55,27 @@ function buttonClass(variant: ButtonVariant, size: ButtonSize, full?: boolean) {
   return `${styles.btn} ${styles[`btn_${variant}`]} ${styles[`btn_${size}`]} ${full ? styles.btnFull : ""}`;
 }
 
+/** The in-flight mark. Sized in `em` so it tracks whatever size the button is. */
+function Spinner() {
+  return (
+    <svg className={styles.spinner} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function Button({
   children,
   variant = "primary",
   size = "md",
   full = false,
+  loading = false,
   href,
   className = "",
   ...rest
@@ -65,6 +84,13 @@ export function Button({
   variant?: ButtonVariant;
   size?: ButtonSize;
   full?: boolean;
+  /**
+   * In-flight. Deliberately *not* `disabled`: a disabled element loses focus, so a keyboard
+   * user who presses a button is thrown back to the top of the document at the exact moment
+   * the page starts telling them what is happening. `aria-disabled` plus `aria-busy` says
+   * the same thing to assistive tech and CSS blocks the pointer.
+   */
+  loading?: boolean;
   href?: string;
   className?: string;
 } & ComponentProps<"button">) {
@@ -77,7 +103,14 @@ export function Button({
     );
   }
   return (
-    <button className={cls} {...rest}>
+    <button
+      className={cls}
+      data-loading={loading || undefined}
+      aria-disabled={loading || undefined}
+      aria-busy={loading || undefined}
+      {...rest}
+    >
+      {loading && <Spinner />}
       {children}
     </button>
   );
@@ -104,8 +137,8 @@ export function Badge({
 }
 
 /* ── SectionLabel — the small uppercase eyebrow used across surfaces. */
-export function SectionLabel({ children }: { children: ReactNode }) {
-  return <p className={styles.eyebrow}>{children}</p>;
+export function SectionLabel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p className={`${styles.eyebrow} ${className}`}>{children}</p>;
 }
 
 /* ── Container — the shared page gutter and max width. */
