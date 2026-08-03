@@ -20,6 +20,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
+  min-height: 44px;
   color: var(--ink);
   font-weight: 600;
 }
@@ -48,11 +49,14 @@
 }
 .navLink {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0.4rem 0.8rem;
   border-radius: var(--r-pill);
   color: var(--ink-2);
   font-weight: 520;
-  font-size: 0.94rem;
+  font-size: var(--text-md);
   transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
 }
 .navLink:hover { color: var(--ink); background: var(--surface-2); }
@@ -64,8 +68,19 @@
   gap: var(--sp-3);
 }
 
+/*
+ * Below 30rem the header has to fit a 34px mark, the nav, a cart and a toggle into 390px
+ * minus two 24px gutters — 342px of content box. It doesn't, so it sheds: the wordmark
+ * goes first (the sprout mark still identifies the product), then the checkout link, which
+ * the cart indicator already leads to. What survives keeps a 44px target.
+ */
 @media (max-width: 30rem) {
-  .inner { gap: var(--sp-3); }
-  .navLink { padding: 0.4rem 0.6rem; font-size: 0.9rem; }
+  .inner { gap: var(--sp-3); padding-inline: var(--sp-4); }
+  .navLink { padding: 0.4rem 0.62rem; font-size: var(--text-base); }
+  .navLink[data-secondary] { display: none; }
+  /* With the wordmark gone the brand is a bare 34px mark, so the link takes the target
+     width explicitly and centres the mark inside it. */
   .wordmark { display: none; }
+  .brand { min-width: 44px; justify-content: center; }
+  .nav { gap: 0.1rem; }
 }

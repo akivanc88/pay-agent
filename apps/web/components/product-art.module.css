@@ -1,12 +1,30 @@
+/*
+ * Specimen palettes for the product illustrations.
+ *
+ * These hexes are deliberately here rather than in `globals.css`: they are an illustration
+ * palette, not part of the interface's colour language, and nothing outside this component
+ * may use them. They are still declared once, as tokens, at the top of the file — the rule
+ * they answer to is "no loose hex values in markup", not "every colour is global".
+ *
+ * Each specimen states a raw pair (`--art-h`, `--art-l`). The theme blocks below derive the
+ * two stops that actually get painted from that pair. Deriving rather than restating is
+ * what keeps the dark theme honest: an earlier version themed only `--art-hi` and left
+ * `--art-l` — which is both the tile's background *and* the gradient's outer stop — at its
+ * full light value, so on a `#14130f` page every tile was a pastel slab glowing five steps
+ * above the surface. Anything painted here has to be grounded against `--surface`.
+ */
 .frame {
-  /* Shared defaults; each specimen overrides the palette below. */
-  --art-hi: #f3efe6;
-  --art-lo: #e7e0d2;
+  /* Shared defaults; each specimen overrides the pair below. */
+  --art-h: #f3efe6;
+  --art-l: #e7e0d2;
   --art-stem: #4b6b45;
   --art-leaf: #7d9e6b;
   --art-bloom: #d8c9b0;
   --art-bloom-ink: #8a7a5c;
   --art-accent: #c98a3a;
+
+  --art-hi: var(--art-h);
+  --art-lo: var(--art-l);
 
   position: relative;
   width: 100%;
@@ -21,36 +39,54 @@
 
 /* Warm rose */
 .frame[data-art="bouquet_roses"] {
-  --art-hi: #f7ece9; --art-lo: #ecd6d0;
+  --art-h: #f7ece9; --art-l: #ecd6d0;
   --art-bloom: #c65b57; --art-bloom-ink: #8f2f30; --art-stem: #4b6b45; --art-accent: #e0908c;
 }
 /* Sunflower gold */
 .frame[data-art="bouquet_sunflowers"] {
-  --art-hi: #f8f0da; --art-lo: #eedcac;
+  --art-h: #f8f0da; --art-l: #eedcac;
   --art-bloom: #e0a52e; --art-bloom-ink: #5a3d16; --art-stem: #566e3f;
 }
 /* Spring tulip */
 .frame[data-art="bouquet_tulips"] {
-  --art-hi: #f6ecef; --art-lo: #e9cdd6;
+  --art-h: #f6ecef; --art-l: #e9cdd6;
   --art-bloom: #cf6f8f; --art-bloom-ink: #8f3d5c; --art-stem: #4f7148;
 }
 /* White orchid */
 .frame[data-art="orchid_white"] {
-  --art-hi: #f4f1ee; --art-lo: #ded6d9;
+  --art-h: #f4f1ee; --art-l: #ded6d9;
   --art-bloom: #f7f4f2; --art-bloom-ink: #b49bb0; --art-stem: #5a6b52; --art-accent: #b06a86;
 }
 /* Gardenia cream */
 .frame[data-art="gardenias"] {
-  --art-hi: #f4f2e8; --art-lo: #e2e0cd;
+  --art-h: #f4f2e8; --art-l: #e2e0cd;
   --art-bloom: #f6f3e7; --art-bloom-ink: #b6ac86; --art-leaf: #6f9160; --art-stem: #4f6b46; --art-accent: #d8c14e;
 }
 /* Ceramic pot / greenery */
 .frame[data-art="pot_ceramic"] {
-  --art-hi: #eef0e8; --art-lo: #d8ddca;
+  --art-h: #eef0e8; --art-l: #d8ddca;
   --art-bloom: #cf8f6b; --art-bloom-ink: #7d4a30; --art-leaf: #7ba05e; --art-stem: #4f6b3f; --art-accent: #e2b48a;
 }
 
+/*
+ * Dark: keep each specimen's hue, lose its brightness. Both stops are mixed down onto
+ * `--surface`, so a tile sits one step above the page instead of five, and the blooms —
+ * which are saturated mid-tones — keep their contrast against it. The bloom and foliage
+ * colours are left alone: they are the drawing, and they read on either ground.
+ */
 @media (prefers-color-scheme: dark) {
-  .frame { --art-hi: color-mix(in srgb, var(--art-lo) 62%, #000 20%); }
+  .frame {
+    --art-hi: color-mix(in srgb, var(--art-h) 20%, var(--surface));
+    --art-lo: color-mix(in srgb, var(--art-l) 13%, var(--surface));
+  }
 }
-:root[data-theme="dark"] .frame { --art-hi: color-mix(in srgb, var(--art-lo) 62%, #000 20%); }
+
+:root[data-theme="light"] .frame {
+  --art-hi: var(--art-h);
+  --art-lo: var(--art-l);
+}
+
+:root[data-theme="dark"] .frame {
+  --art-hi: color-mix(in srgb, var(--art-h) 20%, var(--surface));
+  --art-lo: color-mix(in srgb, var(--art-l) 13%, var(--surface));
+}

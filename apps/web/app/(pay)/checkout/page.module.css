@@ -18,7 +18,6 @@
   line-height: 1.08;
   letter-spacing: -0.022em;
   margin-top: var(--sp-3);
-  margin-left: -0.03em;
 }
 
 .layout {
@@ -154,13 +153,51 @@
   outline-offset: 2px;
 }
 
+/*
+ * Drawn rather than native. `accent-color` alone leaves Chrome's dark-mode default in
+ * place, which fills the *unchecked* disc solid grey and leaves the *checked* one a thin
+ * ring — the two states read inverted, so the row you haven't picked looks chosen (or
+ * disabled). This draws both states explicitly, identically in both themes.
+ */
 .radio {
-  margin-top: 0.2rem;
-  width: 1rem;
-  height: 1rem;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0.2rem 0 0;
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
-  accent-color: var(--brand);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.radio::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--brand-contrast);
+  transform: scale(0);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.radio:checked {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.radio:checked::after {
+  transform: scale(1);
+}
+
+.choice:hover .radio:not(:checked) {
+  border-color: var(--ink-3);
 }
 
 .choiceBody {
@@ -191,11 +228,26 @@
   margin-top: 0.05rem;
 }
 
+/* The digits are what tell one Visa from another, so they stay at full ink. The mono face
+   is the texture that marks them as a card number; dimness is not. */
 .last4 {
   font-family: var(--font-mono);
   font-size: 0.875em;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-3);
+  color: var(--ink);
+}
+
+/* A raw API token set as a token, so it reads as quoted machine output rather than as an
+   author who forgot to write the sentence in English. */
+.outcomeCode {
+  margin-left: 0.4em;
+  padding: 0.1em 0.4em;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--ink-2);
 }
 
 /* ── fields ─────────────────────────────────────────────────────────────── */
@@ -260,10 +312,13 @@
   border-color: var(--ink-3);
 }
 
-.input:focus {
-  outline: none;
+/*
+ * The border change is the flourish; the global ring is the affordance. An earlier version
+ * traded the ring for a 3px `--brand-tint` halo, which is 1.14:1 on `--surface` — i.e. not
+ * visible at all. These fields keep the same ring every other control in the app uses.
+ */
+.input:focus-visible {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-tint);
 }
 
 .giftStatus {
@@ -381,9 +436,16 @@
   color: var(--ink-2);
 }
 
+/*
+ * Every amount in this panel is one weight and one family. Inter's variable weight axis
+ * changes digit advance, so a 520 subtotal above a 560 plan row puts their decimal points
+ * on different verticals even when both are right-aligned and both are tabular — the column
+ * looks *nearly* right, which is worse than looking wrong. One weight, no exceptions.
+ */
 .subtotalRow :last-child {
   color: var(--ink);
-  font-weight: 520;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── the funding plan ───────────────────────────────────────────────────── */
@@ -419,23 +481,25 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The amount actually being authorized is the commitment, so it is the one that is set
-   large. Everything above it is arithmetic leading here. */
-.planRowFinal {
-  margin-top: var(--sp-1);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--line);
+/* The amount due is the commitment, so it is the one set large — and it is the only row
+   allowed to leave the shared decimal grid, because it sits at the top of the group with
+   nothing above it to misalign against. The split rows beneath it are the explanation. */
+.planRowTotal {
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--line);
   align-items: baseline;
 }
 
-.planRowFinal dt {
+.planRowTotal dt {
   color: var(--ink);
-  font-weight: 560;
+  font-weight: 600;
+  font-size: var(--text-md);
 }
 
-.planRowFinal dd {
+.planRowTotal dd {
   font-family: var(--font-serif);
-  font-size: 1.375rem;
+  font-size: var(--text-2xl);
   font-weight: 600;
   letter-spacing: -0.015em;
 }
@@ -684,6 +748,11 @@
 
 /* ── narrow ─────────────────────────────────────────────────────────────── */
 
+/* Desktop keeps the total in the sticky rail, so the bar is redundant there. */
+.mobileTotal {
+  display: none;
+}
+
 @media (max-width: 940px) {
   .layout {
     grid-template-columns: 1fr;
@@ -692,6 +761,42 @@
   /* The summary stops being a rail and becomes the last thing you read before paying. */
   .aside {
     position: static;
+  }
+
+  .mobileTotal {
+    position: sticky;
+    /* Clears the site header, which is itself sticky. */
+    top: 3.9rem;
+    z-index: 20;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobileTotalLabel {
+    font-size: var(--text-2xs);
+    font-weight: 620;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mobileTotalValue {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
   }
 }
 

@@ -27,6 +27,20 @@ export const dynamic = "force-dynamic";
 
 /** Verified and unverified money are never added together — that would launder one into
  *  the other. They are summed separately and shown as two different kinds of number. */
+/**
+ * A badge only where there is something to flag.
+ *
+ * Stamping VERIFIED on every ledger-backed row makes the word wallpaper, and wallpaper is
+ * exactly what the one amber UNVERIFIED badge needs to stand out against. The section
+ * header already states the claim for the whole list, so here silence means verified and a
+ * badge means "this one is different."
+ */
+function CardFlag({ card }: { card: FundingCard }) {
+  if (card.balance_stale) return <Badge tone="warn">stale</Badge>;
+  if (!card.balance_verified) return <Badge tone="warn">unverified</Badge>;
+  return null;
+}
+
 function sumVerified(cards: FundingCard[]): { total: number; complete: boolean } {
   let total = 0;
   let complete = true;
@@ -54,6 +68,15 @@ export default async function WalletPage() {
   const verified = sumVerified(gift);
   const spendable = gift.filter((c) => (minorFromDisplay(c.balance_display) ?? 0) > 0);
 
+  /*
+   * Spent cards are separated out rather than left interleaved. A ledger listed in issue
+   * order puts four $0.00 rows among the funded ones, each repeating the same sentence, and
+   * the reader has to subtract noise to see what `$80.00` is made of. Funded first, spent
+   * folded into one summary row that states the explanation once.
+   */
+  const funded = gift.filter((c) => (minorFromDisplay(c.balance_display) ?? -1) !== 0);
+  const spent = gift.filter((c) => minorFromDisplay(c.balance_display) === 0);
+
   // The card worth rendering as an object is the one with the most left on it. A card with
   // nothing on it is a poor hero, and a card whose balance we can't read is a worse one.
   const featured = [...spendable].sort(
@@ -75,14 +98,15 @@ export default async function WalletPage() {
 
           <div className={styles.totals}>
             <div className={styles.total}>
-              <p className={styles.totalLabel}>
-                Verified balance
+              <p className={styles.totalLabel}>Verified balance</p>
+              {/* The badge qualifies the number, not the label — so it sits with the number.
+                  Beside a tracked uppercase label it also had nowhere to go at this column
+                  width and wrapped onto its own line. */}
+              <p className={styles.totalValue}>
+                <Money minor={verified.total} />
                 <Badge tone="brand" soft>
                   ledger-backed
                 </Badge>
-              </p>
-              <p className={styles.totalValue}>
-                <Money minor={verified.total} />
               </p>
               <p className={styles.totalNote}>
                 {verified.complete
@@ -93,14 +117,12 @@ export default async function WalletPage() {
 
             {prepaid.length > 0 && (
               <div className={styles.total}>
-                <p className={styles.totalLabel}>
-                  On file
+                <p className={styles.totalLabel}>On file</p>
+                <p className={`${styles.totalValue} ${styles.totalValueMuted}`}>
+                  {prepaid.length} {prepaid.length === 1 ? "card" : "cards"}
                   <Badge tone="warn" soft>
                     unverified
                   </Badge>
-                </p>
-                <p className={`${styles.totalValue} ${styles.totalValueMuted}`}>
-                  {prepaid.length} {prepaid.length === 1 ? "card" : "cards"}
                 </p>
                 <p className={styles.totalNote}>
                   Balances on these are self-reported and cannot be confirmed, so they are
@@ -148,22 +170,19 @@ export default async function WalletPage() {
             </p>
           </Panel>
         ) : (
-          <ul className={styles.cardList}>
-            {gift.map((card) => {
-              const minor = minorFromDisplay(card.balance_display);
-              const empty = minor === 0;
-              return (
-                <li key={card.id}>
-                  <Panel className={styles.row} data-empty={empty || undefined}>
+          <Panel className={styles.list}>
+            <ul className={styles.cardList}>
+              {funded.map((card) => {
+                const minor = minorFromDisplay(card.balance_display);
+                return (
+                  <li key={card.id} className={styles.row}>
                     <div className={styles.rowMain}>
                       <p className={styles.rowTitle}>
                         Gift card
                         <span className={styles.last4}>····&thinsp;{card.last4}</span>
                       </p>
                       <p className={styles.rowNote}>
-                        {empty
-                          ? "Spent. It can still be presented — it simply contributes nothing."
-                          : "Drawn before any card, up to whatever it holds."}
+                        Drawn before any card, up to whatever it holds.
                       </p>
                     </div>
                     <div className={styles.rowAmount}>
@@ -172,21 +191,44 @@ export default async function WalletPage() {
                       ) : (
                         <Money minor={minor} className={styles.amount} />
                       )}
-                      {card.balance_stale ? (
-                        <Badge tone="warn">stale</Badge>
-                      ) : card.balance_verified ? (
-                        <Badge tone="brand" soft>
-                          verified
-                        </Badge>
-                      ) : (
-                        <Badge tone="warn">unverified</Badge>
-                      )}
+                      <span className={styles.badgeSlot}>
+                        <CardFlag card={card} />
+                      </span>
                     </div>
-                  </Panel>
+                  </li>
+                );
+              })}
+
+              {/* The spent cards, folded. Open by nobody's default — they are still here and
+                  still countable, they just no longer cost eight rows to say so. */}
+              {spent.length > 0 && (
+                <li className={styles.row}>
+                  <details className={styles.spent}>
+                    <summary className={styles.spentSummary}>
+                      <span className={styles.spentTitle}>
+                        {spent.length} spent {spent.length === 1 ? "card" : "cards"}
+                      </span>
+                      <span className={styles.spentNote}>
+                        Still valid to present — they simply contribute nothing.
+                      </span>
+                      <span className={styles.rowAmount}>
+                        <Money minor={0} className={`${styles.amount} ${styles.amountSpent}`} />
+                        <span className={styles.badgeSlot} />
+                      </span>
+                    </summary>
+                    <ul className={styles.spentList}>
+                      {spent.map((card) => (
+                        <li key={card.id} className={styles.spentRow}>
+                          <span className={styles.last4}>····&thinsp;{card.last4}</span>
+                          <Money minor={0} className={styles.spentAmount} />
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 </li>
-              );
-            })}
-          </ul>
+              )}
+            </ul>
+          </Panel>
         )}
       </section>
 
@@ -199,30 +241,44 @@ export default async function WalletPage() {
             </p>
           </div>
 
-          <ul className={styles.cardList}>
-            {prepaid.map((card) => (
-              <li key={card.id}>
-                <Panel className={styles.row}>
-                  <div className={styles.rowMain}>
-                    <p className={styles.rowTitle}>
-                      <span className={styles.brand}>{card.brand ?? "Card"}</span>
-                      <span className={styles.last4}>····&thinsp;{card.last4}</span>
-                    </p>
-                    <p className={styles.rowNote}>
-                      {card.exp ? `Expires ${card.exp}. ` : ""}
-                      Balance as entered at enrolment — no issuer API can confirm it.
-                    </p>
-                  </div>
-                  <div className={styles.rowAmount}>
-                    <span className={`${styles.amount} ${styles.amountUnverified} tnum`}>
-                      {card.balance_display}
-                    </span>
-                    <Badge tone="warn">unverified</Badge>
-                  </div>
-                </Panel>
-              </li>
-            ))}
-          </ul>
+          <Panel className={styles.list}>
+            <ul className={styles.cardList}>
+              {prepaid.map((card) => {
+                /* Through `<Money>` like every other amount on the site. Printing the store's
+                   display string raw would put the one number this page calls untrustworthy
+                   outside the single formatting guarantee the app has — and leave it unable
+                   to say "Unknown" if the string ever stops parsing. */
+                const minor = minorFromDisplay(card.balance_display);
+                return (
+                  <li key={card.id} className={styles.row}>
+                    <div className={styles.rowMain}>
+                      <p className={styles.rowTitle}>
+                        <span className={styles.brand}>{card.brand ?? "Card"}</span>
+                        <span className={styles.last4}>····&thinsp;{card.last4}</span>
+                      </p>
+                      <p className={styles.rowNote}>
+                        {card.exp ? `Expires ${card.exp}. ` : ""}
+                        Balance as entered at enrolment — no issuer API can confirm it.
+                      </p>
+                    </div>
+                    <div className={styles.rowAmount}>
+                      {minor === null ? (
+                        <span className={styles.unknown}>Unknown</span>
+                      ) : (
+                        <Money
+                          minor={minor}
+                          className={`${styles.amount} ${styles.amountUnverified}`}
+                        />
+                      )}
+                      <span className={styles.badgeSlot}>
+                        <Badge tone="warn">unverified</Badge>
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
 
           <p className={styles.footnote}>
             An open-loop prepaid card exposes no balance endpoint to a merchant. Treating the

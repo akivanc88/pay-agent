@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit",
     "shoot": "node scripts/shoot.mjs",
-    "pay-e2e": "node scripts/pay-e2e.mjs"
+    "pay-e2e": "node scripts/pay-e2e.mjs",
+    "layout-audit": "node scripts/layout-audit.mjs",
+    "card-contrast": "node scripts/card-contrast.mjs"
   },
   "dependencies": {
     "@types/three": "^0.185.3",

@@ -17,9 +17,9 @@
   --card-bg-3: var(--ink);
   --card-ink: var(--paper);
   --card-ink-dim: var(--line);
-  --card-foil-hi: var(--gold-tint);
-  --card-foil-lo: var(--gold);
-  --card-gold: var(--gold);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
+  --card-gold: var(--foil-mid);
 
   position: relative;
   width: 100%;
@@ -34,8 +34,8 @@
     --card-bg-3: var(--paper);
     --card-ink: var(--ink);
     --card-ink-dim: var(--ink-2);
-    --card-foil-hi: var(--gold);
-    --card-foil-lo: var(--brand-ink);
+    --card-foil-hi: var(--foil-hi);
+    --card-foil-lo: var(--foil-deep);
   }
 }
 
@@ -45,8 +45,8 @@
   --card-bg-3: var(--ink);
   --card-ink: var(--paper);
   --card-ink-dim: var(--line);
-  --card-foil-hi: var(--gold-tint);
-  --card-foil-lo: var(--gold);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
 }
 
 :root[data-theme="dark"] .host {
@@ -55,8 +55,8 @@
   --card-bg-3: var(--paper);
   --card-ink: var(--ink);
   --card-ink-dim: var(--ink-2);
-  --card-foil-hi: var(--gold);
-  --card-foil-lo: var(--brand-ink);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
 }
 
 /* The still card. It is the layout: the canvas is absolutely positioned over it, so this

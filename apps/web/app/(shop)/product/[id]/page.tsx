@@ -142,11 +142,11 @@ export default async function ProductPage({
               <Badge tone="warn" soft>
                 {product.stock} left
               </Badge>
-            ) : (
-              <Badge tone="brand" soft>
-                In stock
-              </Badge>
-            )}
+            ) : /* No badge for the ordinary case. `ProductPurchase` already says "In stock ·
+                   cut fresh and ready to arrange" under the button, so a badge here repeats
+                   it 400px away — and a status mark that fires on the default state stops
+                   marking status. The slot is reserved for the exceptions above. */
+            null}
           </div>
 
           <p className={styles.description}>{copy.description}</p>
@@ -163,9 +163,11 @@ export default async function ProductPage({
           <dl className={styles.notes}>
             <div className={styles.note}>
               <dt className={styles.noteTerm}>
+                {/* A water droplet. This was a map pin with a plus in it — an "add location"
+                    glyph — labelling instructions about trimming stems and changing water. */}
                 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M12 21c4-3 7-6.5 7-11a7 7 0 0 0-14 0c0 4.5 3 8 7 11Z" />
-                  <path d="M12 8v6M9 11h6" />
+                  <path d="M12 3.2c3.6 4.2 6 7 6 10.1a6 6 0 0 1-12 0c0-3.1 2.4-5.9 6-10.1Z" />
+                  <path d="M9.4 13.6a2.6 2.6 0 0 0 2.6 2.6" opacity="0.65" />
                 </svg>
                 Care
               </dt>

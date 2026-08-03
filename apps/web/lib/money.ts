@@ -40,12 +40,17 @@ export function formatAmount(minor: number): string {
  * so no float ever exists: `parseFloat("25.00") * 100` is the exact class of bug this
  * project's ledger is built to avoid. Anything not matching the expected shape returns
  * `null`, and the caller must then say the amount is unknown rather than invent one.
+ *
+ * Group separators are stripped before matching. `formatMoney` emits them once a balance
+ * reaches four figures, so a stricter pattern would reject `"$1,250.00"` and report a
+ * balance the ledger knows perfectly well as unknown — degrading honestly, but wrongly.
  */
 export function minorFromDisplay(display: string): number | null {
-  const match = /^(-?)[^\d-]*(\d+)\.(\d{2})$/.exec(display.trim());
+  const match = /^(-?)[^\d-]*(\d[\d,\u00a0\u202f ]*)\.(\d{2})$/.exec(display.trim());
   if (!match) return null;
   const [, sign, whole, cents] = match;
-  const minor = Number.parseInt(whole ?? "", 10) * 100 + Number.parseInt(cents ?? "", 10);
+  const digits = (whole ?? "").replace(/[,\u00a0\u202f ]/g, "");
+  const minor = Number.parseInt(digits, 10) * 100 + Number.parseInt(cents ?? "", 10);
   if (!Number.isSafeInteger(minor)) return null;
   return sign === "-" ? -minor : minor;
 }

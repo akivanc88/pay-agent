@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge, Button, Container, Money, Panel, SectionLabel } from "@/components/ui";
+import { StatePage } from "@/components/state-page";
 import { useCart } from "@/lib/cart";
 import { minorFromDisplay } from "@/lib/money";
 
@@ -152,15 +153,26 @@ export default function CheckoutPage() {
   const hasGift = giftCode.trim().length > 0 && giftPin.trim().length > 0;
   const hasCard = cardToken.length > 0;
 
+  /*
+   * A balance only feeds the projected split when the ledger currently vouches for it. An
+   * unverified or stale figure is a claim, not a fact, and `buildPlan` already knows how to
+   * say "not yet known" — so the honest move is to withhold the number rather than let a
+   * claim harden into the `−$20.00` the buyer reads as settled. Today every closed-loop
+   * card comes back verified, so this changes nothing on screen; it is here so that the day
+   * one doesn't, the UI degrades instead of lying.
+   */
+  const giftBalanceTrusted =
+    matchedGift && matchedGift.balance_verified && !matchedGift.balance_stale;
+
   const plan = useMemo(
     () =>
       buildPlan({
         due,
-        giftBalance: matchedGift ? minorFromDisplay(matchedGift.balance_display) : null,
+        giftBalance: giftBalanceTrusted ? minorFromDisplay(matchedGift.balance_display) : null,
         hasGift,
         hasCard,
       }),
-    [due, matchedGift, hasGift, hasCard],
+    [due, matchedGift, giftBalanceTrusted, hasGift, hasCard],
   );
 
   const fulfilled = session ? fulfillmentIsComplete(session) : false;
@@ -200,19 +212,29 @@ export default function CheckoutPage() {
 
   if (cartReady && lines.length === 0 && !session) {
     return (
-      <Container narrow>
-        <div className={`${styles.standalone} rise`}>
-          <SectionLabel>Checkout</SectionLabel>
-          <h1 className={styles.emptyTitle}>Nothing to pay for yet.</h1>
-          <p className={styles.emptyBody}>
-            A checkout session is opened from a cart, so there is nothing for the store to
-            quote until something is in one.
-          </p>
-          <Button href="/" size="lg">
-            Browse the shop
-          </Button>
-        </div>
-      </Container>
+      <StatePage
+        eyebrow="Checkout"
+        title="Nothing to pay for yet."
+        body="A checkout session is opened from a cart, so there is nothing for the store to quote until something is in one."
+        action={{ href: "/", label: "Browse the shop" }}
+        /* The two rails, drawn: a gift card drawn first and a card behind it for the rest.
+           An empty checkout is the one place worth showing what this checkout is *for*. */
+        art={
+          <svg viewBox="0 0 96 96" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <rect
+              x="26" y="26" width="58" height="37" rx="6"
+              fill="var(--surface-2)" stroke="var(--line-strong)" strokeWidth="2"
+            />
+            <path d="M26 38h58" stroke="var(--line-strong)" strokeWidth="2" />
+            <rect
+              x="12" y="38" width="58" height="37" rx="6"
+              fill="var(--brand-tint)" stroke="currentColor" strokeWidth="2"
+            />
+            <path d="M12 50h58" stroke="currentColor" strokeWidth="2" />
+            <rect x="20" y="58" width="14" height="9" rx="2" fill="var(--foil-mid)" opacity="0.85" />
+          </svg>
+        }
+      />
     );
   }
 
@@ -258,6 +280,17 @@ export default function CheckoutPage() {
         <h1 className={styles.title}>Where it goes, and how it&rsquo;s paid.</h1>
       </div>
 
+      {/*
+        On a phone the summary rail becomes the last block on a ~2,200px page, so the amount
+        due sits nearly six screens below the fold while the buyer works through address and
+        delivery. This bar carries it at the top of the flow instead. It is hidden at desktop
+        widths, where the sticky rail already keeps the total in view.
+      */}
+      <div className={styles.mobileTotal} aria-hidden>
+        <span className={styles.mobileTotalLabel}>Amount due</span>
+        <Money minor={due} className={styles.mobileTotalValue} />
+      </div>
+
       <div className={styles.layout}>
         <div className={styles.steps}>
           {fatal && (
@@ -283,13 +316,17 @@ export default function CheckoutPage() {
                       onChange={() => chooseDestination(d)}
                       className={styles.radio}
                     />
+                    {/* The address leads, not the name. Every saved destination here belongs
+                        to the same person, so the name is the repeated part and the street is
+                        the part that tells two rows apart — whichever distinguishes gets the
+                        primary line. */}
                     <span className={styles.choiceBody}>
                       <span className={styles.choiceTitle}>
-                        {d.first_name} {d.last_name}
+                        {d.street_address}, {d.address_locality}
                       </span>
                       <span className={styles.choiceNote}>
-                        {d.street_address}, {d.address_locality} {d.address_region}{" "}
-                        {d.postal_code}, {d.address_country}
+                        {d.first_name} {d.last_name} &middot; {d.address_region} {d.postal_code},{" "}
+                        {d.address_country}
                       </span>
                     </span>
                   </label>
@@ -392,8 +429,18 @@ export default function CheckoutPage() {
                 </span>
               ) : matchedGift ? (
                 <span className={styles.giftFound}>
-                  Matches an enrolled card ending {matchedGift.last4}, balance{" "}
-                  <strong>{matchedGift.balance_display}</strong>.
+                  Matches an enrolled card ending {matchedGift.last4},{" "}
+                  {giftBalanceTrusted ? (
+                    <>
+                      balance <strong>{matchedGift.balance_display}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      but its balance{" "}
+                      {matchedGift.balance_stale ? "was last read a while ago" : "isn’t verified"}
+                      , so the store settles the draw at payment.
+                    </>
+                  )}
                 </span>
               ) : (
                 <span className={styles.stepHint}>
@@ -430,7 +477,10 @@ export default function CheckoutPage() {
                       <span className={styles.choiceTitle}>
                         {c.brand} <span className={styles.last4}>····&thinsp;{c.last4}</span>
                       </span>
-                      <span className={styles.choiceNote}>{c.outcome}</span>
+                      <span className={styles.choiceNote}>
+                        {c.outcome}
+                        {c.code && <code className={styles.outcomeCode}>{c.code}</code>}
+                      </span>
                     </span>
                   </label>
                 ))}
@@ -504,7 +554,16 @@ export default function CheckoutPage() {
               disabled={!canPay || phase === "paying"}
               aria-busy={phase === "paying"}
             >
-              {phase === "paying" ? "Authorizing…" : <>Pay <Money minor={due} /></>}
+              {/* One flex child, not two. `.btn` carries an 8px gap for icon+label, and two
+                  bare text nodes inherit it — "Pay" and the amount drift apart and read as
+                  two labels instead of one sentence. */}
+              {phase === "paying" ? (
+                "Authorizing…"
+              ) : (
+                <span>
+                  Pay <Money minor={due} />
+                </span>
+              )}
             </Button>
 
             <p className={styles.payNote} aria-live="polite">

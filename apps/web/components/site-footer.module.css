@@ -1,0 +1,101 @@
+.footer {
+  margin-top: var(--sp-9);
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.inner {
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: var(--sp-7) var(--sp-5);
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.6fr) minmax(0, 1.4fr);
+  gap: var(--sp-6) var(--sp-7);
+  align-items: start;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.dot {
+  color: var(--brand);
+  padding-inline: 0.25em;
+}
+
+.colTitle {
+  font-size: var(--text-2xs);
+  font-weight: 620;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-1);
+}
+
+.note {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+
+.note strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The disclosure is set apart from the description around it — it is the sentence a reader
+   is entitled to find, so it does not blend into marketing copy. */
+.disclosure {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--line-strong);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 44ch;
+}
+
+.disclosure strong {
+  font-weight: 620;
+  color: var(--ink-2);
+}
+
+/* 44px targets, but the list must not turn into a ladder — the column's own gap is removed
+   so the height comes from the targets themselves rather than stacking on top of them. */
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: var(--text-base);
+  color: var(--ink-2);
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.link:hover {
+  color: var(--brand-ink);
+}
+
+@media (max-width: 52rem) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+  }
+}

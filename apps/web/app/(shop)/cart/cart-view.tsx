@@ -4,11 +4,27 @@ import Link from "next/link";
 
 import { Button, Money, Panel, SectionLabel } from "@/components/ui";
 import { ProductArt } from "@/components/product-art";
+import { ProductCard } from "@/components/product-card";
+import { StatePage } from "@/components/state-page";
+import type { CatalogProduct } from "@/lib/store";
 import { useCart, type CartLine } from "@/lib/cart";
 import styles from "./page.module.css";
 
-export default function CartPage() {
+/**
+ * The cart, as the browser sees it.
+ *
+ * Cart state lives in `localStorage`, so this half has to be a client component. It takes
+ * `suggestions` as a prop rather than fetching them, because the catalogue is the server's
+ * to read — see `page.tsx`, which is the server half.
+ */
+export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
   const { lines, ready, count, total, setQuantity, remove } = useCart();
+
+  /* An empty cart is a whole page of its own, not a panel inside the cart layout — it has
+     no summary, no line items, and nothing the cart's heading applies to. */
+  if (ready && lines.length === 0) {
+    return <EmptyCart suggestions={suggestions} />;
+  }
 
   return (
     <div className={styles.page}>
@@ -24,8 +40,6 @@ export default function CartPage() {
 
       {!ready ? (
         <CartSkeleton />
-      ) : lines.length === 0 ? (
-        <EmptyCart />
       ) : (
         <div className={styles.layout}>
           <ul className={styles.lines} aria-label="Items in your cart">
@@ -110,9 +124,14 @@ function CartRow({
             <Link href={`/product/${line.id}`} className={styles.rowTitle}>
               {line.title}
             </Link>
-            <p className={styles.rowUnit}>
-              <Money minor={line.price} currency={line.currency} /> each
-            </p>
+            {/* At quantity 1 the unit price is character-for-character the line total, two
+                inches away in the same row. It only carries information once there is
+                arithmetic to explain. */}
+            {line.quantity > 1 && (
+              <p className={styles.rowUnit}>
+                <Money minor={line.price} currency={line.currency} /> each
+              </p>
+            )}
           </div>
           <Money
             minor={line.price * line.quantity}
@@ -167,10 +186,19 @@ function CartRow({
 }
 
 /* ── designed empty state ──────────────────────────────────────────────── */
-function EmptyCart() {
+/**
+ * The copy names "this week's cuttings" and then shows them, rather than describing a shop
+ * the visitor has to go and find. It also stops the page being a 1040px box drawn around
+ * 480px of text — the suggestions are what fills the space, honestly.
+ */
+function EmptyCart({ suggestions }: { suggestions: CatalogProduct[] }) {
   return (
-    <Panel inset className={styles.empty}>
-      <div className={styles.emptyArt} aria-hidden>
+    <StatePage
+      eyebrow="Your cart"
+      title="Your cart is empty"
+      body="Nothing tied up yet. Pick something from this week’s cuttings and it’ll gather here, ready to check out with a gift card, a card, or both."
+      action={suggestions.length === 0 ? { href: "/", label: "Browse the shop" } : undefined}
+      art={
         <svg viewBox="0 0 120 120" fill="none">
           <circle cx="60" cy="60" r="56" fill="var(--surface-2)" />
           {/* a single stem in a vase — quiet, hand-drawn */}
@@ -180,19 +208,19 @@ function EmptyCart() {
           <path d="M60 50c-8-1-13-6-14-13 7 0 13 4 14 11M60 46c7-1 12-6 13-12-6 0-12 3-13 10" fill="var(--brand-tint)" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round" />
           <circle cx="60" cy="33" r="6" fill="var(--brand-tint)" stroke="var(--brand)" strokeWidth="2" />
         </svg>
-      </div>
-      <h2 className={styles.emptyTitle}>Your cart is empty</h2>
-      <p className={styles.emptyLede}>
-        Nothing tied up yet. Pick something from this week&rsquo;s cuttings and it&rsquo;ll
-        gather here, ready to check out with a gift card, a card, or both.
-      </p>
-      <Button href="/" size="lg" className={styles.emptyBtn}>
-        Browse the shop
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </Button>
-    </Panel>
+      }
+    >
+      {suggestions.length > 0 && (
+        <section className={styles.suggest}>
+          <h2 className={styles.suggestTitle}>This week&rsquo;s cuttings</h2>
+          <div className={styles.suggestGrid}>
+            {suggestions.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+    </StatePage>
   );
 }
 

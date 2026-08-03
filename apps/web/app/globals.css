@@ -20,9 +20,13 @@
   --surface-2: #f6f4ef;
   --surface-sunk: #f1eee7;
 
+  /* Three inks, all of which must clear 4.5:1 on every ground they are used on. `--ink-3`
+     is the tricky one: it lands on `--surface` *and* on the `--brand-tint` of a selected
+     row, which is the lighter of the two, so it is tuned against the tint (4.7:1) and
+     clears white comfortably (5.4:1). It reads as "secondary", not as "disabled". */
   --ink: #1b1a17;
   --ink-2: #55504a;
-  --ink-3: #8a847a;
+  --ink-3: #6f6a61;
 
   --line: #e8e3da;
   --line-strong: #d9d3c7;
@@ -32,9 +36,22 @@
   --brand-contrast: #ffffff;
   --brand-tint: #eaf2ec;
 
-  /* Foil — reserved for the gift-card moment and nothing else. */
-  --gold: #a8791f;
+  /* Gold — reserved for the gift-card moment and nothing else. `--gold` and `--gold-tint`
+     are theme-aware, because they land on the *page* and have to hold contrast there.
+     The light value is *not* `--foil-mid`. Foil is a material seen at a glancing angle on a
+     near-black card, where #a8791f is bright; the same hex as text on white is 3.87:1 and
+     fails. #8d6118 is the same hue holding 4.70:1 on the darkest light-mode ground. */
+  --gold: #8d6118;
   --gold-tint: #f6efdd;
+
+  /* Foil is different: it is a material on a physical object, and a material does not
+     change colour when the room's lights do. This trio is declared once and never themed,
+     so the card's gradient is the same gold in light and dark. `--gold-tint` is a
+     background wash and far too pale to letter with — lettering the wordmark in it is what
+     made the brand mark disappear on the 3D card. */
+  --foil-hi: #f0d493;
+  --foil-mid: #a8791f;
+  --foil-deep: #96681a;
 
   --danger: #a32c24;
   --danger-tint: #fbeceb;
@@ -63,6 +80,27 @@
   --font-serif: var(--font-fraunces), "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-mono: var(--font-mono-jetbrains), ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 
+  /* Type scale, in 16ths of a rem so every step lands on a whole pixel at the default root
+     size. Surfaces pick from this ramp — a size that isn't here is a size that was eyeballed
+     in devtools, and that is how one flow ends up with two type systems. */
+  --text-2xs: 0.6875rem;  /* 11px — eyebrows, uppercase micro-labels */
+  --text-xs: 0.75rem;     /* 12px — footnotes, legal, hints */
+  --text-sm: 0.8125rem;   /* 13px — secondary rows, notes */
+  --text-base: 0.875rem;  /* 14px — dense UI body, summary rows */
+  --text-md: 0.9375rem;   /* 15px — controls, primary row text */
+  --text-lg: 1rem;        /* 16px — prose */
+  --text-xl: 1.125rem;    /* 18px — card titles */
+  --text-2xl: 1.375rem;   /* 22px — the amount being agreed to */
+  --text-3xl: 1.75rem;    /* 28px — panel headings above a list */
+
+  /* Display steps. Headlines are the one place a fixed ramp is wrong: a 34px h1 that is
+     right at 1440px is a wrapped mess at 390px. These are the *only* sanctioned clamps —
+     three of them, each with a job — so "it needs to shrink on mobile" stops being a
+     licence to invent a new clamp per page. Every one lands on the ramp at its floor. */
+  --display-sm: clamp(1.375rem, 1.1rem + 1.2vw, 1.75rem);   /* section headline */
+  --display-md: clamp(1.75rem, 1.3rem + 2vw, 2.5rem);       /* page title */
+  --display-lg: clamp(2.125rem, 1.5rem + 3vw, 3.25rem);     /* the hero, once per site */
+
   /* Spacing scale (4px base) */
   --sp-1: 0.25rem;
   --sp-2: 0.5rem;
@@ -84,6 +122,19 @@
 
   --content: 68rem;
   --content-narrow: 40rem;
+
+  /*
+   * The height of the sticky site header, published so sticky content below it can clear it.
+   *
+   * This is not decoration. Two sticky elements were each given a hand-guessed `top` and both
+   * guessed low: the checkout summary sat at 24px under a 67px header and had its own section
+   * label sliced in half, and the mobile total bar sat at 62.4px and left a 5px seam of live
+   * scrolling page between the two bars. A guessed offset is a guess that goes stale the first
+   * time the header's padding changes. Anything sticky uses `calc(var(--header-h) + …)`.
+   *
+   * Derived, not measured: 0.7rem padding × 2 + a 44px minimum target + a 1px bottom rule.
+   */
+  --header-h: calc(1.4rem + 45px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -95,7 +146,7 @@
 
     --ink: #ede8df;
     --ink-2: #a8a197;
-    --ink-3: #756f65;
+    --ink-3: #918a7e;
 
     --line: #302d27;
     --line-strong: #423e36;
@@ -127,10 +178,10 @@
 :root[data-theme="light"] {
   color-scheme: light;
   --paper: #fbfaf7; --surface: #ffffff; --surface-2: #f6f4ef; --surface-sunk: #f1eee7;
-  --ink: #1b1a17; --ink-2: #55504a; --ink-3: #8a847a;
+  --ink: #1b1a17; --ink-2: #55504a; --ink-3: #6f6a61;
   --line: #e8e3da; --line-strong: #d9d3c7;
   --brand: #1e5b3a; --brand-ink: #16472d; --brand-contrast: #ffffff; --brand-tint: #eaf2ec;
-  --gold: #a8791f; --gold-tint: #f6efdd;
+  --gold: #8d6118; --gold-tint: #f6efdd;
   --danger: #a32c24; --danger-tint: #fbeceb; --warn: #8a5a00; --warn-tint: #fdf6e6;
   --success: #1e5b3a; --success-tint: #eaf2ec;
   --shadow-sm: 0 1px 2px rgba(27,26,23,0.04), 0 1px 1px rgba(27,26,23,0.03);
@@ -141,7 +192,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --paper: #14130f; --surface: #1c1b17; --surface-2: #23211c; --surface-sunk: #100f0c;
-  --ink: #ede8df; --ink-2: #a8a197; --ink-3: #756f65;
+  --ink: #ede8df; --ink-2: #a8a197; --ink-3: #918a7e;
   --line: #302d27; --line-strong: #423e36;
   --brand: #6fc498; --brand-ink: #8fd3ae; --brand-contrast: #0e2117; --brand-tint: #17241c;
   --gold: #d9b36a; --gold-tint: #241d10;
@@ -171,7 +222,21 @@ img, svg, canvas { display: block; max-width: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
 
-h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 500; line-height: 1.12; letter-spacing: -0.012em; }
+/*
+ * Serif headings are pulled left by their own side bearing. Fraunces sets a cap roughly
+ * 1.5–2px in from its box at display sizes, where Inter sets ~0.5px, so a heading that is
+ * mathematically flush with the paragraph under it visibly hangs right of it. This is the
+ * optical correction, applied once — it was previously copied onto individual page titles
+ * and forgotten on the others, which is how two pages in one flow ended up with left edges
+ * 1.23px apart.
+ */
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.012em;
+  margin-left: -0.03em;
+}
 h1 { font-size: clamp(2rem, 1.4rem + 2.4vw, 3.1rem); }
 h2 { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem); }
 h3 { font-size: 1.24rem; letter-spacing: -0.006em; }

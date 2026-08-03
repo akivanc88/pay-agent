@@ -13,15 +13,16 @@ import styles from "./page.module.css";
  * and where the balance can't be read the projection is honestly blank rather than a guess.
  *
  * The rows read as an argument, top to bottom: this is what you owe, this is what the gift
- * card takes off it, this is what is left for the card. The final row is the one the buyer
- * is actually agreeing to, so it gets the weight.
+ * card takes off it, this is what is left for the card. The *first* row carries the weight,
+ * because the amount due is the commitment — the split below it is the explanation of how
+ * that one number gets met, and no line of the explanation should out-shout it.
  */
 export function FundingPlanRows({ plan }: { plan: FundingPlan }) {
   const unknown = <span className={styles.planUnknown}>not yet known</span>;
 
   return (
     <dl className={styles.plan}>
-      <div className={styles.planRow}>
+      <div className={`${styles.planRow} ${styles.planRowTotal}`}>
         <dt>Amount due</dt>
         <dd>
           <Money minor={plan.due} />
@@ -47,7 +48,7 @@ export function FundingPlanRows({ plan }: { plan: FundingPlan }) {
       )}
 
       {plan.hasCard && (
-        <div className={`${styles.planRow} ${styles.planRowFinal}`}>
+        <div className={styles.planRow}>
           <dt>
             Card
             <span className={styles.planHint}>authorized for the remainder</span>

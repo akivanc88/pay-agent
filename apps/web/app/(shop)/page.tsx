@@ -20,14 +20,15 @@ export default async function HomePage() {
               <em className={styles.em}>however you like.</em>
             </h1>
             <p className={styles.heroLede}>
-              A working UCP storefront. Pay with a gift card, a card, or both at once — the
-              remainder falls through to the card rail automatically, and every draw is
-              written to an append-only ledger.
+              Cut this morning, hand-tied, delivered locally. Put a gift card against your
+              order and only the remainder reaches your card — every draw is written to a
+              ledger you can check.
             </p>
+            {/* One pill, and it names a thing a customer gets. The protocol and the sandbox
+                disclosure are real and still stated — in the footer, where a shop puts them.
+                A florist does not badge its payment processor's test mode above the fold. */}
             <div className={styles.heroTags}>
-              <Badge tone="brand" soft>Gift card + card</Badge>
-              <Badge tone="neutral" soft>UCP agentic checkout</Badge>
-              <Badge tone="neutral" soft>Stripe test mode</Badge>
+              <Badge tone="brand" soft>Pay with a gift card, a card, or both</Badge>
             </div>
           </div>
         </Container>
@@ -36,8 +37,9 @@ export default async function HomePage() {
       <Container>
         <div className={styles.gridHead}>
           <h2 className={styles.gridTitle}>This week&rsquo;s cuttings</h2>
+          {/* "6 items" is inventory-system language. A florist counts arrangements. */}
           <p className={styles.gridCount}>
-            {products.length} {products.length === 1 ? "item" : "items"}
+            {products.length} {products.length === 1 ? "arrangement" : "arrangements"} this week
           </p>
         </div>
 

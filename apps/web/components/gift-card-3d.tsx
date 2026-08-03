@@ -350,7 +350,12 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
+      /* Under 1.0 the card is a *dark* object lit hard enough to read as a light one: the
+         near-black albedo plus a full-strength environment, key and rim washed the whole
+         face toward silver and took the foil lettering with it. The still SVG underneath is
+         the reference — these numbers exist to make the lit render match that object, not to
+         make it bright. See the contrast assertion in scripts/card-contrast.mjs. */
+      renderer.toneMappingExposure = 0.74;
 
       const map = new THREE.CanvasTexture(colorCanvas);
       map.colorSpace = THREE.SRGBColorSpace;
@@ -372,7 +377,7 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
       const room = new RoomEnvironment();
       const envRT = pmrem.fromScene(room, 0.04);
       scene.environment = envRT.texture;
-      scene.environmentIntensity = 0.55;
+      scene.environmentIntensity = 0.3;
       room.dispose();
       pmrem.dispose();
 
@@ -385,11 +390,11 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
          above and slightly right, landing the lobe on the empty guilloché field in the
          middle of the card where there is nothing to wash out, and it is dim enough that
          the highlight rolls off instead of clipping. */
-      const key = new THREE.DirectionalLight(0xffffff, 1.35);
+      const key = new THREE.DirectionalLight(0xffffff, 0.95);
       key.position.set(0.6, 2.4, 4.0);
       scene.add(key);
 
-      const rim = new THREE.DirectionalLight(0xffffff, 0.7);
+      const rim = new THREE.DirectionalLight(0xffffff, 0.45);
       rim.position.set(2.6, -1.6, 1.4);
       scene.add(rim);
 
@@ -427,9 +432,12 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
         metalnessMap: ormMap,
         roughness: 1,
         metalness: 1,
-        clearcoat: 0.55,
-        clearcoatRoughness: 0.16,
-        envMapIntensity: 1.15,
+        /* A laminate sheen, not a wet gloss. At 0.55/0.16 the coat threw a broad mirror
+           reflection of the environment over the whole face, which is most of why the card
+           read as silver rather than as a dark card with a shine on it. */
+        clearcoat: 0.22,
+        clearcoatRoughness: 0.34,
+        envMapIntensity: 0.6,
       });
       // Brushed metal: the highlight stretches along the grain instead of pooling into a
       // dot. This is what separates "a picture of a card" from "a milled object".

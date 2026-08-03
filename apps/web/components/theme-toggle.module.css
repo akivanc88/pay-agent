@@ -1,9 +1,15 @@
+/*
+ * The switch reads best at 46×26, but that is not a thumb target. The button carries the
+ * 44px height as padding and stays visually 26px — the hit area grows, the control does not.
+ */
 .toggle {
   border: 0;
   background: none;
-  padding: 0;
+  padding: 9px 0;
+  min-height: 44px;
   cursor: pointer;
   display: inline-flex;
+  align-items: center;
 }
 .track {
   width: 46px;

@@ -46,6 +46,10 @@ const SURFACES = [
       await page.waitForTimeout(300);
     },
   },
+  // The designed dead ends. These are surfaces like any other — rubric failure #3 is an
+  // *undesigned* 404 or error, which is a judgement only the critic can make, and it can
+  // only make it if these are in the set it looks at.
+  { name: "not-found", path: "/no-such-page", status: 404 },
 ];
 
 const VIEWPORTS = [
@@ -88,8 +92,11 @@ for (const surface of SURFACES) {
       const url = `${BASE}${surface.path}`;
       const res = await page.goto(url, { waitUntil: "networkidle", timeout: 45000 }).catch(() => null);
 
-      if (!res || res.status() >= 400) {
-        console.log(`  ✗ ${surface.name} ${vp.tag}/${theme} → ${res ? res.status() : "no response"}`);
+      // A 404 surface is *supposed* to answer 404, so a surface declares the status it
+      // expects and anything else is the failure.
+      const want = surface.status ?? 200;
+      if (!res || res.status() !== want) {
+        console.log(`  ✗ ${surface.name} ${vp.tag}/${theme} → ${res ? res.status() : "no response"} (want ${want})`);
         await context.close();
         continue;
       }

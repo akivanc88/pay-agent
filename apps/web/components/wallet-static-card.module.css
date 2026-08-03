@@ -4,7 +4,14 @@
  * A physical card does not invert when the room's lights change, so this object stays a
  * dark, gold-foiled slab in both themes. It gets there without any new hex: the card's
  * local variables are re-pointed at existing global tokens per theme — dark grounds that
- * are dark in both, a light "ink" that is light on the card in both, and `--gold` for foil.
+ * are dark in both, and a light "ink" that is light on the card in both.
+ *
+ * The foil stops are the exception that proves the rule: they are pinned to the unthemed
+ * `--foil-*` trio and are *identical* in both blocks. An earlier version themed them, which
+ * pointed the dark-mode shadow stop at `--brand-ink` — so the "gold foil" ran gold → mint
+ * green. Foil is not green. If you find yourself giving these a per-theme value, the card
+ * has stopped being an object and become a UI panel.
+ *
  * The 3D showpiece reads these same variables off the DOM so the two renderings match.
  */
 .wrap {
@@ -13,8 +20,8 @@
   --card-bg-3: var(--ink);
   --card-ink: var(--paper);
   --card-ink-dim: var(--line);
-  --card-foil-hi: var(--gold-tint);
-  --card-foil-lo: var(--gold);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
 
   width: 100%;
   aspect-ratio: 400 / 252;
@@ -28,8 +35,8 @@
     --card-bg-3: var(--paper);
     --card-ink: var(--ink);
     --card-ink-dim: var(--ink-2);
-    --card-foil-hi: var(--gold);
-    --card-foil-lo: var(--brand-ink);
+    --card-foil-hi: var(--foil-hi);
+    --card-foil-lo: var(--foil-deep);
   }
 }
 
@@ -39,8 +46,8 @@
   --card-bg-3: var(--ink);
   --card-ink: var(--paper);
   --card-ink-dim: var(--line);
-  --card-foil-hi: var(--gold-tint);
-  --card-foil-lo: var(--gold);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
 }
 
 :root[data-theme="dark"] .wrap {
@@ -49,8 +56,8 @@
   --card-bg-3: var(--paper);
   --card-ink: var(--ink);
   --card-ink-dim: var(--ink-2);
-  --card-foil-hi: var(--gold);
-  --card-foil-lo: var(--brand-ink);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
 }
 
 .card {

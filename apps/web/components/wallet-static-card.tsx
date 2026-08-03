@@ -10,7 +10,8 @@ import styles from "./wallet-static-card.module.css";
  *
  * Every colour is a design token, re-pointed per theme in the CSS module so the object
  * reads as the same dark, gold-foiled card in light and dark alike (a physical card does
- * not invert with the room). The gold is `--gold`, reserved for exactly this moment.
+ * not invert with the room). The foil is the `--foil-*` trio, which is deliberately not
+ * themed — a material does not change colour when the room's lights do.
  */
 
 export interface FeaturedCard {
@@ -58,7 +59,7 @@ export function WalletStaticCard({
           </linearGradient>
           <linearGradient id="wc-foil" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="var(--card-foil-hi)" />
-            <stop offset="0.5" stopColor="var(--gold)" />
+            <stop offset="0.5" stopColor="var(--foil-mid)" />
             <stop offset="1" stopColor="var(--card-foil-lo)" />
           </linearGradient>
           <linearGradient id="wc-sheen" x1="0" y1="0" x2="1" y2="1">
@@ -79,7 +80,7 @@ export function WalletStaticCard({
           <rect x="0" y="0" width="400" height="252" fill="url(#wc-body)" />
 
           {/* Engraved guilloché — faint concentric arcs, the way security print catches light. */}
-          <g stroke="var(--gold)" fill="none" opacity="0.12">
+          <g stroke="var(--foil-mid)" fill="none" opacity="0.12">
             <circle cx="330" cy="60" r="120" strokeWidth="0.75" />
             <circle cx="330" cy="60" r="160" strokeWidth="0.75" />
             <circle cx="330" cy="60" r="200" strokeWidth="0.75" />

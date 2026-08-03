@@ -454,6 +454,11 @@ export interface TestCard {
   last4: string;
   /** What Stripe's test issuer does with it — stated so nothing here looks like a surprise. */
   outcome: string;
+  /**
+   * The decline code Stripe returns, kept separate from the prose so the UI can set it as a
+   * code rather than dropping raw snake_case into a sentence. Absent when the card approves.
+   */
+  code?: string;
   declines: boolean;
 }
 
@@ -463,14 +468,16 @@ export const TEST_CARDS: TestCard[] = [
     token: "pm_card_chargeDeclinedInsufficientFunds",
     brand: "Visa",
     last4: "9995",
-    outcome: "Declines · insufficient_funds",
+    outcome: "Declines",
+    code: "insufficient_funds",
     declines: true,
   },
   {
     token: "pm_card_chargeDeclined",
     brand: "Visa",
     last4: "0002",
-    outcome: "Declines · card_declined",
+    outcome: "Declines",
+    code: "card_declined",
     declines: true,
   },
 ];

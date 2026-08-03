@@ -37,7 +37,9 @@
   font-size: 1.05rem;
   color: var(--ink);
 }
-.lowStock { position: absolute; top: 0.7rem; left: 0.7rem; }
+/* Inset to match `.body`'s padding, so the badge sits on the card's rhythm rather than
+   floating at an unrelated distance from the corner. */
+.lowStock { position: absolute; top: 1.05rem; left: 1.05rem; }
 
 .body {
   padding: 1rem 1.05rem 1.15rem;
@@ -46,7 +48,7 @@
   gap: 0.5rem;
 }
 .title {
-  font-size: 1.06rem;
+  font-size: var(--text-xl);
   font-weight: 500;
   letter-spacing: -0.008em;
 }
@@ -56,17 +58,20 @@
   justify-content: space-between;
   gap: var(--sp-3);
 }
-.price { font-size: 1.02rem; font-weight: 560; color: var(--ink); }
+.price { font-size: var(--text-lg); font-weight: 560; color: var(--ink); }
+/*
+ * Present at rest, brighter on hover. Hiding it until hover left ~150px of empty space in
+ * every card's `space-between` row, all the time — the composition was broken at rest and
+ * only resolved under a pointer, which is the state a card spends least of its life in.
+ * The `hover: none` override existed to patch that on touch, which was the tell.
+ */
 .cta {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  color: var(--brand);
-  font-size: 0.9rem;
+  color: var(--ink-3);
+  font-size: var(--text-base);
   font-weight: 560;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+  transition: color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
-.card:hover .cta { opacity: 1; transform: none; }
-@media (hover: none) { .cta { opacity: 1; transform: none; } }
+.card:hover .cta { color: var(--brand); transform: translateX(2px); }

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 
 import "./globals.css";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { SiteHeader } from "@/components/site-header";
 
 // Self-hosted at build time by next/font — no runtime request to Google, no layout shift.
 const inter = Inter({
@@ -48,10 +46,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
-        <SiteHeader themeToggle={<ThemeToggle />} />
-        <main>{children}</main>
-      </body>
+      {/*
+        No chrome here on purpose. The shop and the checkout do not wear the same frame:
+        `(shop)` gets the full site — nav, cart badge, marketing footer — and `(pay)` gets a
+        deliberately amputated one. Every real checkout worth copying strips itself down for
+        the same reason, so the root layout owns only what is genuinely global: the document,
+        the fonts, and the pre-paint theme.
+      */}
+      <body>{children}</body>
     </html>
   );
 }
