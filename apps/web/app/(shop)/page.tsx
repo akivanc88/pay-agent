@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Container, SectionLabel, Badge, Button, Money } from "@/components/ui";
+import { Container, SectionLabel, Button, Money } from "@/components/ui";
 import { ProductCard } from "@/components/product-card";
 import { ProductArt } from "@/components/product-art";
 import { StoreDown } from "@/components/store-down";
@@ -109,12 +109,14 @@ export default async function HomePage() {
                 </svg>
               </Link>
             </div>
-            {/* One pill, and it names a thing a customer gets. The protocol and the sandbox
-                disclosure are real and still stated — in the footer, where a shop puts them.
-                A florist does not badge its payment processor's test mode above the fold. */}
-            <div className={styles.heroTags}>
-              <Badge tone="brand" soft>Pay with a gift card, a card, or both</Badge>
-            </div>
+            {/* This was a pill. A pill directly beneath a real button and a real text link is
+                a third control-shaped object in a row of two controls, and this one does
+                nothing when pressed — the shape promised an affordance the element does not
+                have. It says the same sentence as a caption, which is what it always was. */}
+            <p className={styles.heroNote}>
+              <span className={styles.heroNoteMark} aria-hidden />
+              Pay with a gift card, a card, or both
+            </p>
           </div>
 
           {lead && (

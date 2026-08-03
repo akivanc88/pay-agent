@@ -111,6 +111,18 @@ for (const surface of SURFACES) {
 
       // Let fonts settle and entrance animations finish so nothing is caught mid-fade.
       await page.evaluate(() => document.fonts?.ready);
+
+      /*
+       * Drop focus before capturing.
+       *
+       * The prep steps above type into fields, so whichever input was filled last still holds
+       * focus when the shutter opens — the checkout shot came out with a green focus ring
+       * around the PIN box. A reviewer looking at the image cannot tell a focus ring from a
+       * validation state, and reasonably reads a persistent green outline on one field of a
+       * payment form as the surface asserting something about that field. The screenshots are
+       * meant to show the page at rest, so it is put at rest first.
+       */
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
       await page.waitForTimeout(700);
 
       const file = `${outDir}/${surface.name}-${vp.tag}-${theme}.png`;

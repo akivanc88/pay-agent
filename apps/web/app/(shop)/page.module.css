@@ -74,11 +74,29 @@
 .heroLink:hover { color: var(--ink); }
 .heroLink:hover svg { transform: translateY(2px); }
 
-.heroTags {
+/*
+ * The payment promise, set as a caption rather than as a pill.
+ *
+ * It sits under two real controls, so anything with a border and a fill reads as a third one
+ * — and this one is not pressable. A brand-coloured mark carries the same emphasis the pill
+ * was carrying, without claiming to be a target.
+ */
+.heroNote {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-2);
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  letter-spacing: 0.005em;
+  color: var(--ink-2);
+}
+
+.heroNoteMark {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1px;
+  background: var(--brand);
 }
 
 /* ── the hero's material: real catalogue plates, not a stock photo ─────── */
