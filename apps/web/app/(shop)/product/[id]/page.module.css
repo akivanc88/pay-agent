@@ -30,7 +30,7 @@
 /* ── layout ── */
 .layout {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: 1.1fr 0.9fr;
   gap: clamp(var(--sp-5), 4vw, var(--sp-8));
   align-items: start;
 }
@@ -38,17 +38,21 @@
 .mediaCol {
   position: sticky;
   top: calc(var(--sp-7));
+  animation-delay: 20ms;
 }
+/* Same elevation language as the home hero's plate — one idea (an offset shadow plus a
+   hairline sealed into its second layer), not a border stacked under a shadow on top of it. */
 .media {
   position: relative;
   border-radius: var(--r-xl);
-  border: 1px solid var(--line);
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg), var(--shadow-ring);
 }
-/* `product-art` hashes its own class names; `[data-art]` is the stable hook. */
+/* `product-art` hashes its own class names; `[data-art]` is the stable hook. Portrait, not
+   square: the square crop read as a thumbnail blown up rather than a shot composed for this
+   frame — every premium florist PDP gives the product room to stand in the frame. */
 .media [data-art] {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
 }
 .media[data-soldout] [data-art] {
   opacity: 0.72;
@@ -70,10 +74,13 @@
   display: flex;
   flex-direction: column;
   padding-top: var(--sp-2);
+  /* Settles in a beat after the media does — the picture leads, the facts follow it in,
+     rather than the whole page arriving as one flat block. */
+  animation-delay: 90ms;
 }
 .title {
   margin-top: var(--sp-2);
-  font-size: clamp(2rem, 1.5rem + 2vw, 2.7rem);
+  font-size: var(--display-md);
 }
 .lede {
   margin-top: var(--sp-3);
@@ -91,10 +98,10 @@
   margin-top: var(--sp-5);
 }
 .price {
-  font-size: 1.6rem;
-  font-weight: 560;
+  font-size: var(--text-3xl);
+  font-weight: 620;
   color: var(--ink);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .description {
@@ -140,11 +147,20 @@
   background: transparent;
   color: var(--ink-2);
   cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
 }
 .stepBtn:hover:not(:disabled) {
   background: var(--surface-2);
   color: var(--ink);
+}
+/* A press has to look pressed, not just recoloured — the same physics the primary button
+   gets from `ui.module.css`, restated here because this control isn't `<Button>`. */
+.stepBtn:active:not(:disabled) {
+  transform: scale(0.92);
+  transition-duration: var(--dur-1);
 }
 .stepBtn:disabled {
   color: var(--ink-3);
@@ -186,17 +202,21 @@
 }
 
 .added {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
   margin-top: var(--sp-3);
   min-height: 1.4rem;
   color: var(--brand-ink);
   font-size: 0.92rem;
   font-weight: 520;
 }
-.added svg {
+/* Its own box so a repeat "add" — same quantity or not — remounts and settles in again
+   instead of silently updating text underneath a confirmation that already faded still. */
+.addedInner {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.addedInner svg {
   flex: none;
 }
 
@@ -264,9 +284,6 @@
   }
   .mediaCol {
     position: static;
-  }
-  .media :global(.frame) {
-    aspect-ratio: 4 / 3;
   }
 }
 
