@@ -1,0 +1,19 @@
+.footer {
+  margin-top: var(--sp-8);
+  border-top: 1px solid var(--line);
+}
+
+.disclosure {
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: var(--sp-5);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.disclosure strong {
+  font-weight: 620;
+  color: var(--ink-2);
+}

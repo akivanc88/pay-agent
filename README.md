@@ -1,5 +1,7 @@
 # pay-agent
 
+[![CI](https://github.com/akivanc88/pay-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/akivanc88/pay-agent/actions/workflows/ci.yml)
+
 POC agent that can use gift cards to make payments on behalf of a user.
 
 A user loads gift cards into a wallet. An agent then goes to somewhere that wants money,

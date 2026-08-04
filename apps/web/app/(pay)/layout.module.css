@@ -1,0 +1,17 @@
+/*
+ * The payment frame.
+ *
+ * A column that always fills the viewport, so the disclosure sits on the bottom edge rather
+ * than wherever the content happens to stop. On the empty checkout that difference is 500px
+ * of paper below a centred footer rule — which reads as a page that failed to finish loading
+ * rather than as a page with nothing to show.
+ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  flex: 1 0 auto;
+}

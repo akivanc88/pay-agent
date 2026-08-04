@@ -1,0 +1,291 @@
+.page {
+  padding-block: var(--sp-5) var(--sp-9);
+}
+
+/* ── breadcrumb ── */
+.crumb {
+  margin-bottom: var(--sp-5);
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  gap: 0.4rem;
+  color: var(--ink-2);
+  font-size: var(--text-base);
+  font-weight: 520;
+  padding: 0.3rem 0.1rem;
+  transition: color var(--dur-2) var(--ease-out);
+}
+.back svg {
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.back:hover {
+  color: var(--ink);
+}
+.back:hover svg {
+  transform: translateX(-2px);
+}
+
+/* ── layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(var(--sp-5), 4vw, var(--sp-8));
+  align-items: start;
+}
+
+.mediaCol {
+  position: sticky;
+  top: calc(var(--sp-7));
+}
+.media {
+  position: relative;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+/* `product-art` hashes its own class names; `[data-art]` is the stable hook. */
+.media [data-art] {
+  aspect-ratio: 1 / 1;
+}
+.media[data-soldout] [data-art] {
+  opacity: 0.72;
+}
+.soldOutVeil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  backdrop-filter: blur(1px);
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  color: var(--ink);
+}
+
+/* ── detail column ── */
+.detailCol {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--sp-2);
+}
+.title {
+  margin-top: var(--sp-2);
+  font-size: clamp(2rem, 1.5rem + 2vw, 2.7rem);
+}
+.lede {
+  margin-top: var(--sp-3);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.14rem;
+  color: var(--brand);
+  line-height: 1.4;
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+.price {
+  font-size: 1.6rem;
+  font-weight: 560;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.description {
+  margin-top: var(--sp-4);
+  color: var(--ink-2);
+  font-size: 1.02rem;
+  line-height: 1.68;
+  max-width: 34rem;
+}
+
+/* ── buy block (client island) ── */
+.buy {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+.buyRow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-3);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+/* The primary transactional control on the page, so it holds the 44px floor. The drawn
+   circle stays at its old size on wider viewports; only the hit box is guaranteed. */
+.stepBtn {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  min-width: 2.35rem;
+  border: none;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+}
+.stepBtn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.stepBtn:disabled {
+  color: var(--ink-3);
+  opacity: 0.5;
+  cursor: default;
+}
+.stepValue {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 1.02rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.addBtn {
+  flex: 1;
+}
+.addDot {
+  opacity: 0.55;
+}
+
+.stockLine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: var(--sp-4);
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+.stockDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  flex: none;
+}
+.stockDot[data-low] {
+  background: var(--warn);
+}
+
+.added {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: var(--sp-3);
+  min-height: 1.4rem;
+  color: var(--brand-ink);
+  font-size: 0.92rem;
+  font-weight: 520;
+}
+.added svg {
+  flex: none;
+}
+
+.soldOutNote {
+  margin-top: var(--sp-3);
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.textLink {
+  color: var(--brand-ink);
+  font-weight: 560;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
+}
+.textLink:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ── care / delivery notes ── */
+.notes {
+  margin-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+.note {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: var(--sp-4);
+  padding-block: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+/*
+ * `align-self: start` and a nudge onto the value's first baseline. Centring stretched each
+ * term to its row's height, and the rows are 49–98px tall depending on how long the
+ * paragraph is — so every label sat at a different offset from the text it names.
+ */
+.noteTerm {
+  display: flex;
+  align-items: baseline;
+  align-self: start;
+  padding-top: 0.08rem;
+  gap: 0.45rem;
+  color: var(--ink);
+  font-weight: 560;
+  font-size: var(--text-base);
+}
+.noteTerm svg {
+  color: var(--brand);
+  flex: none;
+  /* Baseline-aligned text needs its icon pulled back onto the optical centre of the line. */
+  transform: translateY(0.14em);
+}
+.noteBody {
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1.62;
+}
+
+/* ── responsive ── */
+@media (max-width: 52rem) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--sp-5);
+  }
+  .mediaCol {
+    position: static;
+  }
+  .media :global(.frame) {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (max-width: 30rem) {
+  .buyRow {
+    flex-wrap: wrap;
+  }
+  /* 44px floor for the thumb on the page's primary control. */
+  .stepBtn {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .addBtn {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .note {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+}

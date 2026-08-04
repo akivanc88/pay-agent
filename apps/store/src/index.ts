@@ -4,6 +4,7 @@ import { type Context, Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { pinoHttp } from "pino-http";
 
+import { CatalogService } from "./api/catalog";
 import { CheckoutService } from "./api/checkout";
 import { DiscoveryService } from "./api/discovery";
 import { FundingService } from "./api/funding";
@@ -36,6 +37,7 @@ initDbs("databases/products.db", "databases/transactions.db");
 const checkoutService = new CheckoutService();
 const orderService = new OrderService();
 const discoveryService = new DiscoveryService();
+const catalogService = new CatalogService();
 const fundingService = new FundingService();
 const testingService = new TestingService(checkoutService);
 
@@ -100,6 +102,9 @@ app.use(async (c: Context, next: () => Promise<void>) => {
 
 /* Discovery endpoints */
 app.get("/.well-known/ucp", discoveryService.getMerchantProfile);
+
+/* Catalogue — the human storefront's browse surface, not part of the UCP agent contract. */
+app.get("/products", catalogService.listProducts);
 
 /* Checkout Capability endpoints */
 app.post(

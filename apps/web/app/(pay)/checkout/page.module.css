@@ -1,0 +1,1200 @@
+/*
+ * Checkout.
+ *
+ * Denser than the storefront on purpose. A browse page can breathe; a payment page should
+ * feel like an instrument — tight rhythm, one column of decisions, and the amount due
+ * always the largest thing in view. The reference is Stripe's own checkout: nothing
+ * decorative competes with the number being agreed to.
+ *
+ * Two structural rules this file exists to hold:
+ *
+ * 1. The summary is a *column*, not a card floating in one. A bordered panel that stops
+ *    600px above the bottom of the form beside it turns a third of the page into dead paper.
+ *    One full-height hairline claims that space for the column instead, and the only object
+ *    inside it wearing chrome is the split — the thing the project is about.
+ * 2. Anything sticky offsets from `--header-h`. The header is sticky and translucent; a
+ *    hand-guessed `top` is a guess that goes stale the moment its padding changes, and both
+ *    of the guesses previously in this file were already wrong by 5 and 43 pixels.
+ */
+
+.head {
+  padding: var(--sp-6) 0 var(--sp-5);
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: var(--display-md);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  margin-top: var(--sp-3);
+  margin-left: -0.03em;
+  text-wrap: balance;
+}
+
+.layout {
+  --rail: 23rem;
+  --rail-gap: var(--sp-7);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--rail));
+  gap: var(--rail-gap);
+  align-items: start;
+  padding-bottom: var(--sp-7);
+}
+
+/*
+ * The column rule. It runs the whole height of the grid — past the bottom of the summary,
+ * down to where the form ends — because that is the point: the right-hand third is the
+ * summary's column all the way down, not a panel with a void under it. It fades out over the
+ * last stretch so it stops rather than getting cut off.
+ */
+.layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: var(--sp-6);
+  right: calc(var(--rail) + var(--rail-gap) / 2);
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    var(--line) 2.5rem,
+    var(--line) 68%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ── steps ──────────────────────────────────────────────────────────────── */
+
+.steps {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.step {
+  position: relative;
+  min-width: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* A step that isn't reachable yet is dimmed, but never hidden — the buyer should be able to
+   see what is coming and why it is waiting. */
+.step[data-muted] {
+  opacity: 0.62;
+}
+
+/*
+ * The spine. This is the whole progress affordance: a stepper bar above a three-step form is
+ * a second, less useful copy of the form. The connector runs from each marker to the next and
+ * goes brand-green once the step it leaves has an answer, so the flow fills in downward as
+ * the buyer descends it.
+ */
+.step:not([data-last])::before {
+  content: "";
+  position: absolute;
+  left: calc(0.75rem - 0.5px);
+  top: 1.75rem;
+  bottom: calc(var(--sp-5) * -1 + 3px);
+  width: 1px;
+  background: var(--line-strong);
+  transition: background var(--dur-3) var(--ease-out);
+}
+
+.step[data-done]:not([data-last])::before {
+  background: color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.stepIndex {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.stepIndex[data-done] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-contrast);
+}
+
+.stepTitle {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  color: var(--ink);
+}
+
+/* Indented to the step title's text, so the numbers form a spine down the left. */
+.stepBody {
+  padding-left: calc(1.5rem + var(--sp-3));
+}
+
+.stepHint {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+
+/* ── choices ────────────────────────────────────────────────────────────── */
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border: 0;
+  padding: 0;
+}
+
+.fieldset:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/*
+ * Physics, not a fade. A row that only swaps two colours on hover reads as a stylesheet
+ * reacting; a row that lifts a pixel and casts a little more shadow reads as an object under
+ * the cursor, and pressing it puts it back down slightly further than it started. The press
+ * is deliberately quicker than the release — that asymmetry is most of what makes a control
+ * feel like it has mass.
+ */
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  /* 44px minimum target, met by the row itself rather than by padding the input. */
+  min-height: 2.75rem;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.choice:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.choice:active {
+  transform: translateY(1px) scale(0.997);
+  box-shadow: none;
+  transition-duration: 70ms;
+}
+
+/*
+ * Selection is marked by structure, not by fill.
+ *
+ * A tinted brand fill here put four saturated green surfaces in one column — the chosen
+ * address, the chosen shipping, the chosen card, and the Pay button — so the eye had to sort
+ * four green rectangles before it found the only one that was a button. Green in this column
+ * now means exactly one thing: the action. A selected row states itself with the doubled
+ * brand hairline and the filled radio, which is how a chosen row reads on every payment
+ * surface worth copying.
+ */
+.choice[data-selected] {
+  border-color: var(--brand);
+  background: var(--surface);
+  /* One extra hairline rather than a shadow: the selection reads as a thicker border
+     without the row shifting by a pixel. */
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.choice[data-selected]:hover {
+  background: var(--surface-2);
+  border-color: var(--brand);
+  box-shadow:
+    inset 0 0 0 1px var(--brand),
+    var(--shadow-sm);
+}
+
+/* The label carries the focus ring, because the input itself is a 1px dot in the corner. */
+.choice:has(.radio:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* One line, for rows whose whole distinction is three words long. Four two-line rows in the
+   card rail cost 100px of column height to say "Authorizes" four times. */
+.choiceTight {
+  align-items: center;
+  padding-block: var(--sp-2);
+}
+
+/*
+ * Drawn rather than native. `accent-color` alone leaves Chrome's dark-mode default in
+ * place, which fills the *unchecked* disc solid grey and leaves the *checked* one a thin
+ * ring — the two states read inverted, so the row you haven't picked looks chosen (or
+ * disabled). This draws both states explicitly, identically in both themes.
+ */
+.radio {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0.2rem 0 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.choiceTight .radio {
+  margin-top: 0;
+}
+
+.radio::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--brand-contrast);
+  transform: scale(0);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.radio:checked {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.radio:checked::after {
+  transform: scale(1);
+}
+
+.choice:hover .radio:not(:checked) {
+  border-color: var(--ink-3);
+  box-shadow: 0 0 0 3px var(--surface-2);
+}
+
+.choiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.choiceTitle {
+  font-size: var(--text-md);
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.choiceNote {
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.choiceAmount {
+  font-size: var(--text-md);
+  font-weight: 560;
+  color: var(--ink);
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+/* The right-hand slot on a one-line row: what the row *does*, not what it is. */
+.choiceMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+/*
+ * A card that declines is not an error until you pick it.
+ *
+ * Set in red on every row, "Declines insufficient_funds" reads as a failure the visitor has
+ * already caused — red type and a machine failure code sitting inside a payment form, before
+ * they have pressed anything. It is a *specification* of what the test issuer will do with
+ * that card, and it stays in the body colour while it is only that. The moment the row is
+ * chosen it stops describing a card and starts predicting this payment, and only then does it
+ * earn the alarm colour.
+ */
+.choiceMeta[data-declines] {
+  color: var(--ink-3);
+}
+
+.choice[data-selected] .choiceMeta[data-declines] {
+  color: var(--danger);
+}
+
+/* The digits are what tell one Visa from another, so they stay at full ink. The mono face
+   is the texture that marks them as a card number; dimness is not. */
+.last4 {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* A raw API token set as a token, so it reads as quoted machine output rather than as an
+   author who forgot to write the sentence in English. */
+.outcomeCode {
+  padding: 0.1em 0.4em;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--ink-2);
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+
+.fields {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldPin {
+  flex: 0 0 7rem;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  color: var(--ink-2);
+}
+
+.optional {
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  letter-spacing: 0.01em;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+  opacity: 0.7;
+}
+
+.input:hover {
+  border-color: var(--ink-3);
+}
+
+/*
+ * The border change is the flourish; the global ring is the affordance. An earlier version
+ * traded the ring for a 3px `--brand-tint` halo, which is 1.14:1 on `--surface` — i.e. not
+ * visible at all. These fields keep the same ring every other control in the app uses.
+ */
+.input:focus-visible {
+  border-color: var(--brand);
+}
+
+.giftStatus {
+  margin-top: var(--sp-3);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  min-height: 2.4rem;
+  max-width: 58ch;
+  text-wrap: pretty;
+}
+
+.giftFound {
+  display: inline;
+  color: var(--brand-ink);
+}
+
+/* The tick is optically low against a cap-height line of text; nudging it up a hair puts it
+   on the same visual centre as the sentence rather than on its baseline. */
+.giftFound svg {
+  display: inline;
+  vertical-align: -0.05em;
+  margin-right: 0.3em;
+}
+
+.giftFound strong {
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Not an error and not a success: the code resolves to more than one enrolled card, which is
+   a fact about this wallet rather than a mistake the buyer made. Warn ink, no icon. */
+.giftAmbiguous {
+  color: var(--warn);
+}
+
+/* ── card rail ──────────────────────────────────────────────────────────── */
+
+.cardRail {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-size: var(--text-sm);
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.railNote {
+  margin-top: var(--sp-3);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+/* ── summary column ─────────────────────────────────────────────────────── */
+
+.aside {
+  min-width: 0;
+  position: sticky;
+  /* Clears the sticky, translucent header. Not a guess: `--header-h` is published for this. */
+  top: calc(var(--header-h) + var(--sp-4));
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 var(--sp-3);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  padding: 0 0 var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  gap: var(--sp-1);
+  align-items: baseline;
+  font-size: var(--text-base);
+}
+
+.itemQty {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.itemTitle {
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+/*
+ * Every amount in this column is one weight and one family. Inter's variable weight axis
+ * changes digit advance, so a 540 line-item above a 560 subtotal puts their decimal points on
+ * different verticals even when both are right-aligned and both are tabular — the column
+ * looks *nearly* right, which is worse than looking wrong. One weight, no exceptions.
+ */
+.itemAmount,
+.subtotalRow :last-child,
+.planRow dd {
+  color: var(--ink);
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+}
+
+.itemAmount,
+.planRow dd {
+  justify-self: end;
+  text-align: right;
+}
+
+.subtotals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) 0 var(--sp-4);
+}
+
+.subtotalRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+}
+
+/* ── the funding plan ───────────────────────────────────────────────────── */
+
+/*
+ * The one object in this column with chrome, and it gets it because it is the argument the
+ * whole project is making: here is what you owe, here is what the gift card takes off it,
+ * here is what the card is left with. Ground shift and radius — no border, no shadow. Depth
+ * is one idea here.
+ */
+.planWrap {
+  padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--surface-sunk);
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.planRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: var(--text-base);
+}
+
+.planRow dt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.planRow dd {
+  margin: 0;
+}
+
+/* The amount due is the commitment, so it is the one set large — and it is the only row
+   allowed to leave the shared decimal grid, because it sits at the top of the group with
+   nothing above it to misalign against. The split rows beneath it are the explanation. */
+.planRowTotal {
+  align-items: baseline;
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.planRowTotal dt {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.planRowTotal dd {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.planRowShort dt,
+.planRowShort dd {
+  color: var(--danger);
+}
+
+.planHint {
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+
+.planDraw {
+  color: var(--brand-ink);
+  white-space: nowrap;
+}
+
+.planUnknown {
+  font-size: var(--text-sm);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* Why a number is missing. Always present when one is, because a blank with no reason reads
+   as a lookup that broke rather than as an honest refusal to guess. */
+.planNote {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--warn);
+  text-wrap: pretty;
+}
+
+.planNote strong {
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* The quieter sibling: the number *is* known, and this says what it is a number about. */
+.planFoot {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+/* ── the pay button ─────────────────────────────────────────────────────── */
+
+/*
+ * Doubled class so this wins over `.btn` regardless of which stylesheet Next emits first.
+ * Two things it fixes: the primary action on a payment page should carry more weight than a
+ * "Browse the shop" link does, and a disabled control faded to 50% opacity is the single most
+ * common tell that a surface is a demo — it makes the label unreadable and says nothing about
+ * *why* it can't be pressed. This one changes material instead, and the line underneath says
+ * the reason.
+ */
+.payBtn.payBtn {
+  margin-top: var(--sp-5);
+  min-height: 3.25rem;
+  font-size: var(--text-lg);
+  font-weight: 620;
+  letter-spacing: -0.008em;
+  box-shadow: var(--shadow-md);
+}
+
+.payBtn.payBtn:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.payBtn.payBtn:disabled {
+  opacity: 1;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+/* Busy is not disabled-looking. The button is unpressable, but the payment is *happening*,
+   so it keeps the brand and darkens as though held down. */
+.payBtn.payBtn[aria-busy="true"]:disabled {
+  background: var(--brand-ink);
+  color: var(--brand-contrast);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.payBusy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.spinner {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.payNote {
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* Empty most of the time. `:not(:empty)` keeps its margin from opening a gap under the
+   button on the ordinary path, without the element leaving the tree — it is an `aria-live`
+   region, and a live region that unmounts announces nothing when it comes back. */
+.payNote:not(:empty) {
+  margin-top: var(--sp-3);
+}
+
+/* ── the settlement order ───────────────────────────────────────────────── */
+
+.settlement {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.settlementHead {
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-3);
+}
+
+/*
+ * Hanging numerals. The counter sits in the gutter so the wrapped second line of a step
+ * aligns under the first word rather than under the number — the difference between a list
+ * and three sentences that happen to start with digits.
+ */
+.settlementList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: settle;
+}
+
+.settlementList li {
+  position: relative;
+  padding-left: var(--sp-5);
+  counter-increment: settle;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.settlementList li::before {
+  content: counter(settle);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.05rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  color: var(--brand);
+}
+
+/* ── failure ────────────────────────────────────────────────────────────── */
+
+.declined {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--danger-tint);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.declinedTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--text-md);
+  font-weight: 620;
+  color: var(--danger);
+}
+
+.declinedTitle svg {
+  flex-shrink: 0;
+}
+
+.declinedCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  padding: 0.15em 0.45em;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.declinedBody {
+  margin-top: var(--sp-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.declinedRestore {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.declinedRestore strong {
+  color: var(--ink);
+  font-weight: 620;
+}
+
+.inlineError {
+  padding: var(--sp-4);
+  border-color: var(--danger);
+  background: var(--danger-tint);
+}
+
+.inlineErrorTitle {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.inlineErrorBody {
+  margin-top: var(--sp-1);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ── standalone states ──────────────────────────────────────────────────── */
+
+.standalone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-8) 0;
+  max-width: 40rem;
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: var(--display-md);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-left: -0.03em;
+}
+
+.emptyBody {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 50ch;
+  text-wrap: pretty;
+}
+
+.paidMark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: var(--brand-contrast);
+  box-shadow: var(--shadow-md);
+}
+
+.paidTitle {
+  font-family: var(--font-serif);
+  font-size: var(--display-lg);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin-left: -0.04em;
+}
+
+.orderPanel {
+  padding: var(--sp-4) var(--sp-5);
+  width: 100%;
+}
+
+.orderLabel {
+  font-size: var(--text-2xs);
+  font-weight: 620;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.orderId {
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.paidActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+
+.paidLink {
+  font-size: var(--text-base);
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-color: var(--line-strong);
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.paidLink:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+/* ── skeleton ───────────────────────────────────────────────────────────── */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  width: 100%;
+  max-width: 22rem;
+}
+
+.bar {
+  height: 0.75rem;
+  border-radius: var(--r-xs);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-sunk) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s var(--ease-in-out) infinite;
+  width: 60%;
+}
+
+.barWide { width: 85%; }
+.barShort { width: 40%; }
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ── utility ────────────────────────────────────────────────────────────── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+/* Desktop keeps the total in the sticky column, so the bar is redundant there. */
+.mobileTotal {
+  display: none;
+}
+
+@media (max-width: 940px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+  }
+
+  /* No second column, so nothing to divide. */
+  .layout::before {
+    display: none;
+  }
+
+  /* The summary stops being a column and becomes the last thing you read before paying —
+     which means it has to draw its own boundary again, since the rule that gave it one has
+     gone with the second column. */
+  .aside {
+    position: static;
+  }
+
+  .summary {
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobileTotal {
+    position: sticky;
+    /* Flush under the sticky header. The previous 3.9rem left a 5px seam of live scrolling
+       page between the two bars; `--header-h` exists so this cannot drift again. */
+    top: var(--header-h);
+    z-index: 20;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobileTotalLabel {
+    font-size: var(--text-2xs);
+    font-weight: 620;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mobileTotalValue {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (max-width: 560px) {
+  .stepBody {
+    /* The numbered spine costs too much width on a phone; the step number stays as the
+       heading's marker and the body goes full width. */
+    padding-left: 0;
+  }
+  .step:not([data-last])::before {
+    display: none;
+  }
+  .fields {
+    flex-direction: column;
+  }
+  .fieldPin {
+    flex: 1;
+  }
+  .choice {
+    padding: var(--sp-3);
+  }
+  .choiceTight {
+    padding-block: var(--sp-2);
+  }
+  .summary {
+    padding: var(--sp-4);
+  }
+  .paidActions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+    background: var(--surface-2);
+  }
+  .spinner {
+    animation: none;
+    border-color: color-mix(in srgb, currentColor 45%, transparent);
+    border-top-color: currentColor;
+  }
+  .choice,
+  .stepIndex,
+  .step,
+  .step::before,
+  .input,
+  .radio {
+    transition: none;
+  }
+  /* Reduced motion removes the travel, not the state — the row still changes ground and
+     shadow, it just does not move to get there. */
+  .choice:hover,
+  .choice:active {
+    transform: none;
+  }
+}

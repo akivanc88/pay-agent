@@ -1,0 +1,27 @@
+.wrap { padding-block: var(--sp-9); }
+.panel { text-align: center; padding: var(--sp-7) var(--sp-5); }
+.icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto var(--sp-4);
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+}
+.title { font-size: 1.4rem; margin-bottom: var(--sp-2); }
+.lede { color: var(--ink-2); margin-bottom: var(--sp-5); }
+.code {
+  text-align: left;
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  overflow-x: auto;
+  line-height: 1.8;
+}

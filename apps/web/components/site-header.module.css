@@ -1,0 +1,138 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+/*
+ * `0.7rem` block padding is load-bearing: `--header-h` in globals.css is derived from it
+ * (0.7rem × 2 + a 44px minimum target + the 1px rule) and everything sticky on every surface
+ * offsets itself by that token. Change this and two other surfaces silently slide under the
+ * header. The inline padding is free.
+ */
+.inner {
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: 0.7rem var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding-right: 0.2rem;
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  background: var(--brand-tint);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
+  transition: transform var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+/* The sprout leans forward when you reach for it and is pushed back in when you press. It is
+   the one piece of chrome on every page, so it is worth having weight. */
+.brand:hover .mark {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+}
+.brand:active .mark {
+  transform: translateY(0.5px) scale(0.96);
+  transition-duration: var(--dur-1);
+}
+.wordmark {
+  font-family: var(--font-serif);
+  font-size: 1.16rem;
+  letter-spacing: -0.01em;
+  /* The serif's side bearing again — without it the wordmark hangs a hair right of the gap
+     the mark sets. */
+  margin-left: -0.02em;
+}
+.dot { color: var(--brand); padding-inline: 0.02em; }
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-inline-start: auto;
+}
+/*
+ * The active pill is drawn on a pseudo-element rather than as a background, so it can scale
+ * in from 92% on hover instead of a flat colour fade. The label never moves and never
+ * changes weight — a nav that reflows by a pixel as you sweep across it is the most common
+ * way a header gives itself away.
+ */
+.navLink {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
+  font-weight: 520;
+  font-size: var(--text-md);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-2) var(--ease-out);
+}
+.navLink::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-2);
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.navLink::before { z-index: -1; }
+.navLink:hover { color: var(--ink); }
+.navLink:hover::before { opacity: 1; transform: scale(1); }
+.navLink:active::before { transform: scale(0.96); transition-duration: var(--dur-1); }
+
+.navLink[data-active] { color: var(--brand-ink); }
+.navLink[data-active]::before {
+  background: var(--brand-tint);
+  opacity: 1;
+  transform: scale(1);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/*
+ * Below 30rem the header has to fit a 34px mark, the nav, a cart and a toggle into 390px
+ * minus two 16px gutters — 358px of content box. It doesn't, so it sheds: the wordmark
+ * goes first (the sprout mark still identifies the product), then the checkout link, which
+ * the cart indicator already leads to. What survives keeps a 44px target.
+ */
+@media (max-width: 30rem) {
+  .inner { gap: var(--sp-3); padding-inline: var(--sp-4); }
+  .navLink { padding: 0.4rem 0.62rem; font-size: var(--text-base); }
+  .navLink[data-secondary] { display: none; }
+  /* With the wordmark gone the brand is a bare 34px mark, so the link takes the target
+     width explicitly and centres the mark inside it. */
+  .wordmark { display: none; }
+  .brand { min-width: 44px; justify-content: center; padding-right: 0; }
+  .nav { gap: 0.1rem; }
+}

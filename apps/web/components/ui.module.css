@@ -1,0 +1,222 @@
+/* Primitives styling. Consumes only design tokens from globals.css. */
+
+/*
+ * The page gutter. It steps down to `--sp-4` at the width the header already steps down to,
+ * because the two have to agree: with the container on 24px and the header on 16px, every
+ * page on a phone had its content hanging 8px right of the mark and nav above it, on every
+ * surface at once. The gutter is one measurement, declared once.
+ */
+.container {
+  width: 100%;
+  max-width: var(--content);
+  margin-inline: auto;
+  padding-inline: var(--sp-5);
+}
+.containerNarrow { max-width: var(--content-narrow); }
+@media (max-width: 30rem) {
+  .container { padding-inline: var(--sp-4); }
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────
+ * Depth is *one* idea: a hairline. It was three — a border, a shadow and a ground shift, all
+ * saying "this is a separate thing" — which is why nine stacked panels read as a pile of
+ * cards rather than a document. `raised` is the single sanctioned escalation and is used
+ * when something genuinely floats above the page; `sunk` goes the other way with the ground
+ * only. Neither adds a second idea on top of the first.
+ */
+.panel {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.panel_raised { box-shadow: var(--shadow-md); }
+.panel_sunk { background: var(--surface-sunk); }
+.panelInset { padding: var(--sp-5); }
+
+/* ── Button ─────────────────────────────────────────────────────────────
+ * Four variants, one body. The physics are carried by four custom properties so a variant
+ * only ever restates colour, never the motion — the lift, the press and the ring are the
+ * same everywhere, which is what makes two buttons on different surfaces feel like the same
+ * object.
+ */
+.btn {
+  --btn-bg: var(--brand);
+  --btn-fg: var(--brand-contrast);
+  --btn-bd: transparent;
+  --btn-lift: 0px;
+  /* `0 0 #0000` and not `none`: these compose into one `box-shadow` list, and `none` is not
+     a legal list member. */
+  --btn-shadow: 0 0 #0000;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border: 1px solid var(--btn-bd);
+  border-radius: var(--r-pill);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 560;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--btn-shadow);
+  transform: translateY(var(--btn-lift));
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+/* The press. Faster than the rise, and it goes *past* the resting plane rather than back to
+   it — a body that is pushed settles below where it started. `--dur-1` on the way down is
+   what stops it feeling like a fade. */
+.btn:not(:disabled):not([data-loading]):active {
+  --btn-lift: 1px;
+  transition-duration: var(--dur-1);
+}
+
+/* Offset far enough to clear the hover shadow, and it follows the pill radius. Declared here
+   as well as globally because the global rule is `:where()` — zero specificity — and would
+   otherwise lose its `outline-offset` to nothing but win nothing either. */
+.btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+/* Disabled is a designed skin, not the enabled skin at half strength: it moves to the sunk
+   ground and the secondary ink, so it reads as "not available" rather than "still loading". */
+.btn:disabled {
+  --btn-bg: var(--surface-sunk);
+  --btn-fg: var(--ink-3);
+  --btn-bd: var(--line);
+  --btn-shadow: 0 0 #0000;
+  --btn-lift: 0px;
+  cursor: not-allowed;
+}
+
+/* Loading keeps the variant's colour — the button is still the thing you pressed — and only
+   stops accepting input. `aria-disabled` rather than `disabled` so focus is not thrown to
+   the top of the document mid-action. */
+.btn[data-loading] {
+  cursor: progress;
+  pointer-events: none;
+}
+.spinner {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  animation: btnSpin 720ms linear infinite;
+}
+.spinner circle { opacity: 0.3; }
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+/* Reduced motion leaves a static three-quarter arc, which still reads as "in progress"
+   beside `aria-busy` and the label. Nothing is hidden. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+/* Heights are explicit so every control lands on the same rhythm and `md` clears the 44px
+   touch floor by construction rather than by whatever the font happened to measure. */
+.btn_sm { min-height: 2.375rem; padding-inline: 0.9rem; font-size: var(--text-base); gap: 0.4rem; }
+.btn_md { min-height: 2.75rem; padding-inline: 1.15rem; font-size: var(--text-md); }
+.btn_lg { min-height: 3.25rem; padding-inline: 1.5rem; font-size: var(--text-lg); }
+.btnFull { width: 100%; }
+
+/* `--brand-ink` is the hover shade in both themes without a second declaration: it is the
+   darker green on paper and the lighter green on ink, and both directions read as the
+   button leaning toward you. */
+.btn_primary { --btn-shadow: var(--shadow-sm); }
+.btn_primary:not(:disabled):not([data-loading]):hover {
+  --btn-bg: var(--brand-ink);
+  --btn-shadow: var(--shadow-md);
+  --btn-lift: -1px;
+}
+
+.btn_secondary {
+  --btn-bg: var(--surface);
+  --btn-fg: var(--ink);
+  --btn-bd: var(--line-strong);
+  --btn-shadow: var(--shadow-sm);
+}
+.btn_secondary:not(:disabled):not([data-loading]):hover {
+  --btn-bg: var(--surface-2);
+  --btn-bd: var(--ink-3);
+  --btn-shadow: var(--shadow-md);
+  --btn-lift: -1px;
+}
+
+.btn_ghost { --btn-bg: transparent; --btn-fg: var(--ink-2); }
+.btn_ghost:not(:disabled):not([data-loading]):hover {
+  --btn-bg: var(--surface-2);
+  --btn-fg: var(--ink);
+  --btn-bd: var(--line);
+}
+
+/* `--paper` and not white: the foreground has to invert with the theme, because `--danger`
+   is a deep red on light and a pale salmon on dark. White holds 6.9:1 on one and 1.6:1 on
+   the other. */
+.btn_danger { --btn-bg: var(--danger); --btn-fg: var(--paper); --btn-shadow: var(--shadow-sm); }
+.btn_danger:not(:disabled):not([data-loading]):hover {
+  --btn-bg: color-mix(in srgb, var(--danger) 86%, var(--ink));
+  --btn-shadow: var(--shadow-md);
+  --btn-lift: -1px;
+}
+
+/* ── Money ──
+ * Tabular figures, and never broken across lines — a wrapped `$1,250.00` is two amounts as
+ * far as the eye is concerned. Right-aligned columns of these align on the decimal because
+ * every glyph is the same advance width. */
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-2xs);
+  font-weight: 620;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  /* The trailing letter-space is real width. Without the asymmetric inline padding the text
+     sits visibly left of centre in its own pill. */
+  padding: 0.2rem 0.5rem 0.2rem 0.55rem;
+  border-radius: var(--r-pill);
+  border: 1px solid currentColor;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.badgeSoft { border-color: transparent; }
+.badge_neutral { color: var(--ink-3); }
+.badge_neutral.badgeSoft { background: var(--surface-2); color: var(--ink-2); }
+.badge_brand { color: var(--brand); }
+.badge_brand.badgeSoft { background: var(--brand-tint); color: var(--brand-ink); }
+.badge_warn { color: var(--warn); }
+.badge_warn.badgeSoft { background: var(--warn-tint); color: var(--warn); }
+.badge_danger { color: var(--danger); }
+.badge_danger.badgeSoft { background: var(--danger-tint); color: var(--danger); }
+.badge_gold { color: var(--gold); }
+.badge_gold.badgeSoft { background: var(--gold-tint); color: var(--gold); }
+
+/* ── Eyebrow ──
+ * The negative inline-end margin cancels the trailing letter-space. It is invisible where
+ * the eyebrow is left-aligned and it is what stops a centred one — every StatePage — sitting
+ * 1.3px left of the heading beneath it. */
+.eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-inline-end: -0.12em;
+}
