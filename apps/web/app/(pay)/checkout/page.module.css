@@ -684,8 +684,17 @@
   text-transform: none;
 }
 
+/*
+ * The gift-card draw is the one figure the token system reserves a colour for: `--gold` is
+ * "the gift-card moment and nothing else", and this is that moment made literal — the amount
+ * the gift card takes off the total. Setting it gold does two things at once. It gives the
+ * draw its own accent instead of borrowing green, so green is left meaning exactly one thing
+ * in this column (the action, on the Pay button), and it ties the live split back to the
+ * gold gift-rail in the empty state. `--gold` is tuned to clear 4.70:1 on `--surface-sunk`,
+ * which is the ground this panel sits on.
+ */
 .planDraw {
-  color: var(--brand-ink);
+  color: var(--gold);
   white-space: nowrap;
 }
 
@@ -697,10 +706,52 @@
   white-space: nowrap;
 }
 
+/*
+ * Motion on the numbers, not decoration around them.
+ *
+ * A split payment's whole tension is that the two amounts move against each other — pick a
+ * faster delivery and the total rises, the gift draw holds, and the card's remainder takes
+ * the difference. Updating those figures with no acknowledgement reads as a table being
+ * rewritten by a script. `.settle` is keyed on the value in the markup, so it replays only
+ * when the figure it wraps actually changed: a value that lands after a change eases down
+ * into place rather than snapping. Small on purpose — a payment total should feel settled,
+ * not springy.
+ */
+.settle {
+  display: inline-block;
+  animation: settle var(--dur-2) var(--ease-out);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0.35;
+    transform: translateY(-0.18em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The sentence under an amount arrives a beat after the amount it explains — a short rise so
+   a reason for a blank, or a caveat on a real balance, reads as settling in rather than
+   having always been there. */
+@keyframes planReveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Why a number is missing. Always present when one is, because a blank with no reason reads
    as a lookup that broke rather than as an honest refusal to guess. */
 .planNote {
   margin-top: var(--sp-2);
+  animation: planReveal var(--dur-3) var(--ease-out);
   font-size: var(--text-xs);
   line-height: 1.55;
   color: var(--ink-2);
@@ -722,6 +773,7 @@
   line-height: 1.55;
   color: var(--ink-3);
   text-wrap: pretty;
+  animation: planReveal var(--dur-3) var(--ease-out);
 }
 
 /* ── the pay button ─────────────────────────────────────────────────────── */
@@ -863,6 +915,9 @@
   border-radius: var(--r-md);
   background: var(--danger-tint);
   box-shadow: inset 0 0 0 1px var(--danger);
+  /* A decline is the one moment the buyer most needs to register that something changed, so
+     it arrives rather than blinks into place. */
+  animation: planReveal var(--dur-3) var(--ease-out);
 }
 
 .declinedTitle {
@@ -1190,6 +1245,14 @@
   .input,
   .radio {
     transition: none;
+  }
+  /* State changes still change state under reduced motion — they simply stop travelling to
+     get there. The figure updates, the note appears; neither slides or fades in. */
+  .settle,
+  .planNote,
+  .planFoot,
+  .declined {
+    animation: none;
   }
   /* Reduced motion removes the travel, not the state — the row still changes ground and
      shadow, it just does not move to get there. */
