@@ -49,12 +49,44 @@
   border-top: 1px solid var(--line);
 }
 
+/*
+ * Removal collapse. Two nested wrappers, not one: `rowCollapse` animates the grid track
+ * (the thing that makes the rows below it slide up), while `rowClip` clips the row's own
+ * height to whatever the track currently is. Animating a single element on both `height:
+ * auto→0` and opacity is what the trick usually reaches for, but `height: auto` cannot be
+ * transitioned at all — this is the same fade-and-fold a premium cart plays on delete,
+ * built on a property that actually animates.
+ */
+.rowCollapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-in-out);
+}
+.rowCollapse[data-leaving] {
+  grid-template-rows: 0fr;
+}
+.rowClip {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-4) var(--sp-5);
+  opacity: 1;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.rowCollapse[data-leaving] .row {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rowCollapse,
+  .rowCollapse .row {
+    transition: none;
+  }
 }
 .thumb {
   flex: none;
@@ -181,22 +213,55 @@
   outline: 2px solid var(--brand);
   outline-offset: -1px;
 }
-.stepValue {
+/* The wrapper carries the fixed width and the single `aria-live` region; the value inside is
+   remounted (`key={quantity}`) on every change so the tick below has something to animate
+   onto, without a second piece of state just to trigger it. */
+.stepValueWrap {
+  display: inline-flex;
   min-width: 2ch;
-  text-align: center;
+  justify-content: center;
+}
+.stepValue {
+  display: inline-block;
   font-size: var(--text-md);
   font-weight: 560;
   color: var(--ink);
+  transform-origin: 50% 50%;
+  animation: stepTick var(--dur-2) var(--ease-out);
+}
+@keyframes stepTick {
+  from {
+    transform: scale(1.32);
+    color: var(--brand-ink);
+  }
+  to {
+    transform: scale(1);
+    color: var(--ink);
+  }
 }
 
 /* The amount column. A fixed measure so every line total in the list shares one right edge
-   and therefore one decimal, whatever the quantity does to the digits. */
+   and therefore one decimal, whatever the quantity does to the digits. Remounted the same
+   way as the stepper's value — a quiet flash toward the brand ink says "this number just
+   changed" without a layout-shifting badge or a colour that lingers. */
 .rowTotal {
+  display: inline-block;
   min-width: 5.5ch;
   text-align: right;
   font-size: var(--text-lg);
   font-weight: 560;
   color: var(--ink);
+  animation: totalTick var(--dur-3) var(--ease-out);
+}
+@keyframes totalTick {
+  from { color: var(--brand-ink); }
+  to { color: var(--ink); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stepValue,
+  .rowTotal {
+    animation: none;
+  }
 }
 
 /* ── the shop, still open ── */
@@ -221,6 +286,13 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
+  opacity: 1;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+/* Reuses `.rowCollapse`/`.rowClip` from the cart's own line items — a row a list is about to
+   drop should fold shut the same way whichever list it is in. */
+.rowCollapse[data-leaving] .alsoRow {
+  opacity: 0;
 }
 .alsoThumb {
   width: 3rem;
@@ -263,6 +335,35 @@
 }
 .alsoAdd {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+/* The confirmation is the button, briefly — brand ground, a check, "Added" — and settles
+   back on its own timer. Higher specificity than the shared secondary-button skin by way of
+   the attribute selector, so no `!important` is needed to win it. */
+.alsoAdd[data-added] {
+  background: var(--brand-tint);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+.alsoAdd[data-added] svg {
+  animation: addedCheck var(--dur-2) var(--ease-out);
+}
+@keyframes addedCheck {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alsoAdd[data-added] svg {
+    animation: none;
+  }
 }
 
 /* ── summary ── */
@@ -392,6 +493,33 @@
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: var(--sp-5);
 }
+/* The three cuttings are a taste of the catalogue, not the whole of it — this is the way
+   back to the rest for anyone the three didn't land for. */
+.suggestMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  margin: var(--sp-5) auto 0;
+  width: fit-content;
+  padding-inline: var(--sp-4);
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
+  font-size: var(--text-base);
+  font-weight: 520;
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+}
+.suggestMore:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.suggestMore svg {
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.suggestMore:hover svg {
+  transform: translateX(2px);
+}
 
 /* ── skeleton ── */
 .skel {
@@ -465,9 +593,15 @@
     padding: var(--sp-4);
     align-items: start;
   }
+  /* A portrait frame that fills the whole folded row, rather than a 64px square parked at
+     the top with the row's real height going unused beside it. `product-art`'s `slice`
+     preserveAspectRatio was built to crop to any frame, so this is free — the row gets a
+     real product photo at the height it already has, instead of borrowed whitespace. */
   .thumb {
     grid-area: thumb;
-    width: 4rem;
+    width: 5.5rem;
+    align-self: stretch;
+    aspect-ratio: auto;
   }
   .rowInfo { grid-area: info; }
   .rowTotal { grid-area: total; align-self: start; }
