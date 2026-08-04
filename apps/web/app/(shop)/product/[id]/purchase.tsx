@@ -31,6 +31,10 @@ export function ProductPurchase({
   const max = Math.max(1, stock);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(0);
+  // Bumped on every add, distinct from `added` itself, so a second click at the same
+  // quantity still remounts the confirmation and replays its entrance instead of sitting
+  // there inert because the text didn't change.
+  const [addSeq, setAddSeq] = useState(0);
 
   if (!inStock) {
     return (
@@ -52,6 +56,7 @@ export function ProductPurchase({
   function addToCart() {
     add({ id, title, price, currency }, qty);
     setAdded(qty);
+    setAddSeq((s) => s + 1);
   }
 
   return (
@@ -110,7 +115,7 @@ export function ProductPurchase({
 
       <p className={styles.added} role="status" aria-live="polite">
         {added > 0 && (
-          <>
+          <span key={addSeq} className={`${styles.addedInner} rise`}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M20 6 9 17l-5-5" />
             </svg>
@@ -118,7 +123,7 @@ export function ProductPurchase({
             <Link href="/cart" className={styles.textLink}>
               View cart
             </Link>
-          </>
+          </span>
         )}
       </p>
     </div>

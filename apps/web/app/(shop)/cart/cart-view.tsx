@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { Button, Money, Panel, SectionLabel } from "@/components/ui";
@@ -128,6 +129,13 @@ export function CartView({ suggestions }: { suggestions: CatalogProduct[] }) {
 }
 
 /* ── one line item ─────────────────────────────────────────────────────── */
+/**
+ * Removal is a collapse, not a jump-cut: the row fades and its track folds to nothing over
+ * one motion token, and only then does it leave the cart's actual state — a line that just
+ * vanished mid-read is what makes a list feel unstable. `prefers-reduced-motion` skips the
+ * wait entirely rather than playing the transition invisibly, so a reduced-motion user never
+ * sits through a silent 320ms delay on a click that looks like it did nothing.
+ */
 function CartRow({
   line,
   onQuantity,
@@ -137,73 +145,110 @@ function CartRow({
   onQuantity: (id: string, q: number) => void;
   onRemove: (id: string) => void;
 }) {
+  const [leaving, setLeaving] = useState(false);
+  const removedRef = useRef(false);
+
+  const handleRemove = () => {
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      onRemove(line.id);
+      return;
+    }
+    setLeaving(true);
+  };
+
+  const finishRemove = () => {
+    if (removedRef.current) return;
+    removedRef.current = true;
+    onRemove(line.id);
+  };
+
   return (
-    <div className={styles.row}>
-      <Link href={`/product/${line.id}`} className={styles.thumb} aria-hidden tabIndex={-1}>
-        <ProductArt id={line.id} />
-      </Link>
+    <div
+      className={styles.rowCollapse}
+      data-leaving={leaving || undefined}
+      onTransitionEnd={(e) => {
+        if (e.propertyName === "grid-template-rows" && leaving) finishRemove();
+      }}
+    >
+      <div className={styles.rowClip}>
+        <div className={styles.row} aria-busy={leaving || undefined}>
+          <Link href={`/product/${line.id}`} className={styles.thumb} aria-hidden tabIndex={-1}>
+            <ProductArt id={line.id} />
+          </Link>
 
-      <div className={styles.rowInfo}>
-        <Link href={`/product/${line.id}`} className={styles.rowTitle}>
-          {line.title}
-        </Link>
-        <p className={styles.rowMeta}>
-          {/* At quantity 1 the unit price is character-for-character the line total, two
-              inches away in the same row. It only carries information once there is
-              arithmetic to explain. */}
-          {line.quantity > 1 && (
-            <>
-              <span className={styles.rowUnit}>
-                <Money minor={line.price} currency={line.currency} /> each
+          <div className={styles.rowInfo}>
+            <Link href={`/product/${line.id}`} className={styles.rowTitle}>
+              {line.title}
+            </Link>
+            <p className={styles.rowMeta}>
+              {/* At quantity 1 the unit price is character-for-character the line total, two
+                  inches away in the same row. It only carries information once there is
+                  arithmetic to explain. */}
+              {line.quantity > 1 && (
+                <>
+                  <span className={styles.rowUnit}>
+                    <Money minor={line.price} currency={line.currency} /> each
+                  </span>
+                  <span className={styles.metaDot} aria-hidden>
+                    ·
+                  </span>
+                </>
+              )}
+              <button
+                type="button"
+                className={styles.remove}
+                onClick={handleRemove}
+                disabled={leaving}
+                aria-label={`Remove ${line.title} from cart`}
+              >
+                Remove
+              </button>
+            </p>
+          </div>
+
+          <div className={styles.stepper} role="group" aria-label={`Quantity for ${line.title}`}>
+            <button
+              type="button"
+              className={styles.stepBtn}
+              onClick={() => onQuantity(line.id, line.quantity - 1)}
+              disabled={line.quantity <= 1 || leaving}
+              aria-label={`Decrease quantity of ${line.title}`}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M5 12h14" />
+              </svg>
+            </button>
+            {/* Keyed on quantity: a fresh node per value gives the tick a mount to animate
+                without any extra state, and `aria-live` on the wrapper still announces once. */}
+            <span className={styles.stepValueWrap} aria-live="polite">
+              <span key={line.quantity} className={`${styles.stepValue} tnum`}>
+                {line.quantity}
               </span>
-              <span className={styles.metaDot} aria-hidden>
-                ·
-              </span>
-            </>
-          )}
-          <button
-            type="button"
-            className={styles.remove}
-            onClick={() => onRemove(line.id)}
-            aria-label={`Remove ${line.title} from cart`}
-          >
-            Remove
-          </button>
-        </p>
-      </div>
+            </span>
+            <button
+              type="button"
+              className={styles.stepBtn}
+              onClick={() => onQuantity(line.id, line.quantity + 1)}
+              disabled={leaving}
+              aria-label={`Increase quantity of ${line.title}`}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
 
-      <div className={styles.stepper} role="group" aria-label={`Quantity for ${line.title}`}>
-        <button
-          type="button"
-          className={styles.stepBtn}
-          onClick={() => onQuantity(line.id, line.quantity - 1)}
-          disabled={line.quantity <= 1}
-          aria-label={`Decrease quantity of ${line.title}`}
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-            <path d="M5 12h14" />
-          </svg>
-        </button>
-        <span className={`${styles.stepValue} tnum`} aria-live="polite">
-          {line.quantity}
-        </span>
-        <button
-          type="button"
-          className={styles.stepBtn}
-          onClick={() => onQuantity(line.id, line.quantity + 1)}
-          aria-label={`Increase quantity of ${line.title}`}
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
+          <Money
+            key={line.quantity}
+            minor={line.price * line.quantity}
+            currency={line.currency}
+            className={styles.rowTotal}
+          />
+        </div>
       </div>
-
-      <Money
-        minor={line.price * line.quantity}
-        currency={line.currency}
-        className={styles.rowTotal}
-      />
     </div>
   );
 }
@@ -226,56 +271,115 @@ function AlsoFromTheShop({
   inCart: string[];
   onAdd: (line: Omit<CartLine, "quantity">, quantity?: number) => void;
 }) {
+  /*
+   * A transient confirmation, not a toast — but a row that vanishes from under a "just
+   * added" label the instant it is pressed shows the confirmation to no one. `holding` keeps
+   * an added item in the list a moment after `inCart` already disqualifies it, so "Added"
+   * has something to sit on screen next to before the row hands its slot to the next
+   * suggestion — the same collapse the cart's own line items use on removal, reused here
+   * for the same reason: a row this list drops should fold shut, not blink out.
+   */
+  const [added, setAdded] = useState<string | null>(null);
+  const [holding, setHolding] = useState<string[]>([]);
+  const [leaving, setLeaving] = useState<string[]>([]);
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(() => {
+    const table = timers.current;
+    return () => {
+      for (const t of Object.values(table)) clearTimeout(t);
+    };
+  }, []);
+
   const offer = suggestions
-    .filter((p) => p.in_stock && !inCart.includes(p.id))
+    .filter((p) => p.in_stock && (!inCart.includes(p.id) || holding.includes(p.id)))
     .slice(0, 2);
   if (offer.length === 0) return null;
+
+  const handleAdd = (product: CatalogProduct) => {
+    onAdd({
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      currency: product.currency,
+    });
+    setAdded(product.id);
+    setHolding((ids) => (ids.includes(product.id) ? ids : [...ids, product.id]));
+    if (timers.current[product.id]) clearTimeout(timers.current[product.id]);
+    timers.current[product.id] = setTimeout(() => {
+      setAdded((cur) => (cur === product.id ? null : cur));
+      setLeaving((ids) => (ids.includes(product.id) ? ids : [...ids, product.id]));
+    }, 1200);
+  };
+
+  const finishLeave = (id: string) => {
+    setLeaving((ids) => ids.filter((x) => x !== id));
+    setHolding((ids) => ids.filter((x) => x !== id));
+  };
 
   return (
     <section className={styles.also} aria-label="More from the shop">
       <SectionLabel>Cut this morning</SectionLabel>
       <Panel className={styles.alsoPanel}>
         <ul>
-          {offer.map((product) => (
-            <li key={product.id}>
-              <div className={styles.alsoRow}>
-                <Link
-                  href={`/product/${product.id}`}
-                  className={styles.alsoThumb}
-                  aria-hidden
-                  tabIndex={-1}
+          {offer.map((product) => {
+            const justAdded = added === product.id;
+            const isLeaving = leaving.includes(product.id);
+            return (
+              <li key={product.id}>
+                <div
+                  className={styles.rowCollapse}
+                  data-leaving={isLeaving || undefined}
+                  onTransitionEnd={(e) => {
+                    if (e.propertyName === "grid-template-rows" && isLeaving) finishLeave(product.id);
+                  }}
                 >
-                  <ProductArt id={product.id} />
-                </Link>
-                <div className={styles.alsoInfo}>
-                  <Link href={`/product/${product.id}`} className={styles.alsoTitle}>
-                    {product.title}
-                  </Link>
-                  <Money
-                    minor={product.price}
-                    currency={product.currency}
-                    className={styles.alsoPrice}
-                  />
+                  <div className={styles.rowClip}>
+                    <div className={styles.alsoRow}>
+                      <Link
+                        href={`/product/${product.id}`}
+                        className={styles.alsoThumb}
+                        aria-hidden
+                        tabIndex={-1}
+                      >
+                        <ProductArt id={product.id} />
+                      </Link>
+                      <div className={styles.alsoInfo}>
+                        <Link href={`/product/${product.id}`} className={styles.alsoTitle}>
+                          {product.title}
+                        </Link>
+                        <Money
+                          minor={product.price}
+                          currency={product.currency}
+                          className={styles.alsoPrice}
+                        />
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className={styles.alsoAdd}
+                        data-added={justAdded || undefined}
+                        disabled={holding.includes(product.id) && !justAdded}
+                        onClick={() => handleAdd(product)}
+                        aria-label={`Add ${product.title} to cart`}
+                      >
+                        {justAdded ? (
+                          <>
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M5 12.5l4.5 4.5L19 7" />
+                            </svg>
+                            Added
+                          </>
+                        ) : (
+                          "Add"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className={styles.alsoAdd}
-                  onClick={() =>
-                    onAdd({
-                      id: product.id,
-                      title: product.title,
-                      price: product.price,
-                      currency: product.currency,
-                    })
-                  }
-                  aria-label={`Add ${product.title} to cart`}
-                >
-                  Add
-                </Button>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </Panel>
     </section>
@@ -314,6 +418,12 @@ function EmptyCart({ suggestions }: { suggestions: CatalogProduct[] }) {
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
+          <Link href="/" className={styles.suggestMore}>
+            Browse the full shop
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
         </section>
       )}
     </StatePage>

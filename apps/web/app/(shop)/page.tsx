@@ -117,6 +117,16 @@ export default async function HomePage() {
               <span className={styles.heroNoteMark} aria-hidden />
               Pay with a gift card, a card, or both
             </p>
+            {/* A second, compact pass at the same three assurances that get a full paragraph
+                near the footer. Real hero space under a CTA reads as unfinished if it's left
+                empty — a premium storefront fills it with proof, not padding. */}
+            <ul className={styles.heroCreds}>
+              {ASSURANCES.map((a) => (
+                <li key={a.title} className={styles.heroCred}>
+                  {a.title}
+                </li>
+              ))}
+            </ul>
           </div>
 
           {lead && (

@@ -120,14 +120,14 @@ export default async function ProductPage({
       </nav>
 
       <div className={styles.layout}>
-        <div className={styles.mediaCol}>
+        <div className={`${styles.mediaCol} rise`}>
           <div className={styles.media} data-soldout={soldOut || undefined}>
             <ProductArt id={product.id} />
             {soldOut && <span className={styles.soldOutVeil}>Sold out</span>}
           </div>
         </div>
 
-        <div className={styles.detailCol}>
+        <div className={`${styles.detailCol} rise`}>
           <SectionLabel>{copy.kind}</SectionLabel>
           <h1 className={styles.title}>{product.title}</h1>
           <p className={styles.lede}>{copy.lede}</p>

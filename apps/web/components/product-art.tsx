@@ -29,17 +29,20 @@ import styles from "./product-art.module.css";
  *    at any DPR, and correct with JavaScript off.
  *
  * ── The drawing language ──────────────────────────────────────────────────────────────
- * Six illustrations read as one shoot because all six are built from the same three moves:
+ * Six illustrations read as one shoot because all six are built from the same four moves:
  *
  *  1. **Intrinsic form.** Every petal and leaf carries a base→tip gradient — dark where it
- *     tucks under its neighbour, open at the tip — and whorls of petals are separated by a
- *     soft occlusion wash, so a bloom has a dark heart and a lit rim. This shading rotates
- *     *with* the shape, because it is the shape's own form, not the room's light.
- *  2. **One key light.** A single canvas-wide soft-light gradient from the upper left,
- *     painted last over the whole frame, backdrop included. Because it lives in frame space
- *     rather than per-shape, the lamp physically cannot drift between specimens: all six
- *     are lit from the same corner at the same intensity by construction.
- *  3. **The shadow it throws.** Each arrangement is rendered twice — once through a filter
+ *     tucks under its neighbour, open and lit where it reflexes at the tip. Petals are
+ *     *opaque* and *ruffled* (a notched, asymmetric top edge), never clean symmetric cups:
+ *     a translucent rosette of identical cups is the exact "concentric clip-art" tell.
+ *  2. **A rounded bloom, not a flat rosette.** After the petals, every flower head is passed
+ *     through one directional dome pass — an upper-left highlight, a lower-right shadow pool,
+ *     and a rim occlusion — so the whole head reads as a lit sphere with petals turning into
+ *     and out of the light *across* the bloom, not a pinwheel lit uniformly.
+ *  3. **One key light.** The dome pass above points the same way on every specimen, and on
+ *     top of the whole frame sits a single soft-light gradient from the upper left. Because
+ *     it lives in frame space rather than per-shape, the lamp cannot drift between specimens.
+ *  4. **The shadow it throws.** Each arrangement is rendered twice — once through a filter
  *     that flattens it to a blurred, offset silhouette on the sweep behind it, and once for
  *     real. Direction and softness are shared, so the six sit on the same table.
  *
@@ -62,8 +65,8 @@ const wob = (i: number, amt: number) => (rnd(i) - 0.5) * amt;
 
 /* ── geometry ──────────────────────────────────────────────────────────────────────── */
 
-/** A blade — petal, ray floret, leaf. Base at the origin, tip straight up. `tip` controls
-    how the shoulders close: 0.86 is a rounded petal, 0.55 a pointed leaf. */
+/** A blade — leaf or ray floret. Base at the origin, tip straight up. `tip` controls how
+    the shoulders close: 0.86 is a rounded petal, 0.55 a pointed leaf. */
 function blade(w: number, h: number, curl = 0.34, tip = 0.86) {
   return (
     `M0 0C${-w} ${-h * curl} ${-w * tip} ${-h * 0.82} 0 ${-h}` +
@@ -77,7 +80,26 @@ function bladeLee(w: number, h: number, curl = 0.34, tip = 0.86) {
   return `M0 0C${w} ${-h * curl} ${w * tip} ${-h * 0.82} 0 ${-h}C0 ${-h * 0.6} 0 ${-h * 0.3} 0 0Z`;
 }
 
-/** A cupped petal — wide and rounded, the rose/gardenia move. Base at the origin. */
+/**
+ * A ruffled, reflexed petal — the rose / gardenia / peony move. Base at the origin, opening
+ * upward. The top edge is scalloped into two shoulders with a soft notch between them, and
+ * `curl` slides the whole cap sideways so no two petals are the mirror-image of each other.
+ * This asymmetry is the thing that stops a rosette reading as a clean geometric pinwheel.
+ */
+function petal(r: number, wide = 1, tall = 1, curl = 0) {
+  const w = r * wide;
+  const h = r * tall;
+  const c = curl * w; // lateral drift of the tip
+  return (
+    `M0 0` +
+    `C${-w} ${-h * 0.14} ${-w * 1.04} ${-h * 0.64} ${-w * 0.7 + c} ${-h * 0.86}` +
+    `C${-w * 0.46 + c} ${-h * 0.99} ${-w * 0.2 + c} ${-h * 0.98} ${c} ${-h * 0.9}` +
+    `C${w * 0.2 + c} ${-h * 0.98} ${w * 0.46 + c} ${-h * 0.99} ${w * 0.7 + c} ${-h * 0.86}` +
+    `C${w * 1.04} ${-h * 0.64} ${w} ${-h * 0.14} 0 0Z`
+  );
+}
+
+/** A cupped petal — the tulip / orchid move: broad, rounded, no notch. Base at the origin. */
 function cup(r: number, wide = 1, tall = 1) {
   const w = r * wide;
   const h = r * tall;
@@ -112,26 +134,28 @@ function Defs({ p }: { p: string }) {
         <stop offset="1" stopColor="var(--art-light)" stopOpacity="0" />
       </radialGradient>
       <radialGradient id={`${p}-vig`} cx="0.5" cy="0.42" r="0.76">
-        <stop offset="0.48" stopColor="var(--art-shade)" stopOpacity="0" />
-        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0.19" />
+        <stop offset="0.46" stopColor="var(--art-shade)" stopOpacity="0" />
+        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0.22" />
       </radialGradient>
       {/* THE key light. One gradient, frame space, painted over everything. */}
       <linearGradient id={`${p}-key`} x1="0.06" y1="0" x2="0.84" y2="1">
-        <stop offset="0" stopColor="var(--art-light)" stopOpacity="0.6" />
+        <stop offset="0" stopColor="var(--art-light)" stopOpacity="0.66" />
         <stop offset="0.4" stopColor="var(--art-light)" stopOpacity="0" />
         <stop offset="0.6" stopColor="var(--art-shade)" stopOpacity="0" />
-        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0.34" />
+        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0.4" />
       </linearGradient>
       <radialGradient id={`${p}-contact`} cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0.42" />
-        <stop offset="0.48" stopColor="var(--art-shade)" stopOpacity="0.15" />
+        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0.46" />
+        <stop offset="0.48" stopColor="var(--art-shade)" stopOpacity="0.16" />
         <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0" />
       </radialGradient>
 
-      {/* Petal form: dark at the base where it is overlapped, open at the tip. */}
+      {/* Petal form: dark at the base where it is overlapped, open and lit at the reflexed
+          tip. Opaque — an opaque petal that occludes its neighbour is the whole point. */}
       <linearGradient id={`${p}-petal`} x1="0.5" y1="1" x2="0.5" y2="0">
         <stop offset="0" stopColor="var(--art-bloom-lo)" />
-        <stop offset="0.42" stopColor="var(--art-bloom)" />
+        <stop offset="0.4" stopColor="var(--art-bloom)" />
+        <stop offset="0.86" stopColor="var(--art-bloom-hi)" />
         <stop offset="1" stopColor="var(--art-bloom-hi)" />
       </linearGradient>
       <linearGradient id={`${p}-petal-deep`} x1="0.5" y1="1" x2="0.5" y2="0">
@@ -139,14 +163,27 @@ function Defs({ p }: { p: string }) {
         <stop offset="0.5" stopColor="var(--art-bloom-lo)" />
         <stop offset="1" stopColor="var(--art-bloom)" />
       </linearGradient>
-      {/* The self-occlusion that turns a rosette of flat petals into a bloom with a heart. */}
-      <radialGradient id={`${p}-core`} cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0" stopColor="var(--art-bloom-ink)" stopOpacity="0.6" />
-        <stop offset="0.5" stopColor="var(--art-bloom-ink)" stopOpacity="0.2" />
-        <stop offset="1" stopColor="var(--art-bloom-ink)" stopOpacity="0" />
+
+      {/* ── the bloom dome ── one directional light, three passes, painted over the petals so
+          the whole head reads as a lit sphere rather than a flat rosette. */}
+      <radialGradient id={`${p}-dome-hi`} cx="0.34" cy="0.28" r="0.6">
+        <stop offset="0" stopColor="var(--art-light)" stopOpacity="0.5" />
+        <stop offset="0.5" stopColor="var(--art-light)" stopOpacity="0.12" />
+        <stop offset="1" stopColor="var(--art-light)" stopOpacity="0" />
       </radialGradient>
+      <radialGradient id={`${p}-dome-lo`} cx="0.68" cy="0.74" r="0.62">
+        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0.4" />
+        <stop offset="0.62" stopColor="var(--art-shade)" stopOpacity="0.08" />
+        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id={`${p}-rim`} cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0" />
+        <stop offset="0.7" stopColor="var(--art-shade)" stopOpacity="0" />
+        <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0.34" />
+      </radialGradient>
+      {/* The self-occlusion that darkens the throat of a flower into a single deep well. */}
       <radialGradient id={`${p}-hollow`} cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0.5" />
+        <stop offset="0" stopColor="var(--art-shade)" stopOpacity="0.52" />
         <stop offset="0.6" stopColor="var(--art-shade)" stopOpacity="0.16" />
         <stop offset="1" stopColor="var(--art-shade)" stopOpacity="0" />
       </radialGradient>
@@ -176,18 +213,18 @@ function Defs({ p }: { p: string }) {
       <filter id={`${p}-cast`} x="-45%" y="-45%" width="200%" height="200%">
         <feColorMatrix
           type="matrix"
-          values="0 0 0 0 0.07  0 0 0 0 0.06  0 0 0 0 0.045  0 0 0 0.34 0"
+          values="0 0 0 0 0.07  0 0 0 0 0.06  0 0 0 0 0.045  0 0 0 0.36 0"
         />
-        <feGaussianBlur stdDeviation="11" />
-        <feOffset dx="10" dy="8" />
+        <feGaussianBlur stdDeviation="10" />
+        <feOffset dx="9" dy="7" />
       </filter>
       {/* Depth of field. The back rank of every arrangement sits behind the plane of focus —
           enough to separate the planes, not enough to turn a bloom into a smear. */}
       <filter id={`${p}-far`} x="-25%" y="-25%" width="150%" height="150%">
-        <feGaussianBlur stdDeviation="1.25" />
+        <feGaussianBlur stdDeviation="0.9" />
       </filter>
       <filter id={`${p}-mid`} x="-25%" y="-25%" width="150%" height="150%">
-        <feGaussianBlur stdDeviation="0.85" />
+        <feGaussianBlur stdDeviation="0.7" />
       </filter>
       {/* Film grain. Vector art's tell is that it is *too* clean; this puts the noise floor
           of a real sensor back over the top of it. */}
@@ -199,6 +236,20 @@ function Defs({ p }: { p: string }) {
         </feComponentTransfer>
       </filter>
     </defs>
+  );
+}
+
+/** The directional dome — highlight up-left, shadow pool down-right, rim occlusion all
+    round. Painted last over any flower head so it reads as a lit sphere. `cx`/`cy` centre
+    it on the head; `r` is a hair larger than the head so the rim bites the outer petals. */
+function Dome({ p, r, cx = 0, cy = 0 }: { p: string; r: number; cx?: number; cy?: number }) {
+  const u = (n: string) => `url(#${p}-${n})`;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <circle cx={cx} cy={cy} r={r} fill={u("dome-lo")} />
+      <circle cx={cx} cy={cy} r={r} fill={u("rim")} />
+      <circle cx={cx} cy={cy} r={r} fill={u("dome-hi")} />
+    </g>
   );
 }
 
@@ -292,76 +343,121 @@ function Leaf({
   );
 }
 
-/* ── specimens ─────────────────────────────────────────────────────────────────────── */
-
-/** A garden rose: three whorls of cupped petals over a dark heart. */
-function RoseHead({ p, r, seed }: { p: string; r: number; seed: number }) {
+/* ── the multi-whorl rosette (rose, gardenia, peony family) ───────────────────────────
+   The workhorse. Opaque ruffled petals spiralled around an off-centre furl, then domed.
+   Every parameter of the "concentric clip-art" failure is answered here: the whorls are
+   rotated off one another so their seams never line up, each petal is scaled and angled by
+   its own noise, the centre is a furled bud rather than a bullseye dot, and the finished
+   head is lit by the shared dome so petals turn into and out of the light across it. */
+type Whorl = { n: number; s: number; rot: number; wide: number; tall: number; ring: number; deep?: boolean };
+function Rosette({
+  p,
+  r,
+  seed,
+  whorls,
+  center = "furl",
+  accent,
+}: {
+  p: string;
+  r: number;
+  seed: number;
+  whorls: Whorl[];
+  center?: "furl" | "button";
+  accent?: string;
+}) {
   const u = (n: string) => `url(#${p}-${n})`;
-  // Outer petals are wide and reflexed, inner ones narrow and upright — that change of
-  // proportion between whorls is what reads as a rose rather than as concentric circles.
-  const whorls = [
-    { n: 6, s: 1, rot: 0, wide: 1.16, tall: 0.92, grad: "petal" },
-    { n: 6, s: 0.78, rot: 31, wide: 1.06, tall: 0.96, grad: "petal" },
-    { n: 5, s: 0.55, rot: 12, wide: 0.94, tall: 1, grad: "petal" },
-    { n: 4, s: 0.34, rot: 48, wide: 0.86, tall: 1.04, grad: "petal-deep" },
-  ];
   return (
     <g>
-      <circle r={r * 0.9} fill="var(--art-bloom-lo)" />
+      {/* a filler disc so a stray gap between petals never shows the sweep through the head */}
+      <circle r={r * 0.82} fill="var(--art-bloom-lo)" />
       {whorls.map((w, wi) => {
-        // The heart wanders as it furls inward: each whorl nests a little off the last one's
-        // centre along a short spiral, drifting up-left toward the key light. Co-centred
-        // rings are the exact "bullseye" tell the flat version had — a real bloom does not
-        // have one axis, it has a centre it spirals around.
-        const ox = wob(seed + wi * 5 + 1, r * 0.14);
-        const oy = wob(seed + wi * 5 + 2, r * 0.1) - r * 0.05 * wi;
+        const grad = w.deep ? "petal-deep" : "petal";
         return (
-          <g key={wi} transform={`translate(${ox} ${oy})`}>
+          <g key={wi}>
             {Array.from({ length: w.n }, (_, i) => {
-              const a = w.rot + (360 / w.n) * i + wob(seed + wi * 13 + i, 17);
-              // Wider scale spread so petals overlap unevenly instead of tiling a clean ring.
-              const s = w.s * (0.82 + rnd(seed + i * 7 + wi * 3) * 0.34);
+              const a = w.rot + (360 / w.n) * i + wob(seed + wi * 13 + i, 16);
+              const s = w.s * (0.84 + rnd(seed + i * 7 + wi * 3) * 0.3);
+              const curl = wob(seed + wi * 7 + i * 2, 0.42);
+              // petal bases ride a ring, not a single point — outer whorls sit further out,
+              // so the head has an open reflexed brim and a packed core.
+              const rad = r * w.ring;
+              const rx = Math.sin((a * Math.PI) / 180) * rad;
+              const ry = -Math.cos((a * Math.PI) / 180) * rad;
               return (
                 <path
                   key={i}
-                  d={cup(r * s, w.wide, w.tall)}
-                  transform={`rotate(${a})`}
-                  fill={u(w.grad)}
+                  d={petal(r * s, w.wide, w.tall, curl)}
+                  transform={`translate(${rx.toFixed(2)} ${ry.toFixed(2)}) rotate(${a.toFixed(2)})`}
+                  fill={u(grad)}
                   stroke="var(--art-bloom-ink)"
-                  strokeOpacity="0.22"
-                  strokeWidth="0.55"
+                  strokeOpacity="0.16"
+                  strokeWidth="0.5"
                 />
               );
             })}
           </g>
         );
       })}
-      {/* One heart, not four. The occlusion that darkens the centre is painted a single time
-          over the whole bloom rather than once per whorl, so the middle reads as one
-          deepening well instead of a stack of nested dark rings. */}
-      <circle r={r * 0.66} fill={u("core")} />
-      {/* the tight spiral at the centre */}
-      <g transform={`scale(${r / 28})`}>
-        <path
-          d="M-4 3C-10 -1 -8 -10 0 -10C8 -10 10 -1 5 2"
-          fill="none"
-          stroke="var(--art-bloom-ink)"
-          strokeOpacity="0.5"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M-2 1C-5 -1 -4 -5 0 -5C4 -5 5 -2 3 0"
-          fill="none"
-          stroke="var(--art-bloom-ink)"
-          strokeOpacity="0.4"
-          strokeWidth="1.1"
-          strokeLinecap="round"
-        />
-      </g>
+
+      {/* the centre — a furled bud drifting up-left toward the lamp, not a co-centred dot */}
+      {center === "furl" ? (
+        <g transform={`translate(${(-r * 0.05).toFixed(2)} ${(-r * 0.07).toFixed(2)})`}>
+          <circle r={r * 0.3} fill={u("petal-deep")} />
+          {Array.from({ length: 5 }, (_, k) => {
+            const a = 32 + k * 74 + wob(seed + k * 3 + 90, 20);
+            const s = 0.28 - k * 0.03;
+            return (
+              <path
+                key={k}
+                d={petal(r * s, 0.94, 1.02, 0.36)}
+                transform={`rotate(${a.toFixed(2)})`}
+                fill={u("petal-deep")}
+                stroke="var(--art-bloom-ink)"
+                strokeOpacity="0.3"
+                strokeWidth="0.4"
+              />
+            );
+          })}
+          {/* the crescent of shadow the furl casts into its own throat */}
+          <path
+            d={`M${-r * 0.12} ${-r * 0.02}C${-r * 0.16} ${r * 0.12} ${r * 0.16} ${r * 0.12} ${r * 0.12} ${-r * 0.02}`}
+            fill="none"
+            stroke="var(--art-bloom-ink)"
+            strokeOpacity="0.5"
+            strokeWidth={r * 0.05}
+            strokeLinecap="round"
+          />
+          <ellipse cx={-r * 0.05} cy={-r * 0.1} rx={r * 0.06} ry={r * 0.04} fill="var(--art-bloom-hi)" opacity="0.7" />
+        </g>
+      ) : (
+        <g>
+          <circle r={r * 0.2} fill={u("hollow")} />
+          <circle r={r * 0.1} fill={accent ?? "var(--art-accent)"} opacity="0.85" />
+          {Array.from({ length: 7 }, (_, k) => (
+            <circle
+              key={k}
+              cx={Math.cos((k / 7) * 6.28) * r * 0.11}
+              cy={Math.sin((k / 7) * 6.28) * r * 0.11}
+              r={r * 0.02}
+              fill={accent ?? "var(--art-accent)"}
+            />
+          ))}
+        </g>
+      )}
+
+      <Dome p={p} r={r * 1.02} />
     </g>
   );
 }
+
+/* ── specimens ─────────────────────────────────────────────────────────────────────── */
+
+const ROSE_WHORLS: Whorl[] = [
+  { n: 8, s: 1, rot: 0, wide: 1.14, tall: 0.9, ring: 0.34 },
+  { n: 7, s: 0.82, rot: 26, wide: 1.06, tall: 0.96, ring: 0.24 },
+  { n: 6, s: 0.6, rot: 12, wide: 0.98, tall: 1, ring: 0.15 },
+  { n: 5, s: 0.42, rot: 44, wide: 0.9, tall: 1.04, ring: 0.08, deep: true },
+];
 
 function Roses() {
   const p = "ro";
@@ -369,12 +465,12 @@ function Roses() {
   const front: Array<[number, number, number]> = [
     [154, 158, 33],
     [250, 164, 30],
-    [202, 124, 38],
+    [202, 122, 39],
   ];
   return (
     <Ground p={p} label="A hand-tied bouquet of deep red garden roses" contact={{ x: 208, y: 288, rx: 128, ry: 18 }}>
       {/* back rank — smaller, softer, behind the plane of focus */}
-      <g filter={u("far")} opacity="0.92">
+      <g filter={u("far")} opacity="0.94">
         <path
           d="M204 300C188 246 164 194 126 132M204 300C216 244 244 192 278 124M204 300C202 236 200 158 200 82"
           fill="none"
@@ -383,14 +479,14 @@ function Roses() {
           strokeWidth="3.4"
           strokeLinecap="round"
         />
-        <g transform="translate(124 122)">
-          <RoseHead p={p} r={25} seed={11} />
+        <g transform="translate(124 120)">
+          <Rosette p={p} r={25} seed={11} whorls={ROSE_WHORLS} />
         </g>
-        <g transform="translate(280 114)">
-          <RoseHead p={p} r={24} seed={23} />
+        <g transform="translate(280 112)">
+          <Rosette p={p} r={24} seed={23} whorls={ROSE_WHORLS} />
         </g>
-        <g transform="translate(200 74)">
-          <RoseHead p={p} r={21} seed={37} />
+        <g transform="translate(200 72)">
+          <Rosette p={p} r={21} seed={37} whorls={ROSE_WHORLS} />
         </g>
       </g>
 
@@ -409,48 +505,60 @@ function Roses() {
 
       {front.map(([x, y, r], i) => (
         <g key={i} transform={`translate(${x} ${y})`}>
-          <RoseHead p={p} r={r} seed={i * 41 + 5} />
+          <Rosette p={p} r={r} seed={i * 41 + 5} whorls={ROSE_WHORLS} />
         </g>
       ))}
     </Ground>
   );
 }
 
-/** A sunflower head: two ranks of ray florets and a phyllotactic seed disc. */
+/** A sunflower head: two ranks of irregular ray florets and a phyllotactic seed disc. */
 function SunHead({ p, R, disc, seed }: { p: string; R: number; disc: number; seed: number }) {
   const u = (n: string) => `url(#${p}-${n})`;
-  const n = 21;
+  const n = 22;
   const step = 360 / n;
   return (
     <g>
+      {/* the shadowed back rank of rays, deeper and slightly longer */}
       {Array.from({ length: n }, (_, i) => {
-        const h = R * (0.98 + rnd(seed + i) * 0.1);
+        const h = R * (0.98 + rnd(seed + i) * 0.12);
         return (
           <path
             key={`b${i}`}
-            d={blade(R * 0.15, h, 0.36)}
-            transform={`rotate(${step * i + step / 2 + wob(seed + i * 3, 5)})`}
+            d={blade(R * 0.16, h, 0.36, 0.72)}
+            transform={`rotate(${step * i + step / 2 + wob(seed + i * 3, 6)})`}
             fill={u("petal-deep")}
           />
         );
       })}
+      {/* the lit front rank — each ray notched at the tip and set at its own length/angle */}
       {Array.from({ length: n }, (_, i) => {
-        const h = R * (0.84 + rnd(seed + i + 90) * 0.18);
+        const h = R * (0.82 + rnd(seed + i + 90) * 0.2);
+        const w = R * (0.15 + rnd(seed + i + 30) * 0.05);
         return (
-          <g key={`f${i}`} transform={`rotate(${step * i + wob(seed + i * 5 + 40, 8)})`}>
-            <path d={blade(R * 0.17, h, 0.32)} fill={u("petal")} />
+          <g key={`f${i}`} transform={`rotate(${step * i + wob(seed + i * 5 + 40, 9)})`}>
+            <path d={blade(w, h, 0.3, 0.66)} fill={u("petal")} />
+            {/* the crease down each ray */}
             <path
-              d={`M0 ${-h * 0.2}L0 ${-h * 0.84}`}
+              d={`M0 ${-h * 0.16}L0 ${-h * 0.82}`}
               stroke="var(--art-bloom-ink)"
-              strokeOpacity="0.17"
-              strokeWidth="0.8"
+              strokeOpacity="0.2"
+              strokeWidth="0.9"
               fill="none"
+            />
+            {/* the notch shadow at the ray tip */}
+            <path
+              d={`M${-w * 0.24} ${-h * 0.9}L0 ${-h * 0.8}L${w * 0.24} ${-h * 0.9}`}
+              fill="none"
+              stroke="var(--art-bloom-ink)"
+              strokeOpacity="0.22"
+              strokeWidth="0.8"
             />
           </g>
         );
       })}
+      {/* the seed disc: a raised, domed cushion, not a flat coin */}
       <circle r={disc * 1.06} fill="var(--art-bloom-ink)" />
-      {/* the fertile ring of disc florets, then the seed spiral inside it */}
       <circle
         r={disc * 0.94}
         fill="none"
@@ -458,21 +566,25 @@ function SunHead({ p, R, disc, seed }: { p: string; R: number; disc: number; see
         strokeOpacity="0.5"
         strokeWidth={disc * 0.16}
       />
-      {Array.from({ length: 72 }, (_, i) => {
+      {Array.from({ length: 80 }, (_, i) => {
         const th = i * 2.39996;
-        const rr = disc * 0.9 * Math.sqrt(i / 72);
+        const rr = disc * 0.9 * Math.sqrt(i / 80);
         return (
           <circle
             key={i}
             cx={Math.cos(th) * rr}
             cy={Math.sin(th) * rr}
-            r={disc * 0.055}
+            r={disc * 0.052}
             fill="var(--art-bloom-hi)"
-            opacity={0.08 + 0.4 * (rr / disc)}
+            opacity={0.06 + 0.42 * (rr / disc)}
           />
         );
       })}
-      <circle r={disc * 1.06} fill={u("hollow")} />
+      {/* dome the disc so its centre sits proud and its far edge falls into shadow */}
+      <circle r={disc * 1.06} fill={u("dome-lo")} />
+      <circle r={disc * 1.06} fill={u("dome-hi")} />
+      {/* and dome the whole flower head so the petal ring turns with the light */}
+      <Dome p={p} r={R * 1.02} />
     </g>
   );
 }
@@ -482,7 +594,7 @@ function Sunflowers() {
   const u = (n: string) => `url(#${p}-${n})`;
   return (
     <Ground p={p} label="Two sunflowers with broad leaves, cut short" contact={{ x: 200, y: 286, rx: 118, ry: 16 }}>
-      <g filter={u("far")} opacity="0.88">
+      <g filter={u("far")} opacity="0.9">
         <path
           d="M196 300C206 240 216 160 222 86"
           fill="none"
@@ -518,39 +630,43 @@ function Sunflowers() {
   );
 }
 
-/** A closed tulip cup: outer silhouette, two flanking petals, one lit front petal. */
-function TulipHead({ p, s }: { p: string; s: number }) {
+/** A closed tulip cup: three petals, the near one lit, cupped and glossy. */
+function TulipHead({ p, s, seed }: { p: string; s: number; seed?: number }) {
   const u = (n: string) => `url(#${p}-${n})`;
+  const tilt = wob(seed ?? 0, 6);
   return (
-    <g transform={`scale(${s})`}>
+    <g transform={`scale(${s}) rotate(${tilt})`}>
+      {/* silhouette of the whole closed cup */}
       <path
-        d="M-14 3C-17 -12 -13 -29 -6 -37C-4 -25 -3 -20 0 -18C3 -20 4 -25 6 -37C13 -29 17 -12 14 3C10 11 -10 11 -14 3Z"
+        d="M-14 3C-17 -12 -13 -30 -6 -38C-4 -26 -3 -20 0 -18C3 -20 4 -26 6 -38C13 -30 17 -12 14 3C10 12 -10 12 -14 3Z"
         fill={u("petal-deep")}
       />
-      <path d="M-13 2C-16 -12 -12 -28 -6 -35C-3 -22 -3 -8 -5 3Z" fill={u("petal-deep")} />
-      <path d="M13 2C16 -12 12 -28 6 -35C3 -22 3 -8 5 3Z" fill={u("petal-deep")} />
+      {/* the two flanking petals, turned away from the light */}
+      <path d="M-13 2C-16 -12 -12 -29 -6 -36C-3 -22 -3 -8 -5 3Z" fill={u("petal-deep")} />
+      <path d="M13 2C16 -12 12 -29 6 -36C3 -22 3 -8 5 3Z" fill={u("petal-deep")} />
+      {/* the near petal, cupped and lit */}
+      <path d="M-8 1C-11 -14 -8 -30 0 -36C8 -30 11 -14 8 1C5 9 -5 9 -8 1Z" fill={u("petal")} />
+      {/* the fold lines of the near petal */}
       <path
-        d="M-7 1C-10 -13 -7 -28 0 -34C7 -28 10 -13 7 1C4 7 -4 7 -7 1Z"
-        fill={u("petal")}
-      />
-      <path
-        d="M-3.5 -28C-5.5 -17 -5.5 -8 -4.5 -1"
+        d="M-3.6 -30C-5.6 -18 -5.6 -8 -4.6 -1"
         fill="none"
         stroke="var(--art-bloom-hi)"
-        strokeOpacity="0.55"
-        strokeWidth="1.6"
+        strokeOpacity="0.5"
+        strokeWidth="1.5"
         strokeLinecap="round"
       />
       <path
-        d="M4.5 -27C6 -16 6 -8 5 -1"
+        d="M4.6 -29C6.2 -17 6.2 -8 5 -1"
         fill="none"
         stroke="var(--art-bloom-ink)"
-        strokeOpacity="0.22"
+        strokeOpacity="0.28"
         strokeWidth="1.4"
         strokeLinecap="round"
       />
+      {/* a soft specular down the lit petal */}
+      <ellipse cx="-2" cy="-18" rx="2.4" ry="12" fill="var(--art-bloom-hi)" opacity="0.4" filter={u("mid")} />
       {/* where the cup closes onto the stem */}
-      <path d="M-8 1C-5 8 5 8 8 1C6 8 -6 8 -8 1Z" fill="var(--art-bloom-ink)" opacity="0.35" />
+      <path d="M-8 1C-5 9 5 9 8 1C6 9 -6 9 -8 1Z" fill="var(--art-bloom-ink)" opacity="0.4" />
     </g>
   );
 }
@@ -566,7 +682,7 @@ function Tulips() {
   ];
   return (
     <Ground p={p} label="Spring tulips in pink, still closed" contact={{ x: 204, y: 288, rx: 118, ry: 17 }}>
-      <g filter={u("far")} opacity="0.86">
+      <g filter={u("far")} opacity="0.88">
         {([[104, 200, 1.1, -18], [300, 206, 1.04, 18]] as const).map(([x, y, s, b], i) => (
           <g key={i}>
             <path
@@ -578,12 +694,12 @@ function Tulips() {
               strokeLinecap="round"
             />
             <g transform={`translate(${x} ${y})`}>
-              <TulipHead p={p} s={s} />
+              <TulipHead p={p} s={s} seed={i * 9 + 3} />
             </g>
           </g>
         ))}
-        <path d={strap(140, 18, -26)} transform="translate(134 298)" fill={u("leaf")} opacity="0.78" />
-        <path d={strap(130, 17, 28)} transform="translate(272 298)" fill={u("leaf")} opacity="0.78" />
+        <path d={strap(140, 18, -26)} transform="translate(134 298)" fill={u("leaf")} opacity="0.82" />
+        <path d={strap(130, 17, 28)} transform="translate(272 298)" fill={u("leaf")} opacity="0.82" />
       </g>
 
       {stems.map(([x, y, s, b], i) => (
@@ -596,7 +712,7 @@ function Tulips() {
             strokeLinecap="round"
           />
           <g transform={`translate(${x} ${y})`}>
-            <TulipHead p={p} s={s} />
+            <TulipHead p={p} s={s} seed={i * 17 + 5} />
           </g>
         </g>
       ))}
@@ -620,49 +736,61 @@ function Tulips() {
   );
 }
 
-/** One phalaenopsis flower: three sepals behind, two lateral petals, a coloured lip. */
+/**
+ * One phalaenopsis flower: five broad rounded tepals — three sepals behind, two big lateral
+ * petals — around a coloured lip and column. Buds are two small furled tepals. The read has
+ * to be "moth orchid", so the tepals are broad and overlapping, not thin blades.
+ */
 function OrchidBloom({ p, s, seed }: { p: string; s: number; seed: number }) {
   const u = (n: string) => `url(#${p}-${n})`;
-  if (s < 0.46) {
+  if (s < 0.5) {
+    // a bud: two small furled tepals and a green calyx
     return (
-      <g transform={`scale(${s / 0.46})`}>
-        <path d={blade(7, 15, 0.55)} transform="rotate(24)" fill={u("petal-deep")} />
-        <path d={blade(6, 13, 0.55)} transform="rotate(-16)" fill={u("petal")} />
+      <g transform={`scale(${s / 0.5}) rotate(${wob(seed, 18)})`}>
+        <path d={cup(11, 0.8, 1)} transform="rotate(20)" fill={u("petal-deep")} />
+        <path d={cup(10, 0.8, 1)} transform="rotate(-14)" fill={u("petal")} />
+        <ellipse cx="0" cy="2" rx="4" ry="3" fill="var(--art-leaf)" />
       </g>
     );
   }
   return (
-    <g transform={`scale(${s}) rotate(${wob(seed, 14)})`}>
-      <path d={blade(12, 26, 0.5)} fill={u("petal-deep")} />
-      <path d={blade(11, 24, 0.5)} transform="rotate(142)" fill={u("petal-deep")} />
-      <path d={blade(11, 24, 0.5)} transform="rotate(-142)" fill={u("petal-deep")} />
-      <path d={cup(23, 1.16, 0.9)} transform="rotate(-74)" fill={u("petal")} />
-      <path d={cup(23, 1.16, 0.9)} transform="rotate(74)" fill={u("petal")} />
-      {/* fine radiating veins — the thing that stops a white petal reading as a white blob */}
-      {[-96, -74, -52, 52, 74, 96].map((a) => (
+    <g transform={`scale(${s}) rotate(${wob(seed, 12)})`}>
+      {/* three sepals behind — top, lower-left, lower-right */}
+      <path d={cup(26, 0.86, 1.02)} fill={u("petal")} />
+      <path d={cup(25, 0.86, 1.02)} transform="rotate(138)" fill={u("petal")} />
+      <path d={cup(25, 0.86, 1.02)} transform="rotate(-138)" fill={u("petal")} />
+      {/* two big lateral petals, broad and rounded, catching most of the light */}
+      <path d={cup(27, 1.34, 0.86)} transform="rotate(-72)" fill={u("petal")} />
+      <path d={cup(27, 1.34, 0.86)} transform="rotate(72)" fill={u("petal")} />
+      {/* the fine radiating veins that keep a white petal from reading as a blank blob */}
+      {[-108, -84, -72, -60, 60, 72, 84, 108, 0, 138, -138].map((a, k) => (
         <path
-          key={a}
-          d="M0 -3L0 -19"
+          key={k}
+          d="M0 -4L0 -21"
           transform={`rotate(${a})`}
           stroke="var(--art-bloom-ink)"
-          strokeOpacity="0.2"
+          strokeOpacity="0.16"
           strokeWidth="0.7"
           fill="none"
         />
       ))}
-      <circle r="9" fill={u("core")} />
+      {/* throat shadow, then the coloured lip and column */}
+      <circle r="10" fill={u("hollow")} />
       <path
-        d="M0 2C-7 2 -10 9 -5 14C-2 17 2 17 5 14C10 9 7 2 0 2Z"
+        d="M0 3C-8 3 -11 11 -6 16C-3 19 3 19 6 16C11 11 8 3 0 3Z"
         fill="var(--art-accent)"
       />
       <path
-        d="M-6 1C-11 -4 -9 -10 -4 -9M6 1C11 -4 9 -10 4 -9"
+        d="M-7 1C-12 -5 -10 -12 -4 -10M7 1C12 -5 10 -12 4 -10"
         fill="none"
         stroke="var(--art-accent)"
-        strokeWidth="2.4"
+        strokeWidth="2.6"
         strokeLinecap="round"
       />
-      <circle cy="-2" r="3.2" fill="var(--art-bloom-hi)" />
+      {/* the column, with its little cap catching the light */}
+      <path d="M-3 -3C-3 4 3 4 3 -3C3 -8 -3 -8 -3 -3Z" fill="var(--art-bloom-hi)" />
+      <ellipse cx="-1" cy="-4" rx="2.6" ry="2" fill="var(--art-bloom-hi)" />
+      <Dome p={p} r={30} />
     </g>
   );
 }
@@ -670,43 +798,47 @@ function OrchidBloom({ p, s, seed }: { p: string; s: number; seed: number }) {
 function Orchid() {
   const p = "or";
   const u = (n: string) => `url(#${p}-${n})`;
+  // a phalaenopsis arch: open flowers low and large, tapering to buds at the tip
   const spray: Array<[number, number, number]> = [
-    [150, 176, 1],
-    [198, 150, 0.92],
-    [242, 128, 0.78],
-    [280, 113, 0.58],
-    [308, 103, 0.4],
-    [330, 96, 0.28],
+    [138, 188, 1.02],
+    [186, 150, 0.98],
+    [236, 118, 0.9],
+    [284, 98, 0.74],
+    [318, 90, 0.46],
+    [342, 86, 0.32],
   ];
   return (
-    <Ground p={p} label="A white phalaenopsis orchid arching over its leaves" contact={{ x: 122, y: 284, rx: 96, ry: 15 }}>
-      <g filter={u("far")} opacity="0.8">
-        <path d={blade(30, 74, 0.44)} transform="translate(74 286) rotate(-58)" fill={u("leaf")} />
-        <path d={blade(26, 62, 0.44)} transform="translate(160 288) rotate(58)" fill={u("leaf")} />
+    <Ground p={p} label="A white phalaenopsis orchid arching over its leaves" contact={{ x: 128, y: 284, rx: 100, ry: 15 }}>
+      <g filter={u("far")} opacity="0.82">
+        <path d={blade(30, 74, 0.44)} transform="translate(78 286) rotate(-58)" fill={u("leaf")} />
+        <path d={blade(26, 62, 0.44)} transform="translate(164 288) rotate(58)" fill={u("leaf")} />
       </g>
 
+      {/* the arching flower spike */}
       <path
-        d="M104 292C112 236 122 202 146 182C190 146 246 118 336 96"
+        d="M108 292C116 236 126 202 150 182C196 146 252 112 344 84"
         fill="none"
         stroke="var(--art-stem)"
-        strokeWidth="3.6"
+        strokeWidth="3.4"
         strokeLinecap="round"
       />
-      <path d={blade(31, 72, 0.46)} transform="translate(102 292) rotate(-32)" fill={u("leaf")} />
+      {/* the broad basal leaves */}
+      <path d={blade(32, 74, 0.46)} transform="translate(104 292) rotate(-30)" fill={u("leaf")} />
       <path
         d={blade(26, 60, 0.46)}
-        transform="translate(102 292) rotate(-32)"
+        transform="translate(104 292) rotate(-30)"
         fill={u("sheen")}
         opacity="0.26"
       />
-      <path d={blade(28, 64, 0.46)} transform="translate(122 294) rotate(30)" fill={u("leaf")} />
+      <path d={blade(29, 66, 0.46)} transform="translate(126 294) rotate(32)" fill={u("leaf")} />
       <path
         d={blade(23, 54, 0.46)}
-        transform="translate(122 294) rotate(30)"
+        transform="translate(126 294) rotate(32)"
         fill={u("sheen")}
         opacity="0.22"
       />
 
+      {/* blooms drawn tip-first so the near, larger flowers overlap the far ones */}
       {spray
         .slice()
         .reverse()
@@ -719,53 +851,23 @@ function Orchid() {
   );
 }
 
-/** A gardenia: a many-whorled cream rosette that has to survive being nearly white. */
-function GardeniaHead({ p, r, seed }: { p: string; r: number; seed: number }) {
-  const u = (n: string) => `url(#${p}-${n})`;
-  const whorls = [
-    { n: 9, s: 1, rot: 0 },
-    { n: 7, s: 0.74, rot: 24 },
-    { n: 6, s: 0.5, rot: 48 },
-    { n: 5, s: 0.29, rot: 20 },
-  ];
-  return (
-    <g>
-      <circle r={r * 0.88} fill="var(--art-bloom-lo)" />
-      {whorls.map((w, wi) => (
-        <g key={wi}>
-          {Array.from({ length: w.n }, (_, i) => {
-            const a = w.rot + (360 / w.n) * i + wob(seed + wi * 17 + i, 10);
-            const s = w.s * (0.92 + rnd(seed + i * 11 + wi * 5) * 0.16);
-            return (
-              <path
-                key={i}
-                d={cup(r * s, 1.06, 0.92)}
-                transform={`rotate(${a})`}
-                fill={u(wi > 2 ? "petal-deep" : "petal")}
-                stroke="var(--art-bloom-ink)"
-                strokeOpacity="0.26"
-                strokeWidth="0.5"
-              />
-            );
-          })}
-          <circle r={r * w.s * 0.8} fill={u("core")} />
-        </g>
-      ))}
-      <circle r={r * 0.1} fill="var(--art-accent)" opacity="0.8" />
-    </g>
-  );
-}
+const GARDENIA_WHORLS: Whorl[] = [
+  { n: 9, s: 1, rot: 0, wide: 1.08, tall: 0.92, ring: 0.3 },
+  { n: 8, s: 0.8, rot: 22, wide: 1.02, tall: 0.96, ring: 0.2 },
+  { n: 6, s: 0.56, rot: 44, wide: 0.96, tall: 1, ring: 0.12 },
+  { n: 5, s: 0.34, rot: 18, wide: 0.9, tall: 1.02, ring: 0.06, deep: true },
+];
 
 function Gardenias() {
   const p = "ga";
   const u = (n: string) => `url(#${p}-${n})`;
   return (
     <Ground p={p} label="Cream gardenias among glossy dark leaves" contact={{ x: 200, y: 286, rx: 116, ry: 16 }}>
-      <g filter={u("far")} opacity="0.88">
+      <g filter={u("far")} opacity="0.9">
         <Leaf p={p} x={148} y={196} a={-74} w={20} h={62} gloss={0.16} />
         <Leaf p={p} x={256} y={190} a={70} w={19} h={58} gloss={0.16} />
         <g transform="translate(208 116)">
-          <GardeniaHead p={p} r={20} seed={53} />
+          <Rosette p={p} r={20} seed={53} whorls={GARDENIA_WHORLS} center="button" />
         </g>
       </g>
 
@@ -782,10 +884,10 @@ function Gardenias() {
       <Leaf p={p} x={244} y={280} a={22} w={20} h={58} gloss={0.28} />
 
       <g transform="translate(240 180)">
-        <GardeniaHead p={p} r={26} seed={29} />
+        <Rosette p={p} r={26} seed={29} whorls={GARDENIA_WHORLS} center="button" />
       </g>
       <g transform="translate(170 152)">
-        <GardeniaHead p={p} r={33} seed={2} />
+        <Rosette p={p} r={33} seed={2} whorls={GARDENIA_WHORLS} center="button" />
       </g>
     </Ground>
   );
@@ -839,6 +941,7 @@ function CeramicPot() {
             />
             <g transform={`translate(0 ${-h})`}>
               <path d={blade(w, h * 0.54, 0.4)} fill={u("leaf")} />
+              <path d={bladeLee(w, h * 0.54, 0.4)} fill="var(--art-stem)" opacity="0.18" />
               <path
                 d={`M0 ${-h * 0.03}C${w * 0.14} ${-h * 0.22} ${w * 0.09} ${-h * 0.38} 0 ${-h * 0.52}`}
                 fill="none"

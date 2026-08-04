@@ -36,7 +36,11 @@ export function FundingPlanRows({
       <div className={`${styles.planRow} ${styles.planRowTotal}`}>
         <dt>Amount due</dt>
         <dd>
-          <Money minor={plan.due} />
+          {/* Keyed on the value so the settle replays only when the total actually moved —
+              picking a faster delivery, say — and not on every unrelated re-render. */}
+          <span key={plan.due} className={styles.settle}>
+            <Money minor={plan.due} />
+          </span>
         </dd>
       </div>
 
@@ -50,7 +54,7 @@ export function FundingPlanRows({
             {plan.giftDraw === null ? (
               notYetKnown
             ) : (
-              <span className={styles.planDraw}>
+              <span key={plan.giftDraw} className={`${styles.planDraw} ${styles.settle}`}>
                 &minus;<Money minor={plan.giftDraw} />
               </span>
             )}
@@ -64,7 +68,15 @@ export function FundingPlanRows({
             Card
             <span className={styles.planHint}>the remainder</span>
           </dt>
-          <dd>{plan.cardAmount === null ? notYetKnown : <Money minor={plan.cardAmount} />}</dd>
+          <dd>
+            {plan.cardAmount === null ? (
+              notYetKnown
+            ) : (
+              <span key={plan.cardAmount} className={styles.settle}>
+                <Money minor={plan.cardAmount} />
+              </span>
+            )}
+          </dd>
         </div>
       )}
 

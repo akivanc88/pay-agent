@@ -259,6 +259,127 @@ function drawFace(
   ctx.restore();
 }
 
+/* ── the relief map ────────────────────────────────────────────────────────
+   A greyscale height field of the same face, black where the card is flat and
+   bright where an element stands off it. It is what turns "a picture of a card"
+   into a milled object: the wordmark and balance are *foil-stamped* — pressed
+   proud of the body so their edges catch the key as it sweeps past — the number
+   is *embossed*, and the chip is a raised plateau with recessed contacts. Fed to
+   the material as a bump map, so the relief is in the lit normals, not painted
+   into the albedo where it would sit dead-flat under any light.
+
+   Drawn from the exact coordinates and fonts of `drawFace`, so the relief lands
+   registered to the art rather than a hair off it — a foil edge that missed its
+   letter would read as a mis-struck stamp. A soft blur rounds every stamp so the
+   bump derivative is a bevel, not an aliased cliff. */
+function drawHeight(
+  ctx: CanvasRenderingContext2D,
+  p: Palette,
+  last4: string,
+  label: string,
+  brand: string,
+  balance: string,
+) {
+  const gray = (v: number) => `rgb(${v}, ${v}, ${v})`;
+
+  ctx.clearRect(0, 0, FACE_W, FACE_H);
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, FACE_W, FACE_H);
+
+  // Round every strike into a bevel rather than a sheer wall of height.
+  ctx.filter = "blur(0.7px)";
+
+  /* guilloché — engraved, so barely proud of the body */
+  ctx.save();
+  ctx.strokeStyle = gray(34);
+  ctx.lineWidth = 0.75;
+  for (const r of [120, 160, 200, 240, 280]) {
+    ctx.beginPath();
+    ctx.arc(330, 60, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* brand mark + wordmark — foil-stamped, standing proud */
+  ctx.save();
+  ctx.translate(28, 28);
+  ctx.strokeStyle = gray(190);
+  ctx.lineWidth = 1.7;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.stroke(
+    new Path2D(
+      "M11 22V10M11 10c0-3.6-2.6-6.6-6.6-7.1C4.1 7.7 6.6 11 11 11Zm0 0c0-3.3 2.2-6.2 6-6.6C17.3 8.4 14.9 11 11 11Z",
+    ),
+  );
+  ctx.restore();
+
+  ctx.save();
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = gray(205);
+  ctx.font = `600 20px ${p.serif}`;
+  ctx.fillText("pay·agent", 52, 45);
+  ctx.fillStyle = gray(150);
+  ctx.font = `640 12px ${p.sans}`;
+  ctx.textAlign = "right";
+  ctx.letterSpacing = "2.1px";
+  ctx.fillText(label.toUpperCase(), 372, 42);
+  ctx.letterSpacing = "0px";
+  ctx.restore();
+
+  /* chip — a raised plateau, its contact grooves pressed back into it */
+  ctx.save();
+  ctx.translate(30, 92);
+  ctx.fillStyle = gray(210);
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 52, 40, 8);
+  ctx.fill();
+  ctx.strokeStyle = gray(90);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(0, 13); ctx.lineTo(52, 13);
+  ctx.moveTo(0, 27); ctx.lineTo(52, 27);
+  ctx.moveTo(18, 0); ctx.lineTo(18, 40);
+  ctx.moveTo(34, 0); ctx.lineTo(34, 40);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(14, 11, 24, 18, 4);
+  ctx.stroke();
+  ctx.restore();
+
+  /* the number — embossed, the tallest relief on the card */
+  ctx.save();
+  ctx.fillStyle = gray(215);
+  ctx.textBaseline = "alphabetic";
+  ctx.letterSpacing = "0.5px";
+  ctx.font = `500 21px ${p.mono}`;
+  const dots = "•••• •••• •••• ";
+  ctx.fillText(dots, 30, 176);
+  const dotsWidth = ctx.measureText(dots).width;
+  ctx.font = `500 27px ${p.mono}`;
+  ctx.fillText(last4, 30 + dotsWidth, 176);
+  ctx.letterSpacing = "0px";
+  ctx.restore();
+
+  /* balance foil-stamped; its label and the issuer only faintly proud */
+  ctx.save();
+  ctx.fillStyle = gray(110);
+  ctx.font = `640 10px ${p.sans}`;
+  ctx.letterSpacing = "1.6px";
+  ctx.fillText("BALANCE", 30, 206);
+  ctx.letterSpacing = "0px";
+  ctx.fillStyle = gray(200);
+  ctx.font = `600 26px ${p.serif}`;
+  ctx.fillText(balance, 30, 230);
+  ctx.fillStyle = gray(110);
+  ctx.font = `600 13px ${p.sans}`;
+  ctx.textAlign = "right";
+  ctx.fillText(brand, 372, 230);
+  ctx.restore();
+
+  ctx.filter = "none";
+}
+
 /** True when the browser can actually give us a WebGL context, not merely claims the API. */
 function webglAvailable(): boolean {
   try {
@@ -337,9 +458,23 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
         return c;
       };
 
+      /* The relief map shares makeFace's canvas and scale so it lands pixel-registered to the
+         art, then goes to the material as a bump map rather than into the albedo. */
+      const makeHeight = () => {
+        const c = document.createElement("canvas");
+        c.width = FACE_W * SCALE;
+        c.height = FACE_H * SCALE;
+        const ctx = c.getContext("2d");
+        if (!ctx) return null;
+        ctx.scale(SCALE, SCALE);
+        drawHeight(ctx, palette, card.last4, card.label, card.brand, card.balanceDisplay);
+        return c;
+      };
+
       const colorCanvas = makeFace("color");
       const materialCanvas = makeFace("material");
-      if (!colorCanvas || !materialCanvas || disposed) return;
+      const heightCanvas = makeHeight();
+      if (!colorCanvas || !materialCanvas || !heightCanvas || disposed) return;
 
       /* ── renderer ──────────────────────────────────────────────────── */
       const renderer = new THREE.WebGLRenderer({
@@ -360,7 +495,9 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
       const map = new THREE.CanvasTexture(colorCanvas);
       map.colorSpace = THREE.SRGBColorSpace;
       const ormMap = new THREE.CanvasTexture(materialCanvas);
-      for (const t of [map, ormMap]) {
+      // Bump is height data, not colour — left in linear space like the ORM map, never sRGB.
+      const bumpMap = new THREE.CanvasTexture(heightCanvas);
+      for (const t of [map, ormMap, bumpMap]) {
         t.anisotropy = renderer.capabilities.getMaxAnisotropy();
         // Extrude's world UVs are the vertex x/y, so the texture is placed by mapping the
         // card's own dimensions onto 0…1 rather than by trusting a generated layout.
@@ -430,6 +567,10 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
         map,
         roughnessMap: ormMap,
         metalnessMap: ormMap,
+        // The foil relief: stamps stand proud in the lit normals, so a sweeping key catches
+        // their bevelled edges. Kept subtle — this is a pressed card, not a topographic map.
+        bumpMap,
+        bumpScale: 2.5,
         roughness: 1,
         metalness: 1,
         /* A laminate sheen, not a wet gloss. At 0.55/0.16 the coat threw a broad mirror
@@ -566,6 +707,7 @@ export function GiftCard3D({ card, className = "" }: { card: FeaturedCard; class
         edgeMaterial.dispose();
         map.dispose();
         ormMap.dispose();
+        bumpMap.dispose();
         envRT.dispose();
         renderer.dispose();
       });

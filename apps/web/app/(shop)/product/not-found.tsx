@@ -8,7 +8,7 @@ import styles from "./not-found.module.css";
 export default function ProductNotFound() {
   return (
     <Container narrow className={styles.wrap}>
-      <Panel inset className={styles.panel}>
+      <Panel inset className={`${styles.panel} rise`}>
         <div className={styles.icon} aria-hidden>
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 21c4-3 7-6.5 7-11a7 7 0 0 0-14 0c0 4.5 3 8 7 11Z" />
