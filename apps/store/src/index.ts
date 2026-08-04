@@ -155,6 +155,11 @@ app.get("/enroll", fundingService.getEnrollPage);
 app.post("/funding/setup-intents", fundingService.createSetupIntent);
 app.post("/funding/cards", fundingService.enrollOpenLoopCard);
 app.get("/funding/cards", fundingService.listCards);
+/* Standalone gift-card draw + reversal, for splitting against an external destination's rail:
+   the agent draws our closed-loop card here, pays the remainder on the destination, and reverses
+   this draw if that leg fails. The store's own checkout still redeems gift cards inline. */
+app.post("/funding/redeem", fundingService.redeem);
+app.post("/funding/reverse", fundingService.reverse);
 
 /* Testing endpoints */
 app.post(
