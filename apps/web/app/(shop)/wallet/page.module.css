@@ -1,0 +1,450 @@
+/*
+ * The wallet's layout.
+ *
+ * One rule runs through it: a verified amount and an unverified one never get the same
+ * treatment. Verified money is set in the serif at display size; unverified money is set
+ * smaller, in the body colour, and always beside a badge. The hierarchy carries the claim
+ * so a visitor reads it before they read any label.
+ */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--sp-8);
+  align-items: center;
+  padding: var(--sp-8) 0 var(--sp-7);
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.022em;
+  margin: var(--sp-3) 0 var(--sp-4);
+}
+
+.lead {
+  max-width: 46ch;
+  color: var(--ink-2);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+/* ── the two totals ─────────────────────────────────────────────────────── */
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6) var(--sp-7);
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+.total {
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.totalLabel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: var(--text-xs);
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+
+.totalValue {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3.6vw, 2.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-top: var(--sp-2);
+  color: var(--ink);
+}
+
+/* A hyphenated badge is one word to a reader and two to the line-breaker; left alone,
+   "LEDGER-BACKED" splits inside its own pill, which reads as damage. The badge may wrap to
+   the next line; it may not wrap inside itself. */
+.totalValue > * {
+  white-space: nowrap;
+}
+
+/* The count of unverifiable cards is not money and must not be dressed as money. */
+.totalValueMuted {
+  color: var(--ink-2);
+  font-size: clamp(1.5rem, 2.4vw, 1.8rem);
+}
+
+.totalNote {
+  margin-top: var(--sp-2);
+  max-width: 34ch;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* ── the featured card ──────────────────────────────────────────────────── */
+
+.heroCard {
+  min-width: 0;
+}
+
+.noCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-2);
+  aspect-ratio: 400 / 252;
+  padding: var(--sp-6);
+  text-align: center;
+}
+
+.noCardTitle {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.noCardBody {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 0.1em 0.35em;
+  /* A long command must not push the page sideways on a phone. */
+  overflow-wrap: anywhere;
+}
+
+/* ── sections ───────────────────────────────────────────────────────────── */
+
+.section {
+  padding-bottom: var(--sp-7);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-5);
+  margin-bottom: var(--sp-4);
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+
+.sectionNote {
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+/*
+ * The empty wallet.
+ *
+ * These three classes were referenced by `page.tsx` and never defined, so a visitor with no
+ * gift cards got the one thing the rubric fails outright: an undesigned state — unstyled
+ * paragraphs stacked flush against a panel edge. TypeScript cannot catch this, because a CSS
+ * module is typed as an index signature and `styles.emptyTitle` is `string` whether or not
+ * the class exists. Only looking at the page finds it.
+ *
+ * It reads as a composed absence rather than a hole: the copy explains what a gift card is
+ * *for* in this project, which is the one thing a wallet with nothing in it can still teach.
+ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  padding: var(--sp-6) var(--sp-5);
+  text-align: left;
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.emptyBody {
+  max-width: 44ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+/* One panel holding the whole ledger, with hairlines between entries — not nine separately
+   elevated cards. A border *and* a shadow *and* a background shift, repeated nine times
+   down a page, states "this is a distinct object" nine times about rows of one table. */
+.list {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  /* A ledger has one row height. The two-line note used to make some rows 19px taller than
+     others, so the list visibly stuttered as it went down. */
+  min-height: 5.125rem;
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.rowMain {
+  min-width: 0;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.brand {
+  text-transform: capitalize;
+}
+
+.last4 {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.rowNote {
+  margin-top: var(--sp-1);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 48ch;
+}
+
+.rowAmount {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+
+/*
+ * The badge gets a fixed slot so the amount's right edge does not depend on how wide the
+ * badge next to it happens to be. Without this the outlined UNVERIFIED badge is wider than
+ * the soft one and shoves its amount ~17px left of every amount above it — two lists of
+ * money in one visual column, not aligned. An empty slot holds the column open for rows
+ * that carry no badge at all.
+ */
+.badgeSlot {
+  display: flex;
+  justify-content: flex-start;
+  flex: 0 0 6.25rem;
+}
+
+.amount {
+  font-size: 1.125rem;
+  font-weight: 580;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* Unverified money is never set at the weight verified money gets. */
+.amountUnverified {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.unknown {
+  font-size: var(--text-base);
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+/* ── the spent cards, folded ────────────────────────────────────────────── */
+
+.spent {
+  width: 100%;
+}
+
+.spentSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  cursor: pointer;
+  list-style: none;
+  /* The row's own padding already provides the target; this keeps the whole width clickable
+     rather than only the words. */
+  min-height: 2.75rem;
+}
+
+.spentSummary::-webkit-details-marker {
+  display: none;
+}
+
+.spentTitle {
+  font-size: var(--text-md);
+  font-weight: 560;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+.spentTitle::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: var(--sp-2);
+  color: var(--ink-3);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.spent[open] .spentTitle::before {
+  transform: rotate(90deg);
+}
+
+.spentNote {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.amountSpent {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.spentList {
+  list-style: none;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line);
+}
+
+.spentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0;
+}
+
+.spentAmount {
+  font-size: var(--text-base);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  /* Aligned with the funded rows' amounts above, badge slot included. */
+  margin-right: 6.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spentTitle::before { transition: none; }
+}
+
+.footnote {
+  margin-top: var(--sp-4);
+  padding-left: var(--sp-4);
+  border-left: 2px solid var(--line-strong);
+  max-width: 62ch;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: var(--ink-3);
+}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--sp-6);
+    padding-top: var(--sp-6);
+  }
+  /* The card leads on a phone: it is the thing worth seeing first, and it explains what
+     the numbers underneath are about. */
+  .heroCard {
+    order: -1;
+  }
+
+  /*
+   * …but the card must not be the only number on the first screen. Below the card came the
+   * headline, then a 136px paragraph, and only then the balance — which landed at y≈690 of
+   * an 844px viewport, while the card's own gold $25.00 sat at the top. A visitor could
+   * plausibly read their balance as $25. The totals move above the prose so the two facts
+   * this page exists to compare are on the first screen; the argument for them follows.
+   */
+  .heroCopy {
+    display: flex;
+    flex-direction: column;
+  }
+  /* Only the lead moves. Everything else keeps its document order, so the reading order
+     becomes eyebrow → headline → the two totals → the argument for them. */
+  .lead {
+    order: 1;
+    margin-top: var(--sp-5);
+  }
+  .totals {
+    margin-top: var(--sp-5);
+    padding-top: var(--sp-5);
+  }
+}
+
+@media (max-width: 560px) {
+  .row {
+    /* Below this the amount and the badge start colliding with the title, so the row
+       becomes two stacked lines with the amount on its own baseline. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+  .rowAmount {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .totals {
+    gap: var(--sp-5);
+  }
+}

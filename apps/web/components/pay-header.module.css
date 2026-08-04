@@ -1,0 +1,78 @@
+/*
+ * Deliberately the same silhouette as the shop header — same height, same padding, same
+ * hairline — so moving from cart to checkout does not jolt. Only the contents change, and
+ * what changes is that almost everything is gone.
+ */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.inner {
+  max-width: var(--content);
+  margin-inline: auto;
+  padding: 0.7rem var(--sp-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  background: var(--brand-tint);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.wordmark {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  letter-spacing: -0.01em;
+}
+
+.dot {
+  color: var(--brand);
+  padding-inline: 0.02em;
+}
+
+/* A statement, not a badge. It gets no tint and no border — a padlock chip in a coloured
+   pill is what a plugin adds to a checkout, and it reads as reassurance bought rather than
+   earned. Set as quiet type, it reads as a fact. */
+.secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-weight: 520;
+}
+
+@media (max-width: 30rem) {
+  .inner {
+    padding-inline: var(--sp-4);
+  }
+  /* The lock survives; the words go. At 390px the wordmark and a five-syllable reassurance
+     compete, and the mark is the one carrying identity. */
+  .secure span {
+    display: none;
+  }
+}

@@ -1,0 +1,78 @@
+# CI exists for one reason above all others: the no-PAN invariant.
+#
+# `docs/PLAN.md` commits to asserting that no card number is ever stored, "in CI so it
+# can't regress". Until this file existed that test only ran when somebody remembered to
+# type `pnpm -r test`, which is not an enforcement mechanism. It is now the first thing
+# that runs, so the check the whole PCI posture rests on fails loudly and early.
+#
+# Everything here runs **without a single secret**. The test suite never reaches the
+# network: the Stripe client is replaced by a fake through `setStripeClient`, and the
+# ledger runs in-memory. That is a property worth keeping — a suite that needs a live key
+# is a suite that cannot run on a fork's pull request.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run tells you nothing. Cancel it and keep the queue honest.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Both versions are reported, rather than stopping at the first failure — knowing a
+      # break is version-specific is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        # 22 is what the project is developed on; 24 is the forward check. better-sqlite3
+        # is a native module, so a new Node major is a real risk rather than a formality —
+        # and the first run proved it: there are no prebuilt binaries for Node 24, so it
+        # falls back to `node-gyp rebuild` and compiles from source. It works, and it takes
+        # roughly three times as long. If that job ever fails at "Install" rather than at a
+        # test, this is why.
+        node: [22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the version from package.json's `packageManager` field, so CI and the laptop
+      # cannot drift apart.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      # --frozen-lockfile fails rather than silently resolving a different tree, which is
+      # the only version of "install" that means anything in CI.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The store's typecheck reads @pay-agent/db's emitted declarations, so the workspace
+      # has to be built before it can be checked. pnpm -r follows dependency order.
+      - name: Build
+        run: pnpm -r build
+
+      # First, and named, because this is the reason the workflow exists. Asserts no PAN
+      # column can be added to the schema, that the ledger is append-only against raw SQL
+      # bypassing the repository, and that nothing outside packages/db imports the driver.
+      - name: Invariants (no PAN, append-only ledger, storage boundary)
+        run: pnpm --filter @pay-agent/db exec tsx --test test/invariants.test.ts
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test

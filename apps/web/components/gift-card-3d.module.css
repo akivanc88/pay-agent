@@ -1,0 +1,116 @@
+/*
+ * The showpiece's frame.
+ *
+ * Two renderings of one object are stacked here: the SVG still card holds the layout and
+ * is always present, and the WebGL canvas fades in over it once — and only once — the
+ * runtime has loaded and the card has something to show. Nothing here changes the card's
+ * design; that lives in `wallet-static-card.module.css`.
+ *
+ * The `--card-*` palette is redeclared on `.host` rather than inherited, because the 3D
+ * renderer resolves it with `getComputedStyle(host)`. Custom properties are visible on the
+ * element that *declares* them and its descendants — the still card declares them on its
+ * own wrapper, one level down, so the host would read empty strings and bake a black card.
+ */
+.host {
+  --card-bg-1: var(--ink);
+  --card-bg-2: var(--brand-ink);
+  --card-bg-3: var(--ink);
+  --card-ink: var(--paper);
+  --card-ink-dim: var(--line);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
+  --card-gold: var(--foil-mid);
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 400 / 252;
+  border-radius: var(--r-lg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .host {
+    --card-bg-1: var(--surface-sunk);
+    --card-bg-2: var(--brand-tint);
+    --card-bg-3: var(--paper);
+    --card-ink: var(--ink);
+    --card-ink-dim: var(--ink-2);
+    --card-foil-hi: var(--foil-hi);
+    --card-foil-lo: var(--foil-deep);
+  }
+}
+
+:root[data-theme="light"] .host {
+  --card-bg-1: var(--ink);
+  --card-bg-2: var(--brand-ink);
+  --card-bg-3: var(--ink);
+  --card-ink: var(--paper);
+  --card-ink-dim: var(--line);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
+}
+
+:root[data-theme="dark"] .host {
+  --card-bg-1: var(--surface-sunk);
+  --card-bg-2: var(--brand-tint);
+  --card-bg-3: var(--paper);
+  --card-ink: var(--ink);
+  --card-ink-dim: var(--ink-2);
+  --card-foil-hi: var(--foil-hi);
+  --card-foil-lo: var(--foil-deep);
+}
+
+/* The still card. It is the layout: the canvas is absolutely positioned over it, so this
+   is what gives the host its height at every width. It never unmounts. */
+.still {
+  position: relative;
+  z-index: 0;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+/* Once the canvas is live the still card steps back, but stays in flow holding the box.
+   `visibility` is left alone so it keeps its size; only the paint is handed over. */
+.host[data-live] .still {
+  opacity: 0;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-lg);
+  opacity: 0;
+  /* The canvas is a decoration layered over a complete, readable card. Until it is live it
+     must not swallow the pointer, or the still card's own hover would die for nothing. */
+  pointer-events: none;
+  transition: opacity var(--dur-4) var(--ease-out);
+}
+
+.host[data-live] .canvas {
+  opacity: 1;
+  pointer-events: auto;
+  /* The tilt tracks the pointer, so the cursor should say "this responds to me". */
+  cursor: grab;
+}
+
+.host[data-live] .canvas:active {
+  cursor: grabbing;
+}
+
+/* A visitor who asked for less motion never starts the renderer at all (the effect returns
+   before importing three), so this is belt and braces: if a canvas somehow exists, it stays
+   out of the way and the designed still card remains the whole of the experience. */
+@media (prefers-reduced-motion: reduce) {
+  .host[data-live] .still {
+    opacity: 1;
+  }
+  .host[data-live] .canvas {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .still,
+  .canvas {
+    transition: none;
+  }
+}

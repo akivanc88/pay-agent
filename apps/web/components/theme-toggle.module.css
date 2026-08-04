@@ -1,0 +1,89 @@
+/*
+ * The switch reads best at 46×26, but that is not a thumb target. The button carries the
+ * 44px height as padding and stays visually 26px — the hit area grows, the control does not.
+ */
+.toggle {
+  border: 0;
+  background: none;
+  padding: 9px 0;
+  min-height: 44px;
+  min-width: 46px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  -webkit-tap-highlight-color: transparent;
+}
+.toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  padding: 2px;
+  display: block;
+  transition: background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+.track[data-dark] {
+  background: var(--brand-tint);
+  border-color: color-mix(in srgb, var(--brand) 34%, transparent);
+}
+.toggle:hover .track {
+  border-color: var(--ink-3);
+}
+
+/*
+ * The thumb travels on `transform`, not on `justify-content`. Flex alignment is not an
+ * animatable property, so the previous version declared a 320ms transition on a transform
+ * that was never set and the thumb teleported between ends — a snap, on the one control in
+ * the header whose whole job is to feel like a physical switch.
+ */
+.thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  place-items: center;
+  transform: translateX(0);
+  transition: transform var(--dur-3) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+.track[data-dark] .thumb {
+  /* 46 track − 2×1 border − 2×2 padding − 20 thumb = 20px of travel. */
+  transform: translateX(20px);
+  background: var(--surface);
+  color: var(--brand);
+}
+/* The press squashes the thumb against the end of its travel, and hover lets it lean the
+   way it is about to go. Both are motion, not opacity. */
+.toggle:hover .thumb { transform: translateX(2px); }
+.toggle:hover .track[data-dark] .thumb { transform: translateX(18px); }
+.toggle:active .thumb { transform: translateX(0) scale(0.92); }
+.toggle:active .track[data-dark] .thumb { transform: translateX(20px) scale(0.92); }
+
+/* The two glyphs are stacked and cross-faded *with* a small rotation, so the sun does not
+   simply pop into a moon. Both are always in the DOM; reduced motion just removes the
+   easing, and the correct one is still the only one at full opacity. */
+.icon {
+  grid-area: 1 / 1;
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+.icon[data-on] {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.icon:not([data-on]) {
+  opacity: 0;
+  transform: rotate(-60deg) scale(0.6);
+}
