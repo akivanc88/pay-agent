@@ -74,16 +74,18 @@ product, in rough order of leverage:
 ## The reference set — for real blind comparison
 
 A critic working from memory of what Stripe Checkout looks like is doing a vibe check, not
-a comparison. So the real surfaces are captured and on disk. Read these PNGs with the Read
-tool and put them beside ours:
+a comparison. So the real surfaces are captured to a scratch directory of your choosing and
+read off disk. Generate them, then read the PNGs with the Read tool and put them beside ours:
 
-    /home/ashis_majumder/.claude/jobs/315f2552/tmp/refs/
+    node scripts/reference-shots.mjs <outDir>
+
+    <outDir>/
       ref-stripe-checkout.png    real hosted Stripe Checkout (inside Stripe's demo frame)
       ref-bouqs-home.png         Bouqs storefront
       ref-farmgirl-home.png      Farmgirl Flowers storefront
       ref-flowerbx-home.png      Flowerbx storefront
 
-Re-capture any time with `node scripts/reference-shots.mjs <outDir>`.
+Keep `<outDir>` outside the repo — these are third-party marketing pages, not ours to commit.
 
 Note what these real surfaces actually do: photography with real depth and a consistent
 light, tight type hierarchy, restrained palettes, and — on Stripe — a payment panel that is
