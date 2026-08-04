@@ -308,26 +308,38 @@ function RoseHead({ p, r, seed }: { p: string; r: number; seed: number }) {
   return (
     <g>
       <circle r={r * 0.9} fill="var(--art-bloom-lo)" />
-      {whorls.map((w, wi) => (
-        <g key={wi}>
-          {Array.from({ length: w.n }, (_, i) => {
-            const a = w.rot + (360 / w.n) * i + wob(seed + wi * 13 + i, 13);
-            const s = w.s * (0.9 + rnd(seed + i * 7 + wi * 3) * 0.2);
-            return (
-              <path
-                key={i}
-                d={cup(r * s, w.wide, w.tall)}
-                transform={`rotate(${a})`}
-                fill={u(w.grad)}
-                stroke="var(--art-bloom-ink)"
-                strokeOpacity="0.22"
-                strokeWidth="0.55"
-              />
-            );
-          })}
-          <circle r={r * w.s * 0.86} fill={u("core")} />
-        </g>
-      ))}
+      {whorls.map((w, wi) => {
+        // The heart wanders as it furls inward: each whorl nests a little off the last one's
+        // centre along a short spiral, drifting up-left toward the key light. Co-centred
+        // rings are the exact "bullseye" tell the flat version had — a real bloom does not
+        // have one axis, it has a centre it spirals around.
+        const ox = wob(seed + wi * 5 + 1, r * 0.14);
+        const oy = wob(seed + wi * 5 + 2, r * 0.1) - r * 0.05 * wi;
+        return (
+          <g key={wi} transform={`translate(${ox} ${oy})`}>
+            {Array.from({ length: w.n }, (_, i) => {
+              const a = w.rot + (360 / w.n) * i + wob(seed + wi * 13 + i, 17);
+              // Wider scale spread so petals overlap unevenly instead of tiling a clean ring.
+              const s = w.s * (0.82 + rnd(seed + i * 7 + wi * 3) * 0.34);
+              return (
+                <path
+                  key={i}
+                  d={cup(r * s, w.wide, w.tall)}
+                  transform={`rotate(${a})`}
+                  fill={u(w.grad)}
+                  stroke="var(--art-bloom-ink)"
+                  strokeOpacity="0.22"
+                  strokeWidth="0.55"
+                />
+              );
+            })}
+          </g>
+        );
+      })}
+      {/* One heart, not four. The occlusion that darkens the centre is painted a single time
+          over the whole bloom rather than once per whorl, so the middle reads as one
+          deepening well instead of a stack of nested dark rings. */}
+      <circle r={r * 0.66} fill={u("core")} />
       {/* the tight spiral at the centre */}
       <g transform={`scale(${r / 28})`}>
         <path
