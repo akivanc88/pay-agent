@@ -805,11 +805,16 @@ export class CheckoutService {
      * `runId` groups the draws so that any later failure can hand every cent back.
      */
     const runId = `run_${uuidv4()}`;
-    const amountDue = minorUnits(
+    // The authoritative amount owed. A missing total is a broken quote, not a free cart: defaulting
+    // to 0 here would let a checkout complete for nothing (drawing no money and placing an order).
+    // Refuse it instead — the same stance the agent's adapter takes when the store quotes no total.
+    const totalAmount =
       checkout.totals?.find((t) => t.type === "total")?.amount ??
-        checkout.totals?.find((t) => t.type === "subtotal")?.amount ??
-        0,
-    );
+      checkout.totals?.find((t) => t.type === "subtotal")?.amount;
+    if (totalAmount === undefined) {
+      return c.json({ detail: "Checkout has no total; it cannot be completed." }, 400);
+    }
+    const amountDue = minorUnits(totalAmount);
 
     let settlement: SettlementResult | undefined;
     const giftCardInstruments = payment.instruments.filter(
@@ -857,6 +862,9 @@ export class CheckoutService {
      */
     let stripe: Stripe | null = null;
     let authorization: Authorization | undefined;
+    // True once the card money is actually taken. Past that point there is nothing to unwind on a
+    // later throw (the money is captured and the order placed); before it, everything is reversible.
+    let didCapture = false;
 
     /**
      * Fail the checkout, giving back everything already committed to it.
@@ -932,9 +940,11 @@ export class CheckoutService {
           });
 
           if (!outcome.ok) {
+            // Authorization uses manual capture and takes no money, so even the (in practice
+            // unreachable) indeterminate variant is safe to unwind as a 402 — nothing was captured.
             return failPayment(
               `Card authorization failed: ${outcome.message}`,
-              outcome.status,
+              outcome.indeterminate ? 402 : outcome.status,
               outcome.code,
             );
           }
@@ -1098,6 +1108,26 @@ export class CheckoutService {
       if (stripe && authorization) {
         const captured = await captureAuthorization(stripe, authorization);
         if (!captured.ok) {
+          if (captured.indeterminate) {
+            // The capture may have taken the money with only the response lost. Compensating now
+            // would be a guess in the wrong direction: reversing the gift while the card really
+            // captured is an underpayment, and cancelling a succeeded capture cannot be relied on.
+            // So unwind NOTHING — leave the gift draw and the authorization exactly as they are,
+            // do not place the order, and answer with an indeterminate status. The agent resolves
+            // this by reading the order (it will not exist), never by retrying a payment, and a
+            // human reconciles the standing legs. Stock stays reserved for the same reason: the
+            // order's fate is unknown, so we neither release nor confirm it.
+            return c.json(
+              {
+                detail:
+                  `Card capture is indeterminate; the charge may or may not have settled ` +
+                  `(${captured.message}). No order was placed and nothing was reversed — verify ` +
+                  `before retrying.`,
+                code: captured.code,
+              },
+              502,
+            );
+          }
           for (const reserved of reservedItems) {
             releaseStock(reserved.id, reserved.qty);
           }
@@ -1107,6 +1137,7 @@ export class CheckoutService {
             captured.code,
           );
         }
+        didCapture = true;
       }
 
       saveOrder(order.id, order);
@@ -1119,8 +1150,11 @@ export class CheckoutService {
 
       saveCheckout(id, checkout.status, checkout);
 
-      // Notify webhook
-      await this.notifyWebhook(checkout, "order_placed");
+      // Notify webhook. Non-fatal: the money is captured and the order is placed, so a webhook
+      // hiccup must not throw the handler into a 500 for an order that genuinely succeeded.
+      await this.notifyWebhook(checkout, "order_placed").catch((err) =>
+        console.error("Webhook notify failed after order placed", err),
+      );
 
       if (idempotencyKey) {
         saveIdempotencyRecord(
@@ -1134,6 +1168,16 @@ export class CheckoutService {
       return c.json(checkout, 200);
     } catch (e) {
       console.error("Error completing checkout", e);
+      // A thrown error must not leave money committed to a checkout that did not complete. Every
+      // *handled* failure already routes through failPayment; this is the backstop for a genuine
+      // exception. Before capture, release the card hold and hand back every gift-card draw; after
+      // capture the money is taken and the order placed, so there is nothing here to unwind.
+      if (!didCapture) {
+        if (stripe && authorization) {
+          await cancelAuthorization(stripe, authorization).catch(() => undefined);
+        }
+        if (settlement) await reverseSettlement(runId).catch(() => undefined);
+      }
       return c.json({ detail: "Internal server error" }, 500);
     }
   };

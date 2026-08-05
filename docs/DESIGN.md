@@ -72,6 +72,54 @@ with nothing captured on the rail.
     pnpm --filter @pay-agent/store stripe-check  # real split checkout, both outcomes
     pnpm --filter @pay-agent/store show-ledger   # before/after
 
+**M2 agent working — one planner, two destinations, no branching.** `apps/agent` is the
+destination-independent core: a `PaymentDestination` contract (`discover`/`capabilities`/`pay`/
+`confirm`) and a planner that decides the gift-first/card-remainder split by reading a
+destination's `capabilities()`, never by asking which destination it is. Two adapters sit behind
+it — the UCP storefront (the merchant redeems the gift card itself) and a Stripe hosted payment
+link (an external rail that can't, so the gift card is drawn on our own ledger and the remainder
+settled on a real test-mode PaymentIntent, reversed if the card declines). `pnpm --filter
+@pay-agent/agent demo:both` settles a $75 storefront split and a $50 payment-link split through the
+same planner; the decline path restores the gift balance to the cent. `test/independence.test.ts`
+fails if the planner ever imports an adapter, names a destination, or compares a destination id.
+
+*Simplified here, on purpose (see below):* mandates are unsigned (`signed: false`); the policy
+gate is a spend cap only; the payment link communicates the amount via Stripe's API rather than the
+agent driving its hosted page. The card rail is test-mode only — the adapter refuses a live key.
+
+*Transport ambiguity, handled honestly:* a lost response is never resolved by re-sending a payment.
+The store's `/complete` records its idempotency key only at the end of the handler and never
+reserves it at the start, so a blind retry could re-execute a completion still in flight and draw
+twice — so the UCP adapter resolves a lost/409 response by *reading* the order (a GET can't settle
+anything), and reports "indeterminate — verify before retrying" when it genuinely can't tell. The
+payment-link adapter likewise treats a Stripe connection error as indeterminate and leaves the gift
+draw in place (a recoverable stuck draw beats a refunded gift beside a charged card). Making the
+store's idempotency reservation-based is a known follow-up; the agent does not rely on it. The
+store's `/complete` also compensates on a genuine exception, not only on handled failures: its
+catch-all reverses any gift draw and cancels any card authorization made before capture, so a throw
+between the draw and the order cannot leave money committed to a checkout that never placed. The one
+failure that must *not* be compensated is an indeterminate capture: if `paymentIntents.capture`
+throws a transport error, Stripe may have taken the money and only the response was lost, so the
+store reverses nothing — it leaves both the gift draw and the authorization standing and answers
+`502`. A clean decline still reverses; only the unknowable outcome is held for reconciliation. The
+UCP adapter reads that `502` (like a `0` or `409`) rather than treating it as a decline, so it never
+infers a reversal from a status it did not observe.
+
+*Residual M2 limitations, stated plainly:* the payment-link adapter is idempotent within a single
+`pay` but not across separate re-invocations for the same bill (the storefront adapter is, via the
+stable session handle) — a caller must heed the "do not retry blindly" it surfaces. On a definite
+storefront decline the UCP adapter reports `reversed: false` — meaning *not observed-reversed by
+us*, never inferred from the fact that a draw was planned; the store reverses its own internal draw
+best-effort, but that reversal is invisible from the agent, so it is not asserted as fact.
+`/funding/redeem` is grouped by `run_id` for reversal but is **not** idempotent on it — a second
+redeem under the same id draws again — so the adapter draws exactly once per `pay` and reconciles by
+reversing, never by re-redeeming. The store's non-Stripe mock payment handlers (`mock_payment_handler`,
+`google_pay`, a bare `type:"card"`) still "succeed" without a real charge, as demo scaffolding; the
+agent never uses them (its storefront instrument is always `stripe_payments`), but that endpoint
+surface would under-collect if driven with a mock card beside a real gift draw. And `/funding/redeem`
+and `/funding/reverse` are unauthenticated until the Supabase auth migration, like the rest of the
+funding surface.
+
 ### Enrolling a card without ever seeing it
 
 `/enroll` is the one page in the project, and its whole shape follows from a single
