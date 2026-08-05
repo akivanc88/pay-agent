@@ -360,6 +360,34 @@ test("a failed capture releases the gift cards too", async () => {
   assert.equal(await funding.ledger.balanceOf(gc.id), total - 1000);
 });
 
+test("an indeterminate capture reverses NOTHING and reports 502", async () => {
+  // The capture threw a *transport* error, not a decline: Stripe may have taken the money and
+  // only the response was lost. A clean decline reverses the gift (the test above); this must
+  // not — refunding the gift beside a possibly-live charge is an underpayment, and cancelling a
+  // capture that may have succeeded cannot be relied on. So both legs are LEFT standing and the
+  // store answers 502, which the agent resolves by reading the order (there is none), never by
+  // retrying a payment.
+  const app = buildApp();
+  const { id, total } = await readyCart(app);
+  const gc = await issue("GC-INDET-0001", total - 1000);
+  const calls = fakeStripe({
+    failCapture: new Stripe.errors.StripeConnectionError({
+      message: "connection reset during capture",
+    }),
+  });
+
+  const res = await complete(app, id, [giftCardInstrument("GC-INDET-0001"), stripeInstrument()]);
+
+  assert.equal(res.status, 502, "an unknowable capture is indeterminate, not a clean decline");
+  assert.equal(
+    await funding.ledger.balanceOf(gc.id),
+    0,
+    "the gift draw is left in place — handing it back beside a possible live charge would underpay",
+  );
+  assert.deepEqual(calls.cancelled, [], "a possibly-succeeded capture must not be cancelled");
+  assert.deepEqual(calls.captured, ["pi_fake_123"], "capture was attempted exactly once, not retried");
+});
+
 test("a credential that is not a PaymentMethod id is refused before any network call", async () => {
   const app = buildApp();
   const { id, total } = await readyCart(app);

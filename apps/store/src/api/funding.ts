@@ -1,11 +1,17 @@
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 
 import { type Context } from "hono";
 import { z } from "zod";
 
 import { DEFAULT_CURRENCY, format, minorUnits } from "@pay-agent/db";
 
-import { getFundingStore } from "../payments/gift-card";
+import {
+  getFundingStore,
+  settleGiftCards,
+  reverseSettlement,
+  GiftCardError,
+} from "../payments/gift-card";
 import { testClient } from "../payments/stripe";
 
 /**
@@ -53,6 +59,25 @@ const EnrollRequestSchema = z.object({
   setup_intent_id: z.string().startsWith("seti_"),
   /** Dollars, as typed. Converted to minor units here; the ledger only sees integers. */
   enrolled_balance: z.number().nonnegative().finite(),
+});
+
+/** A standalone gift-card draw for an external-rail split. Amount is integer minor units. */
+const RedeemRequestSchema = z.object({
+  code: z.string().min(1),
+  pin: z.string().min(1),
+  amount_minor: z.number().int().positive(),
+  /**
+   * Optional caller-supplied run id. It *groups* this draw under one reversible id so `reverse`
+   * can hand the whole run back at once — it is NOT an idempotency key. Calling redeem twice with
+   * the same run_id draws twice (each up to the live balance); it does not coalesce. A caller must
+   * redeem exactly once per run and, on an ambiguous response, reverse-then-reconcile rather than
+   * blindly re-redeem. (The agent's payment-link adapter does exactly this: one draw per pay().)
+   */
+  run_id: z.string().min(1).optional(),
+});
+
+const ReverseRequestSchema = z.object({
+  run_id: z.string().min(1),
 });
 
 export class FundingService {
@@ -186,5 +211,55 @@ export class FundingService {
         ),
       ),
     });
+  };
+
+  /**
+   * Draw a closed-loop gift card on this store's ledger, standalone.
+   *
+   * The store's own checkout redeems gift cards inside `complete`, keyed to that checkout. But
+   * an external destination — a hosted payment link, a biller — cannot present our gift card to
+   * itself, so per the plan the split happens on *our* side: the agent draws the card here, pays
+   * the remainder on the destination's own rail, and reverses this draw if that rail declines.
+   *
+   * This is the same open-amount draw the checkout uses (`settleGiftCards` with one instrument),
+   * so a card is drawn up to what it holds and no further — a zero balance is a valid $0 draw,
+   * not an error. The returned `run_id` is what `reverse` hands back if the remote leg fails.
+   */
+  redeem = async (c: Context) => {
+    const parsed = RedeemRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      return c.json({ detail: "redeem requires code, pin and a positive amount_minor" }, 400);
+    }
+    const { code, pin, amount_minor, run_id } = parsed.data;
+    const runId = run_id ?? `agent_${randomUUID()}`;
+
+    try {
+      const result = await settleGiftCards(
+        [{ type: "gift_card", handler_id: "gift_card", credential: { type: "gift_card", code, pin } }],
+        minorUnits(amount_minor),
+        runId,
+      );
+      return c.json({
+        run_id: runId,
+        drawn_minor: result.covered,
+        drawn_display: format(result.covered),
+        remaining_minor: result.remaining,
+        currency: DEFAULT_CURRENCY,
+      });
+    } catch (err) {
+      if (err instanceof GiftCardError) return c.json({ detail: err.message }, err.status);
+      throw err;
+    }
+  };
+
+  /**
+   * Give back every cent a `redeem` run drew. Idempotent — reversing twice is a no-op — because
+   * a failed remote payment can be reported more than once and the balance must land exactly.
+   */
+  reverse = async (c: Context) => {
+    const parsed = ReverseRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ detail: "reverse requires a run_id" }, 400);
+    await reverseSettlement(parsed.data.run_id);
+    return c.json({ ok: true, run_id: parsed.data.run_id });
   };
 }

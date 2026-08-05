@@ -1,0 +1,24 @@
+{
+  "name": "@pay-agent/agent",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "demo:ucp": "tsx --env-file-if-exists=../../.env scripts/demo.ts ucp",
+    "demo:link": "tsx --env-file-if-exists=../../.env scripts/demo.ts link",
+    "demo:both": "tsx --env-file-if-exists=../../.env scripts/demo.ts both"
+  },
+  "dependencies": {
+    "stripe": "^22.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
