@@ -97,14 +97,28 @@ draw in place (a recoverable stuck draw beats a refunded gift beside a charged c
 store's idempotency reservation-based is a known follow-up; the agent does not rely on it. The
 store's `/complete` also compensates on a genuine exception, not only on handled failures: its
 catch-all reverses any gift draw and cancels any card authorization made before capture, so a throw
-between the draw and the order cannot leave money committed to a checkout that never placed.
+between the draw and the order cannot leave money committed to a checkout that never placed. The one
+failure that must *not* be compensated is an indeterminate capture: if `paymentIntents.capture`
+throws a transport error, Stripe may have taken the money and only the response was lost, so the
+store reverses nothing — it leaves both the gift draw and the authorization standing and answers
+`502`. A clean decline still reverses; only the unknowable outcome is held for reconciliation. The
+UCP adapter reads that `502` (like a `0` or `409`) rather than treating it as a decline, so it never
+infers a reversal from a status it did not observe.
 
 *Residual M2 limitations, stated plainly:* the payment-link adapter is idempotent within a single
 `pay` but not across separate re-invocations for the same bill (the storefront adapter is, via the
-stable session handle) — a caller must heed the "do not retry blindly" it surfaces; the `reversed`
-flag on the storefront path reflects the store's reverse-on-failure contract rather than an
-independent observation; and `/funding/redeem` and `/funding/reverse` are unauthenticated until the
-Supabase auth migration, like the rest of the funding surface.
+stable session handle) — a caller must heed the "do not retry blindly" it surfaces. On a definite
+storefront decline the UCP adapter reports `reversed: false` — meaning *not observed-reversed by
+us*, never inferred from the fact that a draw was planned; the store reverses its own internal draw
+best-effort, but that reversal is invisible from the agent, so it is not asserted as fact.
+`/funding/redeem` is grouped by `run_id` for reversal but is **not** idempotent on it — a second
+redeem under the same id draws again — so the adapter draws exactly once per `pay` and reconciles by
+reversing, never by re-redeeming. The store's non-Stripe mock payment handlers (`mock_payment_handler`,
+`google_pay`, a bare `type:"card"`) still "succeed" without a real charge, as demo scaffolding; the
+agent never uses them (its storefront instrument is always `stripe_payments`), but that endpoint
+surface would under-collect if driven with a mock card beside a real gift draw. And `/funding/redeem`
+and `/funding/reverse` are unauthenticated until the Supabase auth migration, like the rest of the
+funding surface.
 
 ### Enrolling a card without ever seeing it
 

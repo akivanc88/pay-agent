@@ -142,7 +142,18 @@ export interface Authorization {
 
 export type AuthorizationOutcome =
   | { readonly ok: true; readonly authorization: Authorization }
-  | { readonly ok: false; readonly code: string; readonly message: string; readonly status: 400 | 402 };
+  | {
+      readonly ok: false;
+      readonly indeterminate: false;
+      readonly code: string;
+      readonly message: string;
+      readonly status: 400 | 402;
+    }
+  // A capture whose outcome cannot be known: a transport/API error where Stripe may have taken
+  // the money and only the response was lost. It must never be compensated as if it failed —
+  // reversing the gift or cancelling the intent could refund a gift beside a live charge, or try
+  // to cancel a capture that succeeded. The caller leaves both legs in place for reconciliation.
+  | { readonly ok: false; readonly indeterminate: true; readonly code: string; readonly message: string };
 
 /**
  * Authorize, but do not capture.
@@ -189,6 +200,7 @@ export async function authorizeCard(args: {
     if (intent.status !== "requires_capture") {
       return {
         ok: false,
+        indeterminate: false,
         code: intent.status,
         message: `Card authorization was not completed (status: ${intent.status})`,
         status: 402,
@@ -218,6 +230,7 @@ export async function captureAuthorization(
     if (intent.status !== "succeeded") {
       return {
         ok: false,
+        indeterminate: false,
         code: intent.status,
         message: `Card capture did not succeed (status: ${intent.status})`,
         status: 402,
@@ -225,6 +238,21 @@ export async function captureAuthorization(
     }
     return { ok: true, authorization };
   } catch (err) {
+    // A capture that throws a *transport* error is indeterminate: the request may have reached
+    // Stripe and captured before the connection dropped. Unlike a decline (the issuer said no,
+    // definitively, and nothing moved), this cannot be safely unwound — so it is reported as
+    // indeterminate and the caller leaves both legs standing rather than refund a possible charge.
+    if (
+      err instanceof Stripe.errors.StripeConnectionError ||
+      err instanceof Stripe.errors.StripeAPIError
+    ) {
+      return {
+        ok: false,
+        indeterminate: true,
+        code: err.code ?? err.type ?? "capture_indeterminate",
+        message: err.message,
+      };
+    }
     return declineOutcome(err);
   }
 }
@@ -263,6 +291,7 @@ function declineOutcome(err: unknown): AuthorizationOutcome {
   if (err instanceof Stripe.errors.StripeCardError) {
     return {
       ok: false,
+      indeterminate: false,
       // `decline_code` is the issuer's reason (`insufficient_funds`); `code` is Stripe's
       // category (`card_declined`). The issuer's reason is the one worth reporting.
       code: err.decline_code ?? err.code ?? "card_declined",
@@ -274,6 +303,7 @@ function declineOutcome(err: unknown): AuthorizationOutcome {
   if (err instanceof Stripe.errors.StripeError) {
     return {
       ok: false,
+      indeterminate: false,
       code: err.code ?? err.type,
       message: err.message,
       status: 400,
