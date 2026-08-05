@@ -155,7 +155,13 @@ export async function runPayment(
       : `pay → FAILED (${result.detail})` + (result.reversed ? "; gift draw reversed" : ""),
   );
 
-  const status = await destination.confirm(result.handle);
+  // Only a successful pay is worth independently confirming — the point of confirm is to distrust
+  // pay's own ok:true and ask the destination what really happened. A payment that already failed
+  // and unwound is not settled by definition; re-asking the destination about a non-existent
+  // charge would only invite a misleading "settled".
+  const status: PaymentStatus = result.ok
+    ? await destination.confirm(result.handle)
+    : { settled: false, handle: result.handle, detail: result.detail };
   log.push(`confirm → ${status.settled ? "settled" : "not settled"} (${status.detail})`);
 
   return { due, capabilities, plan, mandate, result, status, log };
