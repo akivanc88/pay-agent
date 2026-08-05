@@ -251,31 +251,29 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
         });
       }
 
-      // A stable idempotency key over this checkout, so a retry after a lost response replays the
-      // store's recorded outcome instead of drawing and charging twice.
+      // An idempotency key so an *intended* single completion is recorded once. But this store
+      // writes that record only at the end of its handler and never reserves the key at the start,
+      // so a blind retry could re-execute a completion still in flight and draw/charge twice.
+      // Therefore an ambiguous outcome is resolved by READING the order — a GET can never settle
+      // anything — not by re-POSTing.
       const idemKey = `complete:${due.handle}`;
-      const attempt = () =>
-        req<Session>(`/checkout-sessions/${due.handle}/complete`, {
+
+      /** The order id if this session has completed, else null. Read-only; safe to call anytime. */
+      const settledOrderId = async (): Promise<string | null> => {
+        try {
+          const s = await req<Session>(`/checkout-sessions/${due.handle}`, { method: "GET" });
+          return s.order?.id ?? null;
+        } catch {
+          return null;
+        }
+      };
+
+      try {
+        const completed = await req<Session>(`/checkout-sessions/${due.handle}/complete`, {
           method: "POST",
           headers: { "Idempotency-Key": idemKey },
           body: JSON.stringify({ payment: { instruments } }),
         });
-
-      try {
-        let completed: Session;
-        try {
-          completed = await attempt();
-        } catch (err) {
-          // A transport failure (status 0) is indeterminate: the store may have completed and only
-          // the response was lost, in which case asserting "failed and reversed" would be a lie
-          // about a captured order. The idempotency key makes a retry safe — it replays the
-          // recorded outcome if the first call landed, or completes now if it never arrived.
-          if (err instanceof StoreError && err.status === 0) {
-            completed = await attempt();
-          } else {
-            throw err;
-          }
-        }
         const orderId = completed.order?.id ?? due.handle;
         // The store settles the whole total, draws the gift card open-amount against its *live*
         // ledger balance, and returns no per-instrument breakdown — so we do not assert a split we
@@ -290,16 +288,40 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
         };
       } catch (err) {
         if (err instanceof StoreError) {
+          // Ambiguous outcomes — a lost response (0), or a conflict that may mean "already done"
+          // (409) — are resolved by reading the order, never by re-completing.
+          if (err.status === 0 || err.status === 409) {
+            const orderId = await settledOrderId();
+            if (orderId) {
+              return {
+                ok: true,
+                handle: orderId,
+                detail: `order ${orderId} confirmed by read after an ambiguous response`,
+                giftDrawnMinor: null,
+                cardChargedMinor: null,
+                reversed: false,
+              };
+            }
+            return {
+              ok: false,
+              handle: due.handle,
+              detail:
+                `indeterminate: no order confirmed for session ${due.handle}; verify before ` +
+                `retrying — a blind retry against this store is not safe`,
+              giftDrawnMinor: null,
+              cardChargedMinor: null,
+              reversed: false,
+            };
+          }
+          // A definite store failure (a 402 decline, a 400). The store's failPayment reverses any
+          // draw it made before answering, so a draw that happened is already unwound.
           return {
             ok: false,
             handle: due.handle,
             detail: err.code ? `${err.message} (${err.code})` : err.message,
             giftDrawnMinor: null,
             cardChargedMinor: null,
-            // A store-returned decline reverses its own draws before answering, so report that.
-            // An unresolved transport failure (status 0) drew nothing client-side and its server
-            // fate is unknown, so claim no reversal we did not observe.
-            reversed: err.status !== 0 && plan.giftDrawMinor > 0,
+            reversed: plan.giftDrawMinor > 0,
           };
         }
         throw err;
