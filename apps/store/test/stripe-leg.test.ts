@@ -1,3 +1,5 @@
+/** Verifies card authorization, capture, cancellation, and split-payment ordering. */
+
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 

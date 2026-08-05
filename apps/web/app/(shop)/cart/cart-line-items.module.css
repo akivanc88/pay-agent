@@ -1,0 +1,137 @@
+/* Styles the editable line-item list, quantity controls, and removal motion. */
+
+.lines ul { list-style: none; padding: 0; margin: 0; }
+.lines li + li .row { border-top: 1px solid var(--line); }
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  opacity: 1;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.thumb {
+  flex: none;
+  width: 4.75rem;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.thumb [data-art] {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+.row:hover .thumb [data-art] { transform: scale(1.05); }
+.rowInfo { min-width: 0; }
+.rowTitle {
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  line-height: 1.25;
+  letter-spacing: -0.008em;
+  color: var(--ink);
+  margin-left: -0.03em;
+  transition: color var(--dur-2) var(--ease-out);
+}
+.rowTitle:hover { color: var(--brand-ink); }
+.rowMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.35rem;
+  margin-top: 0.1rem;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+.rowUnit { color: var(--ink-3); }
+.metaDot { color: var(--line-strong); }
+.remove {
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-radius: var(--r-xs);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur-2) var(--ease-out), text-decoration-color var(--dur-2) var(--ease-out);
+}
+.remove:hover { color: var(--danger); text-decoration-color: currentColor; }
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+.stepper:hover { border-color: var(--ink-3); }
+.stepBtn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.stepBtn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.stepBtn:active:not(:disabled) { background: var(--surface-sunk); transform: scale(0.9); }
+.stepBtn:disabled { color: var(--line-strong); cursor: not-allowed; }
+.stepBtn:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; }
+.stepValueWrap { display: inline-flex; min-width: 2ch; justify-content: center; }
+.stepValue {
+  display: inline-block;
+  font-size: var(--text-md);
+  font-weight: 560;
+  color: var(--ink);
+  transform-origin: 50% 50%;
+  animation: stepTick var(--dur-2) var(--ease-out);
+}
+@keyframes stepTick {
+  from { transform: scale(1.32); color: var(--brand-ink); }
+  to { transform: scale(1); color: var(--ink); }
+}
+.rowTotal {
+  display: inline-block;
+  min-width: 5.5ch;
+  text-align: right;
+  font-size: var(--text-lg);
+  font-weight: 560;
+  color: var(--ink);
+  animation: totalTick var(--dur-3) var(--ease-out);
+}
+@keyframes totalTick { from { color: var(--brand-ink); } to { color: var(--ink); } }
+@media (prefers-reduced-motion: reduce) {
+  .stepValue, .rowTotal { animation: none; }
+}
+@media (max-width: 60rem) { .row { padding-inline: var(--sp-4); } }
+@media (max-width: 34rem) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "thumb info total" "thumb step step";
+    row-gap: var(--sp-3);
+    column-gap: var(--sp-3);
+    padding: var(--sp-4);
+    align-items: start;
+  }
+  .thumb { grid-area: thumb; width: 5.5rem; align-self: stretch; aspect-ratio: auto; }
+  .rowInfo { grid-area: info; }
+  .rowTotal { grid-area: total; align-self: start; }
+  .stepper { grid-area: step; justify-self: start; }
+  .stepBtn { width: 2.75rem; height: 2.75rem; }
+  .rowTitle { display: flex; align-items: center; min-height: 2.75rem; }
+  .rowMeta { align-items: center; }
+  .remove { display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.15rem; }
+}

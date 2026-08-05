@@ -9,13 +9,14 @@
     "build": "next build",
     "start": "next start --port 3001",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts && tsc --noEmit",
     "shoot": "node scripts/shoot.mjs",
     "pay-e2e": "node scripts/pay-e2e.mjs",
     "layout-audit": "node scripts/layout-audit.mjs",
     "card-contrast": "node scripts/card-contrast.mjs"
   },
   "dependencies": {
+    "@pay-agent/protocol": "workspace:*",
     "@types/three": "^0.185.3",
     "next": "^15.5.4",
     "react": "^19.1.1",

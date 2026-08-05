@@ -1,3 +1,5 @@
+/** Styles the restrained footer used by the dedicated payment shell. */
+
 .footer {
   margin-top: var(--sp-8);
   border-top: 1px solid var(--line);

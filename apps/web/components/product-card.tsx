@@ -1,3 +1,5 @@
+/** Renders a catalog product summary with artwork, price, stock, and detail link. */
+
 import Link from "next/link";
 
 import type { CatalogProduct } from "@/lib/store";

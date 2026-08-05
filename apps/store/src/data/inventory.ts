@@ -1,3 +1,5 @@
+/** Implements transactional stock reads, reservations, releases, and decrements. */
+
 import { getTransactionsDb } from "./db";
 
 /**

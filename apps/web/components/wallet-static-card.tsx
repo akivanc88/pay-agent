@@ -1,3 +1,5 @@
+/** Renders an accessible static funding-card fallback without Three.js. */
+
 import styles from "./wallet-static-card.module.css";
 
 /**

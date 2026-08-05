@@ -1,3 +1,5 @@
+/** Provides the focused payment-shell layout for checkout routes. */
+
 import { PayFooter } from "@/components/pay-footer";
 import { PayHeader } from "@/components/pay-header";
 

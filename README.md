@@ -43,7 +43,7 @@ including the places this project currently falls short of its own rules.
 
 ## Running it
 
-Requires Node ≥ 20, pnpm, and a Stripe **test** key.
+Requires Node ≥ 22.9, pnpm, and a Stripe **test** key.
 
 ```bash
 pnpm install

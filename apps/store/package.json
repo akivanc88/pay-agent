@@ -8,17 +8,18 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "seed": "tsx scripts/seed.ts",
     "issue-card": "tsx scripts/issue-card.ts",
     "show-ledger": "tsx scripts/show-ledger.ts",
     "stripe-check": "tsx --env-file-if-exists=../../.env scripts/stripe-check.ts",
-    "start": "node --env-file-if-exists=../../.env dist/index.js"
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.10",
     "@hono/zod-validator": "^0.7.6",
     "@pay-agent/db": "workspace:*",
+    "@pay-agent/protocol": "workspace:*",
     "@ucp-js/sdk": "0.4.3",
     "better-sqlite3": "^11.7.0",
     "hono": "^4.12.31",

@@ -1,3 +1,5 @@
+/** Verifies catalog pricing, currency, stock, and product response contracts. */
+
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { mkdtempSync, rmSync } from "node:fs";

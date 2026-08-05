@@ -1,3 +1,5 @@
+/** Owns browser cart persistence, normalization, mutation, and subscription events. */
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";

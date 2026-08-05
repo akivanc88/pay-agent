@@ -1,3 +1,5 @@
+/** Publishes the store's machine-readable UCP capabilities and payment handlers. */
+
 import { type Context } from "hono";
 import { UCP_VERSION } from "../utils/config";
 import {

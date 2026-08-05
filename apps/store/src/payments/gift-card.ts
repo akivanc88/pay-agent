@@ -1,3 +1,5 @@
+/** Settles closed-loop gift instruments against the append-only ledger with exact reversal. */
+
 import {
   DEFAULT_CURRENCY,
   minorUnits,
@@ -6,6 +8,9 @@ import {
   type MinorUnits,
   type Store,
 } from "@pay-agent/db";
+import { GIFT_CARD_HANDLER_ID } from "@pay-agent/protocol";
+
+export { GIFT_CARD_HANDLER_ID } from "@pay-agent/protocol";
 
 /**
  * Seller-backed gift cards as a UCP payment instrument.
@@ -21,8 +26,6 @@ import {
  * and no credential is ever transferred onward to the agent.
  */
 
-/** Handler id advertised in `/.well-known/ucp` and echoed back on each instrument. */
-export const GIFT_CARD_HANDLER_ID = "gift_card";
 export const GIFT_CARD_HANDLER_NAME = "dev.acp.seller_backed.gift_card";
 
 let store: Store | null = null;

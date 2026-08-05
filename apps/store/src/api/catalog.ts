@@ -1,6 +1,9 @@
+/** Serves the human storefront catalog with live stock and integer merchant pricing. */
+
 import { type Context } from "hono";
 
 import { DEFAULT_CURRENCY } from "@pay-agent/db";
+import type { Catalog } from "@pay-agent/protocol";
 
 import { getInventory, listProducts } from "../data";
 
@@ -33,6 +36,7 @@ export class CatalogService {
       };
     });
 
-    return c.json({ currency: DEFAULT_CURRENCY, products });
+    const catalog: Catalog = { currency: DEFAULT_CURRENCY, products };
+    return c.json(catalog);
   };
 }

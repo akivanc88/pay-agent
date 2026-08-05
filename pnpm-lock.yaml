@@ -23,6 +23,9 @@ importers:
 
   apps/agent:
     dependencies:
+      '@pay-agent/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       stripe:
         specifier: ^22.4.0
         version: 22.4.0(@types/node@22.20.1)
@@ -51,6 +54,9 @@ importers:
       '@pay-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pay-agent/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@ucp-js/sdk':
         specifier: 0.4.3
         version: 0.4.3
@@ -97,6 +103,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@pay-agent/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@types/three':
         specifier: ^0.185.3
         version: 0.185.3
@@ -135,6 +144,8 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.12
         version: 7.6.13
+
+  packages/protocol: {}
 
 packages:
 

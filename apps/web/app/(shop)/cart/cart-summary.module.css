@@ -1,0 +1,53 @@
+/* Styles the sticky total summary and checkout actions. */
+
+.summaryCol { position: sticky; top: calc(var(--header-h) + var(--sp-4)); }
+.summary { padding: var(--sp-5); overflow: hidden; }
+.summaryTitle { font-size: var(--text-2xl); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }
+.summaryRows { display: flex; flex-direction: column; gap: var(--sp-3); padding-block: var(--sp-4); }
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--text-md);
+}
+.summaryRow dt { display: flex; align-items: baseline; gap: 0.5rem; color: var(--ink); }
+.summaryRow dd { color: var(--ink); font-variant-numeric: tabular-nums; }
+.summaryRow[data-muted] dt, .summaryRow[data-muted] dd { color: var(--ink-3); font-size: var(--text-base); }
+.summaryHint { color: var(--ink-3); font-size: var(--text-sm); }
+.totalBand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-inline: calc(-1 * var(--sp-5));
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface-2);
+  border-block: 1px solid var(--line);
+}
+.totalLabel { font-size: var(--text-md); font-weight: 620; color: var(--ink); }
+.totalAmount { font-size: var(--text-2xl); font-weight: 620; letter-spacing: -0.015em; color: var(--ink); }
+.summaryNote {
+  margin-top: var(--sp-4);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+.checkoutBtn { margin-top: var(--sp-4); }
+.continueLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  text-align: center;
+  margin-top: var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--text-base);
+  font-weight: 520;
+  padding: 0.3rem;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+}
+.continueLink:hover { color: var(--ink); background: var(--surface-2); }
+@media (max-width: 52rem) { .summaryCol { position: static; } }

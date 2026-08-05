@@ -1,3 +1,5 @@
+/** Verifies checkout idempotency replays, conflicts, and response status preservation. */
+
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 

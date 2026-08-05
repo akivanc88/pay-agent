@@ -1,3 +1,5 @@
+/** Defines the merchant's product catalog and product lookup operations. */
+
 import { getProductsDb } from "./db";
 
 /**

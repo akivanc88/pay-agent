@@ -1,3 +1,5 @@
+/** Styles the product detail composition, purchase controls, and responsive layout. */
+
 .page {
   padding-block: var(--sp-5) var(--sp-9);
 }

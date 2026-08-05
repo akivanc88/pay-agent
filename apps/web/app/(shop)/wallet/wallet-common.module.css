@@ -1,0 +1,7 @@
+/* Shared wallet states used by both balance summary and ledger presentations. */
+
+.unknown {
+  font-size: var(--text-base);
+  font-style: italic;
+  color: var(--ink-3);
+}

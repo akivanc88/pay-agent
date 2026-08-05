@@ -1,6 +1,11 @@
+/** Owns Stripe test-mode client creation and card authorization lifecycle operations. */
+
 import Stripe from "stripe";
 
 import { DEFAULT_CURRENCY, type MinorUnits } from "@pay-agent/db";
+import { STRIPE_HANDLER_ID } from "@pay-agent/protocol";
+
+export { STRIPE_HANDLER_ID } from "@pay-agent/protocol";
 
 /**
  * The card rail, via Stripe.
@@ -24,8 +29,6 @@ import { DEFAULT_CURRENCY, type MinorUnits } from "@pay-agent/db";
  * exists but is unreachable from checkout.
  */
 
-/** Handler id advertised in `/.well-known/ucp` and echoed back on each instrument. */
-export const STRIPE_HANDLER_ID = "stripe_payments";
 export const STRIPE_HANDLER_NAME = "com.stripe.payments";
 
 /**

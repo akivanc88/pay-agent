@@ -1,3 +1,5 @@
+/** Verifies gift-card draws, open-amount behavior, and exact compensating reversals. */
+
 import assert from "node:assert/strict";
 import { before, beforeEach, test } from "node:test";
 

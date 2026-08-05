@@ -8,31 +8,8 @@
 
 const STORE_URL = process.env.STORE_URL ?? "http://localhost:3000";
 
-export interface CatalogProduct {
-  id: string;
-  title: string;
-  price: number; // minor units (cents)
-  currency: string;
-  image_url: string | null;
-  in_stock: boolean;
-  stock: number;
-}
-
-export interface Catalog {
-  currency: string;
-  products: CatalogProduct[];
-}
-
-export interface FundingCard {
-  family: "open_loop" | "closed_loop";
-  id: string;
-  brand?: string;
-  last4: string;
-  exp?: string;
-  balance_display: string;
-  balance_verified: boolean;
-  balance_stale: boolean;
-}
+export type { Catalog, CatalogProduct, FundingCard } from "@pay-agent/protocol";
+import type { Catalog, CatalogProduct, FundingCard, FundingCardsResponse } from "@pay-agent/protocol";
 
 /** Fetch the catalogue for the browse grid. `no-store` so a re-seed shows up immediately. */
 export async function getCatalog(): Promise<Catalog> {
@@ -49,7 +26,7 @@ export async function getProduct(id: string): Promise<CatalogProduct | undefined
 export async function getFundingCards(): Promise<FundingCard[]> {
   const res = await fetch(`${STORE_URL}/funding/cards`, { cache: "no-store" });
   if (!res.ok) throw new Error(`store /funding/cards responded ${res.status}`);
-  const body = (await res.json()) as { cards: FundingCard[] };
+  const body = (await res.json()) as FundingCardsResponse;
   return body.cards;
 }
 

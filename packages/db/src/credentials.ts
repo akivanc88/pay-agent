@@ -1,3 +1,5 @@
+/** Hashes and verifies closed-loop codes and PINs without storing recoverable credentials. */
+
 import { createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 

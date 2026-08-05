@@ -1,3 +1,5 @@
+/** Styles catalog product cards across grid and responsive presentations. */
+
 .card {
   display: flex;
   flex-direction: column;

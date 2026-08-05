@@ -1,3 +1,5 @@
+/** Styles the calm store-unavailable state and startup guidance. */
+
 .wrap { padding-block: var(--sp-9); }
 .panel { text-align: center; padding: var(--sp-7) var(--sp-5); }
 .icon {

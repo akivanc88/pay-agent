@@ -1,3 +1,5 @@
+/** Selects and renders the wallet's featured funding card presentation. */
+
 "use client";
 
 import dynamic from "next/dynamic";

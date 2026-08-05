@@ -1,3 +1,5 @@
+/** Verifies validation behavior across checkout endpoint flows. */
+
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 

@@ -1,8 +1,10 @@
+/** Renders the gift-first funding projection while preserving genuinely unknown balances. */
+
 "use client";
 
 import { Badge, Money } from "@/components/ui";
 import type { FundingPlan, GiftUnknown } from "./session";
-import styles from "./page.module.css";
+import styles from "./order-summary.module.css";
 
 /**
  * How the amount due will actually be met.

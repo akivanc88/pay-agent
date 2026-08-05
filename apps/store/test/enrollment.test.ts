@@ -1,3 +1,5 @@
+/** Verifies server-side Stripe SetupIntent enrollment checks and stored card metadata. */
+
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 

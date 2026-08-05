@@ -1,3 +1,5 @@
+/** Owns funding enrollment, wallet listing, gift redemption, and compensating reversal endpoints. */
+
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 
@@ -5,6 +7,7 @@ import { type Context } from "hono";
 import { z } from "zod";
 
 import { DEFAULT_CURRENCY, format, minorUnits } from "@pay-agent/db";
+import type { FundingCardsResponse } from "@pay-agent/protocol";
 
 import {
   getFundingStore,
@@ -186,7 +189,7 @@ export class FundingService {
     const cards = await getFundingStore().cards.listForUser(demoUserId());
     const ledger = getFundingStore().ledger;
 
-    return c.json({
+    const response: FundingCardsResponse = {
       cards: await Promise.all(
         cards.map(async (card) =>
           card.family === "open_loop"
@@ -210,7 +213,8 @@ export class FundingService {
               },
         ),
       ),
-    });
+    };
+    return c.json(response);
   };
 
   /**

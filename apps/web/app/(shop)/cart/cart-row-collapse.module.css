@@ -1,0 +1,14 @@
+/* Shares the fade-and-fold track used when either cart list releases a row. */
+
+.rowCollapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-in-out);
+}
+.rowCollapse[data-leaving] { grid-template-rows: 0fr; }
+.rowClip { min-height: 0; overflow: hidden; }
+.rowCollapse[data-leaving] .rowContent { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rowCollapse, .rowCollapse .rowContent { transition: none; }
+}

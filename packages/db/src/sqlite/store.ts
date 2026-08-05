@@ -1,3 +1,5 @@
+/** Implements the funding repository and atomic ledger transactions on SQLite. */
+
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 

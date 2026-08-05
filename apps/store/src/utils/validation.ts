@@ -1,3 +1,5 @@
+/** Defines request-validation helpers and consistent client-facing validation failures. */
+
 import { type Context, type Env } from "hono";
 import * as z from "zod";
 

@@ -1,3 +1,5 @@
+/** Composes the storefront brand, navigation, theme control, and cart status. */
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 

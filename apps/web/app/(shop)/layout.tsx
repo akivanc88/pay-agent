@@ -1,3 +1,5 @@
+/** Provides the shared storefront chrome around browsing and wallet routes. */
+
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";

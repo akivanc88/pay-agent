@@ -1,3 +1,5 @@
+/** Renders the application-wide not-found recovery state. */
+
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { StatePage } from "@/components/state-page";

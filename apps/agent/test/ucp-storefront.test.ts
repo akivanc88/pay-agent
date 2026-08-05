@@ -1,3 +1,5 @@
+/** Exercises the UCP adapter's settlement ambiguity and read-only confirmation behavior. */
+
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 

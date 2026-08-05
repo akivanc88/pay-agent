@@ -1,3 +1,5 @@
+/** Renders the product route's focused missing-item recovery state. */
+
 import { Container, Panel, Button, SectionLabel } from "@/components/ui";
 import styles from "./not-found.module.css";
 
