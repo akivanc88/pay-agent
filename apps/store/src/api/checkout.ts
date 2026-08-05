@@ -857,6 +857,9 @@ export class CheckoutService {
      */
     let stripe: Stripe | null = null;
     let authorization: Authorization | undefined;
+    // True once the card money is actually taken. Past that point there is nothing to unwind on a
+    // later throw (the money is captured and the order placed); before it, everything is reversible.
+    let didCapture = false;
 
     /**
      * Fail the checkout, giving back everything already committed to it.
@@ -1107,6 +1110,7 @@ export class CheckoutService {
             captured.code,
           );
         }
+        didCapture = true;
       }
 
       saveOrder(order.id, order);
@@ -1119,8 +1123,11 @@ export class CheckoutService {
 
       saveCheckout(id, checkout.status, checkout);
 
-      // Notify webhook
-      await this.notifyWebhook(checkout, "order_placed");
+      // Notify webhook. Non-fatal: the money is captured and the order is placed, so a webhook
+      // hiccup must not throw the handler into a 500 for an order that genuinely succeeded.
+      await this.notifyWebhook(checkout, "order_placed").catch((err) =>
+        console.error("Webhook notify failed after order placed", err),
+      );
 
       if (idempotencyKey) {
         saveIdempotencyRecord(
@@ -1134,6 +1141,16 @@ export class CheckoutService {
       return c.json(checkout, 200);
     } catch (e) {
       console.error("Error completing checkout", e);
+      // A thrown error must not leave money committed to a checkout that did not complete. Every
+      // *handled* failure already routes through failPayment; this is the backstop for a genuine
+      // exception. Before capture, release the card hold and hand back every gift-card draw; after
+      // capture the money is taken and the order placed, so there is nothing here to unwind.
+      if (!didCapture) {
+        if (stripe && authorization) {
+          await cancelAuthorization(stripe, authorization).catch(() => undefined);
+        }
+        if (settlement) await reverseSettlement(runId).catch(() => undefined);
+      }
       return c.json({ detail: "Internal server error" }, 500);
     }
   };

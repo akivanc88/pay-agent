@@ -288,9 +288,12 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
         };
       } catch (err) {
         if (err instanceof StoreError) {
-          // Ambiguous outcomes — a lost response (0), or a conflict that may mean "already done"
-          // (409) — are resolved by reading the order, never by re-completing.
-          if (err.status === 0 || err.status === 409) {
+          // Ambiguous outcomes — a lost response (0), a conflict that may mean "already done"
+          // (409), or a server error (5xx) whose compensation we cannot see — are resolved by
+          // reading the order, never by re-completing, and never by asserting a reversal we did not
+          // observe. (The store's own catch-all reverses a drawn gift on a 500, but from here that
+          // is unverified, so we report indeterminate rather than claim it.)
+          if (err.status === 0 || err.status === 409 || err.status >= 500) {
             const orderId = await settledOrderId();
             if (orderId) {
               return {
