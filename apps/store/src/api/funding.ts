@@ -66,7 +66,13 @@ const RedeemRequestSchema = z.object({
   code: z.string().min(1),
   pin: z.string().min(1),
   amount_minor: z.number().int().positive(),
-  /** Optional caller-supplied run id, so a retry reuses the same reversible group. */
+  /**
+   * Optional caller-supplied run id. It *groups* this draw under one reversible id so `reverse`
+   * can hand the whole run back at once — it is NOT an idempotency key. Calling redeem twice with
+   * the same run_id draws twice (each up to the live balance); it does not coalesce. A caller must
+   * redeem exactly once per run and, on an ambiguous response, reverse-then-reconcile rather than
+   * blindly re-redeem. (The agent's payment-link adapter does exactly this: one draw per pay().)
+   */
   run_id: z.string().min(1).optional(),
 });
 

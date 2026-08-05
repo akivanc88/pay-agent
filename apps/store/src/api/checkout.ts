@@ -805,11 +805,16 @@ export class CheckoutService {
      * `runId` groups the draws so that any later failure can hand every cent back.
      */
     const runId = `run_${uuidv4()}`;
-    const amountDue = minorUnits(
+    // The authoritative amount owed. A missing total is a broken quote, not a free cart: defaulting
+    // to 0 here would let a checkout complete for nothing (drawing no money and placing an order).
+    // Refuse it instead — the same stance the agent's adapter takes when the store quotes no total.
+    const totalAmount =
       checkout.totals?.find((t) => t.type === "total")?.amount ??
-        checkout.totals?.find((t) => t.type === "subtotal")?.amount ??
-        0,
-    );
+      checkout.totals?.find((t) => t.type === "subtotal")?.amount;
+    if (totalAmount === undefined) {
+      return c.json({ detail: "Checkout has no total; it cannot be completed." }, 400);
+    }
+    const amountDue = minorUnits(totalAmount);
 
     let settlement: SettlementResult | undefined;
     const giftCardInstruments = payment.instruments.filter(
@@ -935,9 +940,11 @@ export class CheckoutService {
           });
 
           if (!outcome.ok) {
+            // Authorization uses manual capture and takes no money, so even the (in practice
+            // unreachable) indeterminate variant is safe to unwind as a 402 — nothing was captured.
             return failPayment(
               `Card authorization failed: ${outcome.message}`,
-              outcome.status,
+              outcome.indeterminate ? 402 : outcome.status,
               outcome.code,
             );
           }
@@ -1101,6 +1108,26 @@ export class CheckoutService {
       if (stripe && authorization) {
         const captured = await captureAuthorization(stripe, authorization);
         if (!captured.ok) {
+          if (captured.indeterminate) {
+            // The capture may have taken the money with only the response lost. Compensating now
+            // would be a guess in the wrong direction: reversing the gift while the card really
+            // captured is an underpayment, and cancelling a succeeded capture cannot be relied on.
+            // So unwind NOTHING — leave the gift draw and the authorization exactly as they are,
+            // do not place the order, and answer with an indeterminate status. The agent resolves
+            // this by reading the order (it will not exist), never by retrying a payment, and a
+            // human reconciles the standing legs. Stock stays reserved for the same reason: the
+            // order's fate is unknown, so we neither release nor confirm it.
+            return c.json(
+              {
+                detail:
+                  `Card capture is indeterminate; the charge may or may not have settled ` +
+                  `(${captured.message}). No order was placed and nothing was reversed — verify ` +
+                  `before retrying.`,
+                code: captured.code,
+              },
+              502,
+            );
+          }
           for (const reserved of reservedItems) {
             releaseStock(reserved.id, reserved.qty);
           }

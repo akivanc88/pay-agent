@@ -317,14 +317,18 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
             };
           }
           // A definite store failure (a 402 decline, a 400). The store's failPayment reverses any
-          // draw it made before answering, so a draw that happened is already unwound.
+          // draw it made internally before answering — but that reversal is the store's own,
+          // best-effort, and invisible from here. This adapter drew no gift itself (the store does
+          // it inside /complete) and observed no reversal, so it does not assert one: `reversed` is
+          // false, meaning "not observed-reversed by us," never inferred from the fact that a draw
+          // was planned. Claiming reversed:true off `plan.giftDrawMinor` would be a fact we can't see.
           return {
             ok: false,
             handle: due.handle,
             detail: err.code ? `${err.message} (${err.code})` : err.message,
             giftDrawnMinor: null,
             cardChargedMinor: null,
-            reversed: plan.giftDrawMinor > 0,
+            reversed: false,
           };
         }
         throw err;
