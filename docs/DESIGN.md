@@ -87,6 +87,15 @@ fails if the planner ever imports an adapter, names a destination, or compares a
 gate is a spend cap only; the payment link communicates the amount via Stripe's API rather than the
 agent driving its hosted page. The card rail is test-mode only — the adapter refuses a live key.
 
+*Transport ambiguity, handled honestly:* a lost response is never resolved by re-sending a payment.
+The store's `/complete` records its idempotency key only at the end of the handler and never
+reserves it at the start, so a blind retry could re-execute a completion still in flight and draw
+twice — so the UCP adapter resolves a lost/409 response by *reading* the order (a GET can't settle
+anything), and reports "indeterminate — verify before retrying" when it genuinely can't tell. The
+payment-link adapter likewise treats a Stripe connection error as indeterminate and leaves the gift
+draw in place (a recoverable stuck draw beats a refunded gift beside a charged card). Making the
+store's idempotency reservation-based is a known follow-up; the agent does not rely on it.
+
 ### Enrolling a card without ever seeing it
 
 `/enroll` is the one page in the project, and its whole shape follows from a single

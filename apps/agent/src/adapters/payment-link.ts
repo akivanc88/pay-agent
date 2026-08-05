@@ -212,6 +212,29 @@ export function stripePaymentLink(opts: {
           reversed: false,
         };
       } catch (err) {
+        // A connection/API error is indeterminate: Stripe may have captured and only the response
+        // was lost. Reversing the gift now would leave a charged card beside a refunded gift — an
+        // underpayment. So do NOT reverse on an indeterminate transport error; leave the draw in
+        // place and surface it with the run id, because a stuck-but-recoverable draw is safer than
+        // silently collecting less than the bill.
+        if (
+          err instanceof Stripe.errors.StripeConnectionError ||
+          err instanceof Stripe.errors.StripeAPIError
+        ) {
+          return {
+            ok: false,
+            handle: "",
+            detail:
+              `indeterminate: the card charge may or may not have settled (${err.message})` +
+              (attemptedDraw
+                ? `; gift draw ${giftRunId} left in place pending reconciliation — do not retry blindly`
+                : ""),
+            giftDrawnMinor: attemptedDraw ? giftDrawn : null,
+            cardChargedMinor: null,
+            reversed: false,
+          };
+        }
+        // A definite decline (a card error) or other failure: no capture happened, so unwind.
         const detail =
           err instanceof Stripe.errors.StripeError
             ? `${err.code ?? err.type}: ${err.message}`
