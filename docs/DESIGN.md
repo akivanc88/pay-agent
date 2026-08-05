@@ -94,7 +94,17 @@ twice — so the UCP adapter resolves a lost/409 response by *reading* the order
 anything), and reports "indeterminate — verify before retrying" when it genuinely can't tell. The
 payment-link adapter likewise treats a Stripe connection error as indeterminate and leaves the gift
 draw in place (a recoverable stuck draw beats a refunded gift beside a charged card). Making the
-store's idempotency reservation-based is a known follow-up; the agent does not rely on it.
+store's idempotency reservation-based is a known follow-up; the agent does not rely on it. The
+store's `/complete` also compensates on a genuine exception, not only on handled failures: its
+catch-all reverses any gift draw and cancels any card authorization made before capture, so a throw
+between the draw and the order cannot leave money committed to a checkout that never placed.
+
+*Residual M2 limitations, stated plainly:* the payment-link adapter is idempotent within a single
+`pay` but not across separate re-invocations for the same bill (the storefront adapter is, via the
+stable session handle) — a caller must heed the "do not retry blindly" it surfaces; the `reversed`
+flag on the storefront path reflects the store's reverse-on-failure contract rather than an
+independent observation; and `/funding/redeem` and `/funding/reverse` are unauthenticated until the
+Supabase auth migration, like the rest of the funding surface.
 
 ### Enrolling a card without ever seeing it
 
