@@ -7,12 +7,13 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "demo:ucp": "tsx --env-file-if-exists=../../.env scripts/demo.ts ucp",
     "demo:link": "tsx --env-file-if-exists=../../.env scripts/demo.ts link",
     "demo:both": "tsx --env-file-if-exists=../../.env scripts/demo.ts both"
   },
   "dependencies": {
+    "@pay-agent/protocol": "workspace:*",
     "stripe": "^22.4.0",
     "zod": "^3.23.8"
   },

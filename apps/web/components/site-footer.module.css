@@ -1,3 +1,5 @@
+/** Styles the shared storefront footer and responsive link layout. */
+
 .footer {
   margin-top: var(--sp-8);
   border-top: 1px solid var(--line);

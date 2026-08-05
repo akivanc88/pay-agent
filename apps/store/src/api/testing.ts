@@ -1,3 +1,5 @@
+/** Provides explicitly test-only controls used to drive deterministic payment failure scenarios. */
+
 import { type IdParamContext } from "../utils/validation";
 import { CheckoutService } from "./checkout";
 

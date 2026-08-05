@@ -1,0 +1,19 @@
+/* Styles the cart's pre-hydration loading placeholder. */
+
+.skel {
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  animation: pulse 1.4s var(--ease-in-out) infinite;
+}
+.linesSkeleton { border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); }
+.linesSkeleton > div + div { border-top: 1px solid var(--line); }
+.rowSkeleton > :first-child { border: none; }
+.rowSkeleton > :nth-child(2) { display: flex; flex-direction: column; gap: var(--sp-2); }
+.skelLine {
+  height: 0.85rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  animation: pulse 1.4s var(--ease-in-out) infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .skel, .skelLine { animation: none; } }

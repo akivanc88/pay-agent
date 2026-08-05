@@ -1,3 +1,5 @@
+/** Reads browser cart state and exposes its item count in navigation. */
+
 "use client";
 
 import Link from "next/link";

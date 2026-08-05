@@ -1,3 +1,5 @@
+/** Defines the application document shell, metadata, fonts, and theme bootstrapping. */
+
 import type { Metadata } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 

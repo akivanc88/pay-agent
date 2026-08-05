@@ -1,3 +1,5 @@
+/** Styles the navigation cart count and its empty or populated states. */
+
 .link {
   position: relative;
   display: grid;

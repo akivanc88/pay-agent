@@ -1,3 +1,5 @@
+/** Exposes completed order reads without allowing order mutation through the API. */
+
 import { getOrder, logRequest, saveOrder } from "../data";
 import { type Order } from "../models";
 import { type IdParamContext } from "../utils/validation";

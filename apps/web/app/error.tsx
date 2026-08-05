@@ -1,3 +1,5 @@
+/** Provides the root client error boundary and retry affordance. */
+
 "use client";
 
 import { useEffect } from "react";

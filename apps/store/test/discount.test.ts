@@ -1,3 +1,5 @@
+/** Verifies merchant-authoritative discount selection and total calculation. */
+
 import assert from "node:assert/strict";
 import { test, before } from "node:test";
 

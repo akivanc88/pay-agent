@@ -1,0 +1,41 @@
+/*
+ * Storefront fulfillment assurances.
+ *
+ * Owns the final trust strip and its narrow-screen stack.
+ */
+
+.assurances {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5) clamp(var(--sp-5), 3vw, var(--sp-7));
+  list-style: none;
+  padding: 0;
+  margin-block: clamp(var(--sp-6), 5vw, var(--sp-8)) clamp(var(--sp-7), 6vw, var(--sp-8));
+}
+.assurance {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line-strong);
+}
+.assuranceIcon {
+  color: var(--brand);
+  margin-bottom: var(--sp-3);
+}
+.assuranceTitle {
+  font-size: var(--text-xl);
+  letter-spacing: -0.008em;
+}
+.assuranceBody {
+  margin-top: var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+
+/* ── entrance ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 52rem) {
+  .assurances { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .assurance { padding-block: var(--sp-4); }
+  .assurance + .assurance { border-top-color: var(--line); }
+}

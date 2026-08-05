@@ -1,0 +1,77 @@
+/*
+ * Storefront weekly catalogue grid.
+ *
+ * Owns the inventory heading, arrangement count, and responsive product grid.
+ */
+
+.shop {
+  /* Clears the sticky header when the hero's "Shop this week" jumps here. */
+  scroll-margin-top: calc(var(--header-h) + var(--sp-4));
+  padding-top: var(--sp-2);
+}
+
+.gridHead {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+/*
+ * The rule is weighted where the heading sits and dissolves toward the count, so it reads
+ * as an underline belonging to the title rather than a table border drawn across the page.
+ */
+.gridHead::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--line-strong) 0%,
+    var(--line-strong) 26%,
+    var(--line) 62%,
+    color-mix(in srgb, var(--line) 25%, transparent) 100%
+  );
+}
+.gridHeadCopy > * + * { margin-top: var(--sp-2); }
+.gridTitle { font-size: var(--display-sm); }
+
+.gridCount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.38rem;
+  flex: none;
+  color: var(--ink-3);
+  font-size: var(--text-base);
+}
+/* The count set as a figure, not as data: same serif as the heading it sits beside. */
+.gridCountNum {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--sp-5);
+  row-gap: var(--sp-6);
+}
+.gridItem { display: flex; }
+.gridItem > * { width: 100%; }
+
+/* ── how it pays ──────────────────────────────────────────────────────── */
+
+@media (max-width: 52rem) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 34rem) {
+  .grid { column-gap: var(--sp-3); row-gap: var(--sp-5); }
+  .gridHead { flex-direction: column; align-items: flex-start; gap: var(--sp-3); }
+}

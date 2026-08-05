@@ -1,3 +1,5 @@
+/** Owns client-side quantity selection and cart insertion on product details. */
+
 "use client";
 
 import Link from "next/link";

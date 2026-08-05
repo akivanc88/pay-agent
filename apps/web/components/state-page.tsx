@@ -1,3 +1,5 @@
+/** Provides consistent loading, missing, and error state page composition. */
+
 import type { ReactNode } from "react";
 
 import { Button, Container, SectionLabel } from "./ui";

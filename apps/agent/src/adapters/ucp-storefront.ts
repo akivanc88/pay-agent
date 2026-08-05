@@ -17,42 +17,14 @@ import type {
   PaymentStatus,
 } from "../destination.js";
 import type { Minor } from "../money.js";
-
-/* The store's wire shapes, narrowed to what this adapter reads. Mirrors apps/web's session.ts. */
-interface Total {
-  readonly type: string;
-  readonly amount: number;
-}
-interface ShippingOption {
-  readonly id: string;
-  readonly totals: Total[];
-}
-interface FulfillmentGroup {
-  readonly id: string;
-  readonly line_item_ids: string[];
-  readonly options?: ShippingOption[];
-}
-interface FulfillmentMethod {
-  readonly id: string;
-  readonly type: string;
-  readonly destinations?: Array<Record<string, unknown>>;
-  readonly selected_destination_id?: string | null;
-  readonly groups?: FulfillmentGroup[];
-}
-interface SessionLineItem {
-  readonly id: string;
-  readonly item: { id: string };
-  readonly quantity: number;
-}
-interface Session {
-  readonly id: string;
-  readonly status: string;
-  readonly currency: string;
-  readonly line_items: SessionLineItem[];
-  readonly totals: Total[];
-  readonly fulfillment?: { methods?: FulfillmentMethod[] };
-  readonly order?: { id: string };
-}
+import {
+  buildPaymentInstruments,
+  checkoutTotalOf,
+  createJsonClient,
+  lineItemsPayload,
+  ProtocolHttpError,
+} from "@pay-agent/protocol";
+import type { CheckoutSession as Session, FulfillmentMethod } from "@pay-agent/protocol";
 
 /** A postal destination the agent supplies so the store will quote — and settle — a delivery. */
 const AGENT_DESTINATION = {
@@ -68,36 +40,19 @@ const AGENT_DESTINATION = {
 
 const BUYER_EMAIL = "agent@pay-agent.test";
 
-class StoreError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string,
-  ) {
-    super(message);
-    this.name = "StoreError";
-  }
-}
-
-function amountOf(totals: Total[] | undefined, type: string): number | undefined {
-  return totals?.find((t) => t.type === type)?.amount;
-}
 /** The authoritative amount due — the merchant owns this number, not the cart. */
 function totalOf(session: Session): Minor {
-  const total = amountOf(session.totals, "total") ?? amountOf(session.totals, "subtotal");
+  const total = checkoutTotalOf(session);
   // Never fall back to zero: a missing total is a broken quote, not a free cart. Refuse it rather
   // than let the agent proceed to pay $0.
-  if (total === undefined) throw new StoreError("The storefront quoted no total for this cart.", 0);
+  if (total === undefined) {
+    throw new ProtocolHttpError("The storefront quoted no total for this cart.", 0);
+  }
   return total;
 }
 function shippingMethodOf(session: Session): FulfillmentMethod | undefined {
   return session.fulfillment?.methods?.find((m) => m.type === "shipping");
 }
-/** Every PUT resends the line items; the store rebuilds from them. */
-function lineItemsPayload(session: Session) {
-  return session.line_items.map((l) => ({ id: l.id, item: { id: l.item.id }, quantity: l.quantity }));
-}
-
 /**
  * A cart descriptor: `"bouquet_roses:1,gardenias:2"`, or a bare product id (quantity 1). This is
  * the `reference` the agent is handed for this destination; a real agent would be given a cart id,
@@ -122,30 +77,11 @@ function parseReference(reference: string): Array<{ id: string; quantity: number
 
 export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
   const base = opts.baseUrl.replace(/\/$/, "");
-
-  async function req<T>(path: string, init: RequestInit): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetch(`${base}${path}`, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...init.headers },
-      });
-    } catch {
-      throw new StoreError("The storefront could not be reached.", 0);
-    }
-    const text = await res.text();
-    let body: unknown;
-    try {
-      body = text ? JSON.parse(text) : {};
-    } catch {
-      body = { detail: text };
-    }
-    if (!res.ok) {
-      const b = body as { detail?: string; code?: string };
-      throw new StoreError(b.detail ?? `The storefront responded ${res.status}.`, res.status, b.code);
-    }
-    return body as T;
-  }
+  const req = createJsonClient({
+    baseUrl: base,
+    responseLabel: "storefront",
+    unreachableMessage: "The storefront could not be reached.",
+  });
 
   return {
     id: "ucp-storefront",
@@ -189,7 +125,7 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
       const group = method?.groups?.[0];
       const option = group?.options?.[0];
       if (!method || !group || !option) {
-        throw new StoreError("The storefront quoted no delivery options.", 0);
+        throw new ProtocolHttpError("The storefront quoted no delivery options.", 0);
       }
       session = await req<Session>(`/checkout-sessions/${session.id}`, {
         method: "PUT",
@@ -233,23 +169,12 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
      * card authorization before it answers — a decline arrives already unwound.
      */
     async pay(plan: InstrumentPlan, _mandate: Mandate, due: AmountDue): Promise<PaymentResult> {
-      const instruments: Array<Record<string, unknown>> = [];
-      if (plan.giftDrawMinor > 0 && plan.giftCard) {
-        instruments.push({
-          id: "gift_card_1",
-          type: "gift_card",
-          handler_id: "gift_card",
-          credential: { type: "gift_card", code: plan.giftCard.code, pin: plan.giftCard.pin },
-        });
-      }
-      if (plan.cardMinor > 0 && plan.card) {
-        instruments.push({
-          id: "card_1",
-          type: "card",
-          handler_id: "stripe_payments",
-          credential: { type: "card", token: plan.card.token },
-        });
-      }
+      const instruments = buildPaymentInstruments(
+        plan.giftDrawMinor > 0 && plan.giftCard
+          ? { code: plan.giftCard.code, pin: plan.giftCard.pin }
+          : null,
+        plan.cardMinor > 0 && plan.card ? plan.card.token : null,
+      );
 
       // An idempotency key so an *intended* single completion is recorded once. But this store
       // writes that record only at the end of its handler and never reserves the key at the start,
@@ -287,7 +212,7 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
           reversed: false,
         };
       } catch (err) {
-        if (err instanceof StoreError) {
+        if (err instanceof ProtocolHttpError) {
           // Ambiguous outcomes — a lost response (0), a conflict that may mean "already done"
           // (409), or a server error (5xx) whose compensation we cannot see — are resolved by
           // reading the order, never by re-completing, and never by asserting a reversal we did not
@@ -341,7 +266,7 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
         await req<{ id: string }>(`/orders/${handle}`, { method: "GET" });
         return { settled: true, handle, detail: `order ${handle} exists` };
       } catch (err) {
-        const detail = err instanceof StoreError ? err.message : "order lookup failed";
+        const detail = err instanceof ProtocolHttpError ? err.message : "order lookup failed";
         return { settled: false, handle, detail };
       }
     },

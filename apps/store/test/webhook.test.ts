@@ -1,3 +1,5 @@
+/** Verifies agent webhook delivery remains nonfatal after durable settlement. */
+
 import assert from "node:assert/strict";
 import { test, before } from "node:test";
 

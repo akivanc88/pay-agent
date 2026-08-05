@@ -1,0 +1,58 @@
+/* Styles the compact in-cart catalogue offers and their add/collapse feedback. */
+
+.also { margin-top: var(--sp-5); }
+.alsoPanel { margin-top: var(--sp-3); background: var(--surface-sunk); }
+.alsoPanel ul { list-style: none; margin: 0; padding: 0; }
+.alsoPanel li + li .alsoRow { border-top: 1px solid var(--line); }
+.alsoRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  opacity: 1;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.alsoRow[data-leaving] { opacity: 0; }
+.alsoThumb {
+  width: 3rem;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.alsoThumb [data-art] { width: 100%; height: 100%; aspect-ratio: auto; }
+.alsoInfo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.5rem;
+  min-width: 0;
+}
+.alsoTitle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  letter-spacing: -0.008em;
+  color: var(--ink);
+  transition: color var(--dur-2) var(--ease-out);
+}
+.alsoTitle:hover { color: var(--brand-ink); }
+.alsoPrice { font-size: var(--text-base); color: var(--ink-3); }
+.alsoAdd { flex: none; display: inline-flex; align-items: center; gap: 0.4rem; }
+.alsoAdd[data-added] { background: var(--brand-tint); border-color: var(--brand); color: var(--brand-ink); }
+.alsoAdd[data-added] svg { animation: addedCheck var(--dur-2) var(--ease-out); }
+@keyframes addedCheck {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alsoAdd[data-added] svg { animation: none; }
+}
+@media (max-width: 34rem) {
+  .alsoRow { padding-inline: var(--sp-3); }
+  .alsoAdd { min-height: 2.75rem; }
+}

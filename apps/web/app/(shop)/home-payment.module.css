@@ -1,0 +1,97 @@
+/*
+ * Storefront gift-first payment explainer.
+ *
+ * Owns the funding narrative, ordered steps, and wallet call to action.
+ */
+
+.pays {
+  margin-top: clamp(var(--sp-7), 6vw, var(--sp-9));
+  padding-block: clamp(var(--sp-7), 6vw, var(--sp-9));
+  scroll-margin-top: var(--header-h);
+  border-block: 1px solid var(--line);
+  background:
+    radial-gradient(58% 78% at 16% 0%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 70%),
+    color-mix(in srgb, var(--brand-tint) 50%, var(--paper));
+}
+.paysInner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  column-gap: clamp(var(--sp-6), 5vw, var(--sp-8));
+}
+.paysHead { grid-column: 1; max-width: 26rem; }
+.paysTitle {
+  margin-block: var(--sp-3) var(--sp-4);
+  font-size: var(--display-md);
+  line-height: 1.08;
+}
+.paysLede {
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1.68;
+  text-wrap: pretty;
+}
+
+.steps {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.step {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  column-gap: var(--sp-4);
+  padding-block: var(--sp-5);
+  border-top: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+}
+.step:first-child { border-top: 0; padding-top: 0; }
+.step:last-child { padding-bottom: 0; }
+.stepNum {
+  grid-row: 1 / span 2;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--brand);
+  /* Onto the title's cap height rather than its box top. */
+  padding-top: 0.06em;
+}
+.stepTitle {
+  font-size: var(--text-xl);
+  letter-spacing: -0.008em;
+}
+.stepBody {
+  margin-top: var(--sp-2);
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+
+.paysFoot {
+  grid-column: 1;
+  margin-top: var(--sp-6);
+}
+.paysNote {
+  max-width: 24rem;
+  margin-top: var(--sp-4);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.paysNote strong { color: var(--ink-2); font-weight: 600; }
+
+/* ── assurances ───────────────────────────────────────────────────────── */
+
+@media (max-width: 62rem) {
+  .paysInner { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-6); }
+  .paysHead, .paysFoot { grid-column: 1; max-width: 34rem; }
+  .steps { grid-column: 1; grid-row: auto; }
+  .paysFoot { margin-top: 0; }
+}
+
+@media (max-width: 34rem) {
+  .step { grid-template-columns: minmax(0, 1fr); }
+  .stepNum { grid-row: auto; margin-bottom: var(--sp-1); }
+}

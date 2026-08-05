@@ -1,3 +1,5 @@
+/** Loads merchant availability and renders the cart route's server boundary. */
+
 import type { Metadata } from "next";
 
 import { getCatalog } from "@/lib/store";

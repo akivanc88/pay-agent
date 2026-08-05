@@ -1,3 +1,5 @@
+/** Defines funding-card, money, and ledger contracts shared within the database package. */
+
 import type { MinorUnits } from "./money.js";
 
 /**

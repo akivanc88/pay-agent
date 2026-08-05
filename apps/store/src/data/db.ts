@@ -1,3 +1,5 @@
+/** Owns the store's SQLite connection and schema initialization boundary. */
+
 import Database from "better-sqlite3";
 
 let productsDb: Database.Database | null = null;

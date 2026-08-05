@@ -1,3 +1,5 @@
+/** Renders shared storefront footer navigation and project context. */
+
 import Link from "next/link";
 
 import styles from "./site-footer.module.css";

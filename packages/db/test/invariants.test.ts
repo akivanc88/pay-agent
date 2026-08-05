@@ -1,3 +1,5 @@
+/** Enforces database schema, credential, and append-only ledger security invariants. */
+
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";

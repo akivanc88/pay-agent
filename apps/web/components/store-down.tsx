@@ -1,3 +1,5 @@
+/** Renders actionable storefront-unavailable guidance when the API cannot be reached. */
+
 import { Panel, Container } from "./ui";
 import styles from "./store-down.module.css";
 

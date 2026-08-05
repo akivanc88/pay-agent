@@ -1,3 +1,5 @@
+/** Characterizes destination-independent funding plans, approval gates, and settlement runs. */
+
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 

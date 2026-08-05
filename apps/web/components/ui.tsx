@@ -1,3 +1,5 @@
+/** Provides shared presentational primitives for money, badges, buttons, and form controls. */
+
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 

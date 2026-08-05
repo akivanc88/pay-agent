@@ -1,0 +1,30 @@
+/* Styles catalogue suggestions shown beneath the cart's empty state. */
+
+.suggest { margin-top: var(--sp-7); padding-top: var(--sp-6); border-top: 1px solid var(--line); }
+.suggestTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin-bottom: var(--sp-5);
+  text-align: center;
+}
+.suggestGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--sp-5); }
+.suggestMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  margin: var(--sp-5) auto 0;
+  width: fit-content;
+  padding-inline: var(--sp-4);
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
+  font-size: var(--text-base);
+  font-weight: 520;
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+}
+.suggestMore:hover { color: var(--ink); background: var(--surface-2); }
+.suggestMore svg { transition: transform var(--dur-2) var(--ease-out); }
+.suggestMore:hover svg { transform: translateX(2px); }

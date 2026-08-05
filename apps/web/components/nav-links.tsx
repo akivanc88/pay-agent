@@ -1,3 +1,5 @@
+/** Renders route-aware storefront navigation links. */
+
 "use client";
 
 import Link from "next/link";

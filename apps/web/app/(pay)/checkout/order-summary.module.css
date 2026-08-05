@@ -1,0 +1,419 @@
+/*
+ * Checkout order summary.
+ *
+ * Owns the sticky order column, funding split, payment action, and settlement-order display.
+ */
+
+.aside {
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-4));
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 var(--sp-3);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  padding: 0 0 var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  gap: var(--sp-1);
+  align-items: baseline;
+  font-size: var(--text-base);
+}
+
+.itemQty {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.itemTitle {
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.itemAmount,
+.subtotalRow :last-child,
+.planRow dd {
+  color: var(--ink);
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+}
+
+.itemAmount,
+.planRow dd {
+  justify-self: end;
+  text-align: right;
+}
+
+.subtotals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) 0 var(--sp-4);
+}
+
+.subtotalRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: var(--text-base);
+  color: var(--ink-2);
+}
+
+.planWrap {
+  padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--surface-sunk);
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.planRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: var(--text-base);
+}
+
+.planRow dt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.planRow dd {
+  margin: 0;
+}
+
+.planRowTotal {
+  align-items: baseline;
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.planRowTotal dt {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.planRowTotal dd {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.planRowShort dt,
+.planRowShort dd {
+  color: var(--danger);
+}
+
+.planHint {
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+
+.planDraw {
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.planUnknown {
+  font-size: var(--text-sm);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.settle {
+  display: inline-block;
+  animation: settle var(--dur-2) var(--ease-out);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0.35;
+    transform: translateY(-0.18em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes planReveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.planNote {
+  margin-top: var(--sp-2);
+  animation: planReveal var(--dur-3) var(--ease-out);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--warn);
+  text-wrap: pretty;
+}
+
+.planNote strong {
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.planFoot {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-wrap: pretty;
+  animation: planReveal var(--dur-3) var(--ease-out);
+}
+
+.payBtn.payBtn {
+  margin-top: var(--sp-5);
+  min-height: 3.25rem;
+  font-size: var(--text-lg);
+  font-weight: 620;
+  letter-spacing: -0.008em;
+  box-shadow: var(--shadow-md);
+}
+
+.payBtn.payBtn:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.payBtn.payBtn:disabled {
+  opacity: 1;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+.payBtn.payBtn[aria-busy="true"]:disabled {
+  background: var(--brand-ink);
+  color: var(--brand-contrast);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.payBusy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.spinner {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.payNote {
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.payNote:not(:empty) {
+  margin-top: var(--sp-3);
+}
+
+.settlement {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.settlementHead {
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-3);
+}
+
+.settlementList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: settle;
+}
+
+.settlementList li {
+  position: relative;
+  padding-left: var(--sp-5);
+  counter-increment: settle;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.settlementList li::before {
+  content: counter(settle);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.05rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  color: var(--brand);
+}
+
+.declined {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--danger-tint);
+  box-shadow: inset 0 0 0 1px var(--danger);
+  animation: planReveal var(--dur-3) var(--ease-out);
+}
+
+.declinedTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--text-md);
+  font-weight: 620;
+  color: var(--danger);
+}
+
+.declinedTitle svg {
+  flex-shrink: 0;
+}
+
+.declinedCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  padding: 0.15em 0.45em;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.declinedBody {
+  margin-top: var(--sp-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.declinedRestore {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.declinedRestore strong {
+  color: var(--ink);
+  font-weight: 620;
+}
+
+@media (max-width: 940px) {
+  .aside {
+    position: static;
+  }
+
+  .summary {
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@media (max-width: 560px) {
+  .summary {
+    padding: var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-color: color-mix(in srgb, currentColor 45%, transparent);
+    border-top-color: currentColor;
+  }
+
+  .settle,
+  .planNote,
+  .planFoot,
+  .declined {
+    animation: none;
+  }
+}

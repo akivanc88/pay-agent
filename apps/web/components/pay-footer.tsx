@@ -1,3 +1,5 @@
+/** Renders payment-specific trust and legal footer content. */
+
 import styles from "./pay-footer.module.css";
 
 /**

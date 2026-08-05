@@ -1,3 +1,5 @@
+/** Verifies destination selection, delivery quoting, and fulfillment completion rules. */
+
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 

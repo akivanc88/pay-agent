@@ -1,3 +1,5 @@
+/** Persists checkout, order, and idempotency records in the transaction database. */
+
 import { type ExtendedCheckoutResponse, type Order } from "../models";
 
 import { getTransactionsDb } from "./db";

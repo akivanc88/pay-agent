@@ -1,3 +1,5 @@
+/** Exercises the complete checkout lifecycle from creation through durable order settlement. */
+
 import assert from "node:assert/strict";
 import { before, test } from "node:test";
 

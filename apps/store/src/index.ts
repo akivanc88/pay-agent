@@ -1,3 +1,5 @@
+/** Composes the Hono store application, middleware, services, and HTTP routes. */
+
 import { serve } from "@hono/node-server";
 import { zValidator } from "@hono/zod-validator";
 import { type Context, Hono } from "hono";

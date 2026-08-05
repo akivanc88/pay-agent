@@ -1,3 +1,5 @@
+/** Verifies funding repository enrollment, balance, draw, and reversal behavior. */
+
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, it } from "node:test";

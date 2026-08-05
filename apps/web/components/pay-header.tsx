@@ -1,3 +1,5 @@
+/** Renders the minimal checkout header and safe return-to-cart navigation. */
+
 import Link from "next/link";
 
 import styles from "./pay-header.module.css";

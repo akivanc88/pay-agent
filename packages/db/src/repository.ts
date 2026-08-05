@@ -1,3 +1,5 @@
+/** Defines the persistence boundary used by funding cards and append-only ledger operations. */
+
 import type { MinorUnits } from "./money.js";
 import type {
   ClosedLoopCard,

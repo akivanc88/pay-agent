@@ -1,3 +1,5 @@
+/** Loads and renders the merchant catalog landing page. */
+
 import Link from "next/link";
 
 import { Container, SectionLabel, Button, Money } from "@/components/ui";
@@ -5,6 +7,10 @@ import { ProductCard } from "@/components/product-card";
 import { ProductArt } from "@/components/product-art";
 import { StoreDown } from "@/components/store-down";
 import { getCatalog, storeIsUp } from "@/lib/store";
+import assuranceStyles from "./home-assurances.module.css";
+import catalogStyles from "./home-catalog.module.css";
+import heroStyles from "./home-hero.module.css";
+import paymentStyles from "./home-payment.module.css";
 import styles from "./page.module.css";
 
 /**
@@ -85,24 +91,24 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className={styles.hero}>
-        <Container className={styles.heroInner}>
-          <div className={styles.heroCopy}>
+      <section className={heroStyles.hero}>
+        <Container className={heroStyles.heroInner}>
+          <div className={heroStyles.heroCopy}>
             <SectionLabel>Fernbank &amp; Co · Florist</SectionLabel>
-            <h1 className={styles.heroTitle}>
+            <h1 className={heroStyles.heroTitle}>
               Flowers, paid for<br />
               <em className={styles.em}>however you like.</em>
             </h1>
-            <p className={styles.heroLede}>
+            <p className={heroStyles.heroLede}>
               Cut this morning, hand-tied, delivered across the city. Put a gift card against
               your order and only the remainder reaches your card — every draw written to a
               ledger you can check.
             </p>
-            <div className={styles.heroActions}>
+            <div className={heroStyles.heroActions}>
               <Button href="#cuttings" size="lg">
                 Shop this week
               </Button>
-              <Link href="#how-it-pays" className={styles.heroLink}>
+              <Link href="#how-it-pays" className={heroStyles.heroLink}>
                 How the payment splits
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M12 5v14M6 13l6 6 6-6" />
@@ -113,16 +119,16 @@ export default async function HomePage() {
                 a third control-shaped object in a row of two controls, and this one does
                 nothing when pressed — the shape promised an affordance the element does not
                 have. It says the same sentence as a caption, which is what it always was. */}
-            <p className={styles.heroNote}>
-              <span className={styles.heroNoteMark} aria-hidden />
+            <p className={heroStyles.heroNote}>
+              <span className={heroStyles.heroNoteMark} aria-hidden />
               Pay with a gift card, a card, or both
             </p>
             {/* A second, compact pass at the same three assurances that get a full paragraph
                 near the footer. Real hero space under a CTA reads as unfinished if it's left
                 empty — a premium storefront fills it with proof, not padding. */}
-            <ul className={styles.heroCreds}>
+            <ul className={heroStyles.heroCreds}>
               {ASSURANCES.map((a) => (
-                <li key={a.title} className={styles.heroCred}>
+                <li key={a.title} className={heroStyles.heroCred}>
                   {a.title}
                 </li>
               ))}
@@ -130,15 +136,15 @@ export default async function HomePage() {
           </div>
 
           {lead && (
-            <div className={styles.heroArt} aria-hidden={false}>
-              <Link href={`/product/${lead.id}`} className={`${styles.plate} ${styles.plateMain}`}>
+            <div className={heroStyles.heroArt} aria-hidden={false}>
+              <Link href={`/product/${lead.id}`} className={`${heroStyles.plate} ${heroStyles.plateMain}`}>
                 <ProductArt id={lead.id} />
-                <span className={styles.plateTag}>
-                  <span className={styles.plateTagName}>{lead.title}</span>
+                <span className={heroStyles.plateTag}>
+                  <span className={heroStyles.plateTagName}>{lead.title}</span>
                   <Money
                     minor={lead.price}
                     currency={lead.currency}
-                    className={styles.plateTagPrice}
+                    className={heroStyles.plateTagPrice}
                   />
                 </span>
               </Link>
@@ -146,7 +152,7 @@ export default async function HomePage() {
               {second && second.id !== lead.id && (
                 <Link
                   href={`/product/${second.id}`}
-                  className={`${styles.plate} ${styles.plateAside}`}
+                  className={`${heroStyles.plate} ${heroStyles.plateAside}`}
                   tabIndex={-1}
                   aria-hidden
                 >
@@ -159,26 +165,26 @@ export default async function HomePage() {
       </section>
 
       <Container>
-        <section id="cuttings" className={styles.shop} aria-labelledby="cuttings-title">
-          <div className={styles.gridHead}>
-            <div className={styles.gridHeadCopy}>
+        <section id="cuttings" className={catalogStyles.shop} aria-labelledby="cuttings-title">
+          <div className={catalogStyles.gridHead}>
+            <div className={catalogStyles.gridHeadCopy}>
               <SectionLabel>From the workroom</SectionLabel>
-              <h2 id="cuttings-title" className={styles.gridTitle}>
+              <h2 id="cuttings-title" className={catalogStyles.gridTitle}>
                 This week&rsquo;s cuttings
               </h2>
             </div>
             {/* "6 items" is inventory-system language. A florist counts arrangements. */}
-            <p className={styles.gridCount}>
-              <span className={`${styles.gridCountNum} tnum`}>{products.length}</span>
+            <p className={catalogStyles.gridCount}>
+              <span className={`${catalogStyles.gridCountNum} tnum`}>{products.length}</span>
               {products.length === 1 ? "arrangement" : "arrangements"}, cut to order
             </p>
           </div>
 
-          <div className={styles.grid}>
+          <div className={catalogStyles.grid}>
             {products.map((product, i) => (
               <div
                 key={product.id}
-                className={`${styles.gridItem} rise`}
+                className={`${catalogStyles.gridItem} rise`}
                 style={{ animationDelay: `${Math.min(i, 6) * 55}ms` }}
               >
                 <ProductCard product={product} />
@@ -188,38 +194,38 @@ export default async function HomePage() {
         </section>
       </Container>
 
-      <section id="how-it-pays" className={styles.pays} aria-labelledby="pays-title">
-        <Container className={styles.paysInner}>
-          <div className={styles.paysHead}>
+      <section id="how-it-pays" className={paymentStyles.pays} aria-labelledby="pays-title">
+        <Container className={paymentStyles.paysInner}>
+          <div className={paymentStyles.paysHead}>
             <SectionLabel>Paying for it</SectionLabel>
-            <h2 id="pays-title" className={styles.paysTitle}>
+            <h2 id="pays-title" className={paymentStyles.paysTitle}>
               A gift card first.<br />
               <em className={styles.em}>Your card for the rest.</em>
             </h2>
-            <p className={styles.paysLede}>
+            <p className={paymentStyles.paysLede}>
               Most gift cards go unspent because they never quite cover the basket. Here they
               don&rsquo;t have to. One checkout draws the card down to the cent and authorizes
               only what&rsquo;s left on the other rail.
             </p>
           </div>
 
-          <ol className={styles.steps}>
+          <ol className={paymentStyles.steps}>
             {STEPS.map((step) => (
-              <li key={step.n} className={`${styles.step} ${styles.reveal}`}>
-                <span className={`${styles.stepNum} tnum`} aria-hidden>
+              <li key={step.n} className={`${paymentStyles.step} ${styles.reveal}`}>
+                <span className={`${paymentStyles.stepNum} tnum`} aria-hidden>
                   {step.n}
                 </span>
-                <h3 className={styles.stepTitle}>{step.title}</h3>
-                <p className={styles.stepBody}>{step.body}</p>
+                <h3 className={paymentStyles.stepTitle}>{step.title}</h3>
+                <p className={paymentStyles.stepBody}>{step.body}</p>
               </li>
             ))}
           </ol>
 
-          <div className={styles.paysFoot}>
+          <div className={paymentStyles.paysFoot}>
             <Button href="/wallet" size="lg">
               Set up a gift card
             </Button>
-            <p className={styles.paysNote}>
+            <p className={paymentStyles.paysNote}>
               A balance you type in yourself stays marked <strong>unverified</strong> — no API
               can read an open-loop prepaid card, so this wallet never pretends otherwise.
             </p>
@@ -228,9 +234,9 @@ export default async function HomePage() {
       </section>
 
       <Container>
-        <ul className={styles.assurances}>
+        <ul className={assuranceStyles.assurances}>
           {ASSURANCES.map((a) => (
-            <li key={a.title} className={`${styles.assurance} ${styles.reveal}`}>
+            <li key={a.title} className={`${assuranceStyles.assurance} ${styles.reveal}`}>
               <svg
                 viewBox="0 0 24 24"
                 width="19"
@@ -240,13 +246,13 @@ export default async function HomePage() {
                 strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={styles.assuranceIcon}
+                className={assuranceStyles.assuranceIcon}
                 aria-hidden
               >
                 {a.icon}
               </svg>
-              <h3 className={styles.assuranceTitle}>{a.title}</h3>
-              <p className={styles.assuranceBody}>{a.body}</p>
+              <h3 className={assuranceStyles.assuranceTitle}>{a.title}</h3>
+              <p className={assuranceStyles.assuranceBody}>{a.body}</p>
             </li>
           ))}
         </ul>

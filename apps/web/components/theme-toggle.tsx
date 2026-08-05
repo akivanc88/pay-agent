@@ -1,3 +1,5 @@
+/** Controls persisted light and dark theme selection in the browser. */
+
 "use client";
 
 import { useEffect, useState } from "react";
