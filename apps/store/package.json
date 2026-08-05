@@ -22,7 +22,7 @@
     "@pay-agent/protocol": "workspace:*",
     "@ucp-js/sdk": "0.4.3",
     "better-sqlite3": "^11.7.0",
-    "hono": "^4.12.31",
+    "hono": "^4.12.34",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
     "pino-http-print": "^4.0.0",
