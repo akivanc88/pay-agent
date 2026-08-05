@@ -72,6 +72,21 @@ with nothing captured on the rail.
     pnpm --filter @pay-agent/store stripe-check  # real split checkout, both outcomes
     pnpm --filter @pay-agent/store show-ledger   # before/after
 
+**M2 agent working — one planner, two destinations, no branching.** `apps/agent` is the
+destination-independent core: a `PaymentDestination` contract (`discover`/`capabilities`/`pay`/
+`confirm`) and a planner that decides the gift-first/card-remainder split by reading a
+destination's `capabilities()`, never by asking which destination it is. Two adapters sit behind
+it — the UCP storefront (the merchant redeems the gift card itself) and a Stripe hosted payment
+link (an external rail that can't, so the gift card is drawn on our own ledger and the remainder
+settled on a real test-mode PaymentIntent, reversed if the card declines). `pnpm --filter
+@pay-agent/agent demo:both` settles a $75 storefront split and a $50 payment-link split through the
+same planner; the decline path restores the gift balance to the cent. `test/independence.test.ts`
+fails if the planner ever imports an adapter, names a destination, or compares a destination id.
+
+*Simplified here, on purpose (see below):* mandates are unsigned (`signed: false`); the policy
+gate is a spend cap only; the payment link communicates the amount via Stripe's API rather than the
+agent driving its hosted page. The card rail is test-mode only — the adapter refuses a live key.
+
 ### Enrolling a card without ever seeing it
 
 `/enroll` is the one page in the project, and its whole shape follows from a single
