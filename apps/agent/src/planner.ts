@@ -51,13 +51,25 @@ export function planInstruments(
   const amount = due.amountMinor;
   const gift = funding.giftCard;
 
+  // One currency across the whole plan. The gift ledger settles in the destination's advertised
+  // currency; drawing it against an amount quoted in a different currency would be a silent 1:1
+  // conversion, which is inventing an amount. Refuse rather than mix.
+  if (caps.currency !== due.currency) {
+    throw new CurrencyMismatch(
+      `destination is owed ${due.currency} but accepts ${caps.currency}; this agent does not convert`,
+      due,
+    );
+  }
+
   // The gift card can only be planned up to a *known* balance. An unknown (null) hint plans no
   // draw rather than guessing a number — the honesty rule made mechanical.
   const giftAvailable: Minor = gift && gift.hintMinor !== null ? gift.hintMinor : 0;
   const giftDraw = gift ? drawUpTo(amount, giftAvailable) : 0;
 
   const afterGift = amount - giftDraw;
-  const cardAmount = funding.card ? afterGift : 0;
+  // The card leg exists only where the destination will actually take a card *and* the user
+  // granted one — branching on capability, which is the planner's job, not on identity.
+  const cardAmount = caps.acceptsCard && funding.card ? afterGift : 0;
   const uncovered = afterGift - cardAmount;
 
   return {
@@ -97,6 +109,16 @@ export class ApprovalRequired extends Error {
   constructor(message: string, due: AmountDue) {
     super(message);
     this.name = "ApprovalRequired";
+    this.due = due;
+  }
+}
+
+/** The destination's currency does not match the amount it quoted. Refused, never converted. */
+export class CurrencyMismatch extends Error {
+  readonly due: AmountDue;
+  constructor(message: string, due: AmountDue) {
+    super(message);
+    this.name = "CurrencyMismatch";
     this.due = due;
   }
 }

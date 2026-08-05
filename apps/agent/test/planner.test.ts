@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { planInstruments } from "../src/planner.js";
+import { planInstruments, CurrencyMismatch } from "../src/planner.js";
 import type { AmountDue, AcceptedInstruments, Funding } from "../src/destination.js";
 
 const due = (amountMinor: number): AmountDue => ({
@@ -65,6 +65,23 @@ test("no card and a short gift card leaves the remainder uncovered, not silently
   assert.equal(plan.giftDrawMinor, 2000);
   assert.equal(plan.cardMinor, 0);
   assert.equal(plan.uncoveredMinor, 5500);
+});
+
+test("a destination whose currency differs from the amount due is refused, not converted", () => {
+  const funding: Funding = { giftCard: gift(2000), card };
+  assert.throws(
+    () => planInstruments(due(7500), caps({ currency: "USD" }), funding),
+    CurrencyMismatch,
+    "a USD destination must not draw a CAD gift card 1:1",
+  );
+});
+
+test("a destination that does not accept a card plans no card leg", () => {
+  const funding: Funding = { giftCard: gift(2000), card };
+  const plan = planInstruments(due(7500), caps({ acceptsCard: false }), funding);
+  assert.equal(plan.giftDrawMinor, 2000);
+  assert.equal(plan.cardMinor, 0, "no card leg when the destination won't take one");
+  assert.equal(plan.uncoveredMinor, 5500, "the remainder is surfaced as uncovered, not charged");
 });
 
 test("the mix always sums to the amount due", () => {

@@ -50,11 +50,25 @@ test("the planner names no concrete destination", () => {
 
 test("the planner branches on capabilities, not on destination id", () => {
   const code = plannerSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-  // Reading `.id` off a destination to *decide behaviour* is the exact smell this forbids. The
-  // planner may pass a destination around, but it must not compare its id.
+  // Comparing a destination's identity — `.id` or `.destinationId`, with ==, ===, or !== in either
+  // order — is the exact smell this forbids. `makeMandate` may *record* `due.destinationId` (an
+  // assignment, `:` not a comparison), but the planner must never test it to pick behaviour.
+  const idComparison =
+    /(?:\.id\b|\.destinationId\b|\bdestinationId\b)\s*(?:===|!==|==(?!=))|(?:===|!==|==(?!=))\s*[\w.]*(?:\.id\b|\.destinationId\b)/;
   assert.doesNotMatch(
     code,
-    /\.id\s*===|===\s*[^;]*\.id|\.id\s*==[^=]/,
+    idComparison,
     "planner.ts must not compare a destination's id — normalize in the adapter instead",
   );
+});
+
+test("the planner imports only the contract, so no branch can hide in a helper", () => {
+  // A destination-specific branch could hide in a module the planner calls. Whitelisting its local
+  // imports to the contract and money shuts that door: it can reach nothing that knows a concrete
+  // destination.
+  const localImports = [...plannerSrc.matchAll(/from\s+["'](\.[^"']+)["']/g)].map((m) => m[1]);
+  const allowed = new Set(["./destination.js", "./money.js"]);
+  for (const imp of localImports) {
+    assert.ok(allowed.has(imp!), `planner.ts imports "${imp}" — only the contract and money are allowed`);
+  }
 });

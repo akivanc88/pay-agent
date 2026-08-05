@@ -84,7 +84,11 @@ function amountOf(totals: Total[] | undefined, type: string): number | undefined
 }
 /** The authoritative amount due — the merchant owns this number, not the cart. */
 function totalOf(session: Session): Minor {
-  return amountOf(session.totals, "total") ?? amountOf(session.totals, "subtotal") ?? 0;
+  const total = amountOf(session.totals, "total") ?? amountOf(session.totals, "subtotal");
+  // Never fall back to zero: a missing total is a broken quote, not a free cart. Refuse it rather
+  // than let the agent proceed to pay $0.
+  if (total === undefined) throw new StoreError("The storefront quoted no total for this cart.", 0);
+  return total;
 }
 function shippingMethodOf(session: Session): FulfillmentMethod | undefined {
   return session.fulfillment?.methods?.find((m) => m.type === "shipping");
@@ -247,34 +251,55 @@ export function ucpStorefront(opts: { baseUrl: string }): PaymentDestination {
         });
       }
 
-      try {
-        const completed = await req<Session>(`/checkout-sessions/${due.handle}/complete`, {
+      // A stable idempotency key over this checkout, so a retry after a lost response replays the
+      // store's recorded outcome instead of drawing and charging twice.
+      const idemKey = `complete:${due.handle}`;
+      const attempt = () =>
+        req<Session>(`/checkout-sessions/${due.handle}/complete`, {
           method: "POST",
+          headers: { "Idempotency-Key": idemKey },
           body: JSON.stringify({ payment: { instruments } }),
         });
+
+      try {
+        let completed: Session;
+        try {
+          completed = await attempt();
+        } catch (err) {
+          // A transport failure (status 0) is indeterminate: the store may have completed and only
+          // the response was lost, in which case asserting "failed and reversed" would be a lie
+          // about a captured order. The idempotency key makes a retry safe — it replays the
+          // recorded outcome if the first call landed, or completes now if it never arrived.
+          if (err instanceof StoreError && err.status === 0) {
+            completed = await attempt();
+          } else {
+            throw err;
+          }
+        }
         const orderId = completed.order?.id ?? due.handle;
-        // The store settles the whole total and does not break the split out in its response.
-        // For a verified closed-loop card the planner already clamped the draw to the ledger
-        // balance, so the plan's split is the settled split; confirm() re-verifies the order.
+        // The store settles the whole total, draws the gift card open-amount against its *live*
+        // ledger balance, and returns no per-instrument breakdown — so we do not assert a split we
+        // cannot see. The order's existence is the settlement fact; confirm() re-verifies it.
         return {
           ok: true,
           handle: orderId,
           detail: `order ${orderId} completed`,
-          giftDrawnMinor: plan.giftDrawMinor > 0 ? plan.giftDrawMinor : null,
-          cardChargedMinor: plan.cardMinor > 0 ? plan.cardMinor : null,
+          giftDrawnMinor: null,
+          cardChargedMinor: null,
           reversed: false,
         };
       } catch (err) {
         if (err instanceof StoreError) {
-          // The store already reversed every gift draw and cancelled the card leg before it
-          // answered, so nothing is left committed to a checkout that did not complete.
           return {
             ok: false,
             handle: due.handle,
             detail: err.code ? `${err.message} (${err.code})` : err.message,
             giftDrawnMinor: null,
             cardChargedMinor: null,
-            reversed: plan.giftDrawMinor > 0,
+            // A store-returned decline reverses its own draws before answering, so report that.
+            // An unresolved transport failure (status 0) drew nothing client-side and its server
+            // fate is unknown, so claim no reversal we did not observe.
+            reversed: err.status !== 0 && plan.giftDrawMinor > 0,
           };
         }
         throw err;
