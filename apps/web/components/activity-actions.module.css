@@ -1,0 +1,55 @@
+/* The decide widget: two physical buttons, a done state, and a calm error line. Tokens only. */
+
+.root {
+  min-width: 0;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.error {
+  margin-top: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--danger);
+  line-height: 1.5;
+}
+
+/* The resolved state replaces the buttons rather than disabling them in place — a decided
+   approval is a different fact than a pending one, not the same control turned off. */
+.done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 2.75rem;
+  padding-inline: 0.2rem;
+  font-size: var(--text-md);
+  font-weight: 580;
+  color: var(--ink);
+}
+
+.done[data-decision="denied"] { color: var(--danger); }
+.done[data-decision="granted"] { color: var(--brand-ink); }
+
+.doneIcon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.doneGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+/* The honest footnote when a grant couldn't be auto-settled (agent service down, or a seed run
+   with no live destination). Calm, secondary — the approval still stands. */
+.note {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  line-height: 1.5;
+  max-width: 46ch;
+}

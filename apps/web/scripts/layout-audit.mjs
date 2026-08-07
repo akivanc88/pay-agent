@@ -21,7 +21,7 @@ const CART = [
   { id: "gardenias", title: "Gardenias", price: 2000, currency: "CAD", quantity: 2 },
 ];
 
-const PATHS = ["/", "/cart", "/checkout", "/wallet", "/product/bouquet_roses", "/no-such-page"];
+const PATHS = ["/", "/agent", "/cart", "/checkout", "/wallet", "/product/bouquet_roses", "/no-such-page"];
 
 const browser = await chromium.launch();
 let failures = 0;

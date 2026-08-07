@@ -8,6 +8,9 @@ const nextConfig = {
     return [{ source: "/api/store/:path*", destination: `${store}/:path*` }];
   },
   reactStrictMode: true,
+  // better-sqlite3 is a native addon reached only from server components / route handlers via
+  // `@pay-agent/db`. Keep it external so Next never tries to bundle the binding for the client.
+  serverExternalPackages: ["better-sqlite3", "@pay-agent/db"],
   // The floating dev badge overlaps the bottom-left of every page and lands in every
   // review screenshot. The surfaces are judged on how they look, so it goes.
   devIndicators: false,

@@ -46,6 +46,18 @@ const SURFACES = [
       await page.waitForTimeout(300);
     },
   },
+  // The Agent Console (M4). Empty is the resting surface; the driven shot is the state worth
+  // judging — the brain settled a run, with the mandate card and the split receipt on screen.
+  { name: "agent", path: "/agent" },
+  {
+    name: "agent-settled",
+    path: "/agent",
+    prep: async (page) => {
+      await page.getByRole("button", { name: /up to \$50/i }).first().click();
+      await page.getByText("Paid — StreamCo", { exact: true }).waitFor({ timeout: 20000 });
+      await page.waitForTimeout(700);
+    },
+  },
   // The designed dead ends. These are surfaces like any other — rubric failure #3 is an
   // *undesigned* 404 or error, which is a judgement only the critic can make, and it can
   // only make it if these are in the set it looks at.

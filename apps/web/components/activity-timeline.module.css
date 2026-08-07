@@ -1,0 +1,92 @@
+/* The audit trail: a connective spine, one hairline circle per event, calm density. Tokens only. */
+
+.timeline {
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  column-gap: var(--sp-4);
+}
+
+.iconCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.iconWrap {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+}
+.iconWrap svg { width: 16px; height: 16px; }
+
+.iconWrap[data-tone="brand"] { color: var(--brand); background: var(--brand-tint); border-color: color-mix(in srgb, var(--brand) 30%, var(--line)); }
+.iconWrap[data-tone="warn"] { color: var(--warn); background: var(--warn-tint); border-color: color-mix(in srgb, var(--warn) 30%, var(--line)); }
+.iconWrap[data-tone="danger"] { color: var(--danger); background: var(--danger-tint); border-color: color-mix(in srgb, var(--danger) 30%, var(--line)); }
+.iconWrap[data-tone="gold"] { color: var(--gold); background: var(--gold-tint); border-color: color-mix(in srgb, var(--gold) 30%, var(--line)); }
+.iconWrap[data-tone="neutral"] { color: var(--ink-3); background: var(--surface-2); }
+
+.spine {
+  width: 1px;
+  flex: 1;
+  min-height: var(--sp-4);
+  background: var(--line);
+  margin-block: var(--sp-1);
+}
+
+.content {
+  min-width: 0;
+  padding-bottom: var(--sp-5);
+}
+
+.rowHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: 0.3rem;
+}
+
+.kind {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+
+.time {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summary {
+  margin-top: 0.2rem;
+  max-width: 60ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: var(--sp-5);
+  font-size: var(--text-base);
+  color: var(--ink-3);
+}
+
+@media (max-width: 480px) {
+  .row { grid-template-columns: 1.75rem 1fr; column-gap: var(--sp-3); }
+  .iconWrap { width: 1.75rem; height: 1.75rem; }
+  .iconWrap svg { width: 14px; height: 14px; }
+  .rowHead { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+}
