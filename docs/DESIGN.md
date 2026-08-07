@@ -11,6 +11,22 @@ standard — the reason.
 **Companion document:** [`PLAN.md`](./PLAN.md) is the plan and the argument. This is the
 record of what was actually built. Where they disagree, this document is right.
 
+## What "the agent" means here
+
+Everywhere below, **"the agent" means the deterministic rails** — the planner/orchestrator and the
+`PaymentDestination` adapters in `apps/agent`. There is **no language model in the rails**: they decide
+by coded logic, not by reasoning over prose.
+
+**M4 adds the "brain" on top of the rails** (`apps/agent/src/brain`): the LLM driver most people
+picture — one that reads a human sentence like *"pay my StreamCo bill from my gift card, up to $50"*
+and drives these rails by drafting an IntentMandate and calling `start_run` / `resume_run` **as
+tools**. It is boxed by design: the model proposes the cap and allowlist but **never signs the
+mandate, never holds a credential, never constructs a charge, and never bypasses the policy gate** —
+the deterministic core signs, gates, settles and reverses. Two mechanical belts beyond that: the
+drafted cap is clamped to a hard ceiling the model cannot raise, and a run only reaches a destination
+the agent has a real adapter for. This project built the safe substrate first on purpose. See
+PLAN.md → *"The agent is two layers"* for the full argument.
+
 ## How to read this
 
 | Status | Meaning |
@@ -120,6 +136,26 @@ surface would under-collect if driven with a mock card beside a real gift draw. 
 and `/funding/reverse` are unauthenticated until the Supabase auth migration, like the rest of the
 funding surface.
 
+**M3 consent working — a third destination, signed mandates, and a human in the loop.** A run is now
+a first-class, persisted thing (`@pay-agent/db` consent store) with an **append-only audit trail**
+enforced by database triggers, exactly like the ledger. The agent's orchestrator (`apps/agent/src/
+orchestrator.ts`) wraps the M2 planner with a **policy gate** — it verifies the user's signed
+`IntentMandate` (spend cap, destination allowlist, expiry) and, before any instrument is touched,
+halts an over-cap or non-allowlisted run into a persisted **approval**; a human approves or denies in
+the dashboard, and `resumeRun` refuses if the amount moved after the human agreed. On settlement it
+issues genuine EdDSA-JWS **CheckoutMandate** and **PaymentMandate**, self-verifies the checkout↔payment
+binding, and records everything. **StreamCo** (`apps/web/app/streamco`) is the third destination — a
+simulated biller with *no* machine-readable checkout, so the adapter scrapes the amount off the page
+and reports it cannot read it rather than guessing when the markup changes. Scoped **payment tokens**
+(`@pay-agent/mandate`) refuse replay, amount tampering, expiry and reuse. The whole safety story runs
+in one place: `pnpm --filter @pay-agent/agent failure-matrix`.
+
+*Simplified/honest here (see the tables below):* mandates are plain JWS, not SD-JWT-VC; the scoped
+token is our own, not Stripe's issued Shared Payment Token, and is not yet the credential the card
+rail charges; the consent store and `/api/consent/*` are unauthenticated until the Supabase migration,
+and act for a fixture `demo-user`. RFC 9421 agent request signing remains a stretch goal, so
+destinations still do not authenticate the agent.
+
 ### Enrolling a card without ever seeing it
 
 `/enroll` is the one page in the project, and its whole shape follows from a single
@@ -175,11 +211,17 @@ never placed.
 | Storefront / wallet / checkout (`apps/web`) | This project's own design | **Real** — drives the same UCP endpoints an agent does; no mocked responses |
 | The funding plan shown before payment | Projected from `GET /funding/cards` | **Simplified** — a projection, not a quote. The merchant does the real draw at settlement; where a balance isn't readable the UI says so instead of guessing |
 | Card selection at checkout | Stripe's published test PaymentMethods | **Standard** — real authorize/capture in test mode against Stripe's test issuer |
-| Scoped payment tokens | Stripe Shared Payment Tokens | Planned |
-| `CheckoutMandate` / `PaymentMandate` | AP2, via UCP↔AP2 layering guidance | Planned |
-| Policy gate + approval inbox | This project's own design | Planned |
-| Stripe payment link destination | Stripe | Planned |
-| StreamCo biller destination | — (no spec; it's a simulation) | Planned |
+| `IntentMandate` / `CheckoutMandate` / `PaymentMandate` (`@pay-agent/mandate`) | AP2, via UCP↔AP2 layering guidance | **Simplified** — genuine EdDSA JWS with AP2 names, binding and expiry; not SD-JWT-VC |
+| Policy gate (spend cap + destination allowlist) | This project's own design | **Real** — halts *before* any draw; verifies the signed IntentMandate |
+| Append-only audit trail (`run_events`) | This project's own design | **Real** — trigger-enforced append-only, like the ledger |
+| Approvals (persist + decide-once) | This project's own design | **Real** — a decided approval cannot be flipped |
+| Scoped payment tokens + bind refusals | Stripe Shared Payment Tokens | **Simplified** — our own EdDSA-JWS scoped token, exchanged from the PaymentMandate and redeemed single-use *in the settlement flow* before each card leg; replay/amount/expiry/reuse refusals are real. Stripe's *issued* token is the production path, and is **not enabled on this account** (verified: `GET /v1/shared_payment/granted_tokens` → "Unrecognized request URL") |
+| Stripe payment link destination | Stripe | **Real** — external rail (M2), split drawn on our side |
+| StreamCo biller destination | — (no spec; it's a simulation) | **Simulated** — a biller with no API; the adapter scrapes the amount and refuses to guess when it can't |
+| StreamCo billing portal (`apps/web/app/streamco`) | This project's own design | **Simulated** — a convincing streaming-biller UI, its own brand; labelled a simulation on every state |
+| Consent dashboard — approval inbox + audit timeline (`apps/web/app/(console)`) | This project's own design | **Real** — reads the consent store the agent writes; approve/deny writes a decision back |
+| LLM agent driver — instruct-to-pay (the "brain", `apps/agent/src/brain`) | Provider-agnostic tool-calling loop; OpenAI or Anthropic over HTTP, with a deterministic scripted stand-in | **Real driver, scoped** — turns a human instruction into a drafted IntentMandate + a gated run, calling `start_run`/`resume_run` as tools; never moves money except through the rails. The reasoning is **live** when `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` is set and a **scripted stand-in** otherwise (reports `live:false`); the payment path is identical either way |
+| Agent Console (`apps/web/app/(console)/agent`) | This project's own design | **Real** — streams the brain's run over SSE from the agent; states plainly whether a real model or the scripted stand-in produced it, and links a paused run to the same approval inbox |
 | Agent request signing (`packages/tap`) | RFC 9421, as profiled by Visa TAP | Planned — stretch goal |
 
 ### What the ledger guarantees, and how
@@ -246,8 +288,8 @@ it**.
 | Area | Spec says | We do | Why |
 |---|---|---|---|
 | Gift-card tokenization | ACP's seller-backed handlers tokenize via a `delegate_payment` endpoint | The code and PIN are presented directly on the instrument | `delegate_payment` is not yet implemented, so the agent does briefly hold the raw card credential — the one place this project currently falls short of "the agent never holds a raw credential". Recorded rather than glossed. |
-| Card credential | Stripe's handler is designed around a scoped **Shared Payment Token**, granted per payment | A `pm_…` PaymentMethod id on `credential.token` | Same class of gap as the row above: the merchant charges a stored payment method rather than redeeming a token scoped to this destination and amount. It works, and it is genuinely Stripe — but the *scoping* is what Shared Payment Tokens exist for, so nothing here should be read as demonstrating them. |
-| Mandate format | `PaymentMandate` is an SD-JWT-VC | Plain JWS, correct field semantics | SD-JWT-VC is a large dependency for a demo whose point is the funding and consent *flow*. Full VC is a stretch goal. |
+| Card credential at settlement | Stripe's handler is designed around a scoped **Shared Payment Token**, granted per payment | The agent exchanges the PaymentMandate for a scoped token, redeems it single-use, then charges a `pm_…` PaymentMethod | The scoped token (`@pay-agent/mandate`) is now minted and redeemed **in the settlement flow** — bound to the destination and authorized amount, single-use — before the card is charged; it refuses replay/tamper/expiry/reuse. It is *our own* EdDSA-JWS token, not Stripe's issued Shared Payment Token: **that API is not enabled on this test account** (`GET /v1/shared_payment/granted_tokens` → "Unrecognized request URL"), and it would slot in at exactly this exchange point for a Stripe-backed destination that has it. The `pm_…` is still what the rail ultimately charges; the token is the scoping wrapper, which is the property Shared Payment Tokens exist for. |
+| Mandate format | `PaymentMandate` is an SD-JWT-VC | Genuine EdDSA JWS (`@pay-agent/mandate`), correct AP2 names, checkout↔payment binding, expiry, tamper-evident | SD-JWT-VC (selective disclosure, VC envelope) is a large dependency for a demo whose point is the funding and consent *flow*. The signing is real; the VC packaging is the stretch goal. |
 | User identity | A verified session establishes `user_id` | Fixture `user_id` until Supabase lands | Storage starts on SQLite; without real auth, "the agent acts for *this* user" is asserted, not proven. Stated rather than papered over. |
 | Agent request signing | Visa TAP profiles RFC 9421 signatures | Not implemented initially | Stretch goal. Until it exists, destinations do not authenticate the agent — do not claim they do. |
 

@@ -53,6 +53,13 @@
   --foil-mid: #a8791f;
   --foil-deep: #96681a;
 
+  /* Deep brand green and its ink, treated as a *material* — declared once and never themed,
+     exactly like the foil trio above. The agent-console marquee is a dark object (like the 3D
+     gift card), so it must read the same under any theme rather than inverting to mint when
+     --brand-ink / --brand-contrast flip for dark surfaces. */
+  --brand-deep: #16472d;
+  --on-brand-deep: #ffffff;
+
   --danger: #a32c24;
   --danger-tint: #fbeceb;
   --warn: #8a5a00;

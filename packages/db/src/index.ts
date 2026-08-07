@@ -8,5 +8,8 @@
 export * from "./money.js";
 export * from "./types.js";
 export * from "./repository.js";
+export * from "./consent-types.js";
+export * from "./consent-repository.js";
 export { normaliseCode, last4 } from "./credentials.js";
 export { openSqliteStore, LedgerError } from "./sqlite/store.js";
+export { openConsentStore, ConsentError } from "./sqlite/consent-store.js";

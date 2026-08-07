@@ -10,9 +10,18 @@
     "test": "node --import tsx --test test/*.test.ts",
     "demo:ucp": "tsx --env-file-if-exists=../../.env scripts/demo.ts ucp",
     "demo:link": "tsx --env-file-if-exists=../../.env scripts/demo.ts link",
-    "demo:both": "tsx --env-file-if-exists=../../.env scripts/demo.ts both"
+    "demo:both": "tsx --env-file-if-exists=../../.env scripts/demo.ts both",
+    "demo:streamco": "tsx --env-file-if-exists=../../.env scripts/demo-streamco.ts",
+    "demo:instruct": "tsx --env-file-if-exists=../../.env scripts/demo-instruct.ts",
+    "seed-consent": "tsx --env-file-if-exists=../../.env scripts/seed-consent.ts",
+    "serve": "tsx --env-file-if-exists=../../.env scripts/serve.ts",
+    "streamco-approval": "tsx --env-file-if-exists=../../.env scripts/streamco-approval.ts",
+    "token-binds": "tsx scripts/token-binds.ts",
+    "failure-matrix": "tsx scripts/failure-matrix.ts"
   },
   "dependencies": {
+    "@pay-agent/db": "workspace:*",
+    "@pay-agent/mandate": "workspace:*",
     "@pay-agent/protocol": "workspace:*",
     "stripe": "^22.4.0",
     "zod": "^3.23.8"

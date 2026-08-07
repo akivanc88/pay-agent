@@ -101,12 +101,15 @@ export interface InstrumentPlan {
 }
 
 /**
- * A consent mandate.
+ * A consent mandate, as it travels to a destination's `pay`.
  *
- * M2 carries the correct fields and the correct names but does **not** sign them — SD-JWT-VC /
- * JWS signing is M3, and `signed: false` says so at the type level so nothing here can imply
- * cryptography that is not present. Naming it a mandate now, honestly unsigned, is the whole point:
- * the shape is right, the guarantee is explicitly weaker, and `docs/DESIGN.md` says which.
+ * M2's planner produces an *unsigned* transport marker (`signed: false`) carrying the right fields
+ * and names. M3's orchestrator produces a *signed* one (`signed: true`) that also carries the
+ * compact PaymentMandate JWS and its key id, so a destination that wanted to verify the agent's
+ * authorization could — the JWS is genuine EdDSA. `signed` reports which, at the type level, so
+ * nothing here can imply cryptography that is not present. (Today's adapters do not themselves
+ * verify it; the signing, self-verification and audit are done agent-side — RFC 9421 request
+ * signing at the destination is the stretch goal. `docs/DESIGN.md` says exactly this.)
  */
 export interface Mandate {
   readonly reference: string;
@@ -114,7 +117,11 @@ export interface Mandate {
   readonly amountMinor: Minor;
   readonly currency: string;
   readonly createdAt: string;
-  readonly signed: false;
+  readonly signed: boolean;
+  /** The compact PaymentMandate JWS, present when `signed` is true. */
+  readonly jws?: string;
+  /** The issuer key id that signed `jws`. */
+  readonly kid?: string;
 }
 
 /**
