@@ -8,14 +8,22 @@ import { usePathname } from "next/navigation";
 import styles from "./site-header.module.css";
 
 /**
- * `secondary` marks a link the header may drop when width runs out. Checkout is the one
- * that goes: on a phone the three links plus the mark, cart and toggle overflow 390px, and
- * checkout is the only destination already reachable by another control in the same
- * header — the cart indicator leads there. Dropping it loses no route, only a duplicate.
+ * `secondary` marks a link the header drops when width runs out. Only three primary links fit
+ * beside the mark, cart and toggle at 390px, so the two destinations that are *already reachable
+ * another way* go: checkout, which the cart indicator leads to, and activity, which every run card
+ * on the Agent console links straight into ("See the full run →"). Dropping them loses no route on a
+ * phone, only a redundant entry point — while Shop, Agent and Wallet, which have no other door, stay.
  */
 const LINKS = [
   { href: "/", label: "Shop", match: (p: string) => p === "/" || p.startsWith("/product") },
+  { href: "/agent", label: "Agent", match: (p: string) => p.startsWith("/agent") },
   { href: "/wallet", label: "Wallet", match: (p: string) => p.startsWith("/wallet") },
+  {
+    href: "/activity",
+    label: "Activity",
+    match: (p: string) => p.startsWith("/activity"),
+    secondary: true,
+  },
   {
     href: "/checkout",
     label: "Checkout",

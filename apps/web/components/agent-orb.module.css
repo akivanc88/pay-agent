@@ -1,0 +1,14 @@
+/* The WebGL canvas for the agent core. It fills the marquee's .core box and fades in over the CSS
+   fallback once three.js is live (it sets data-live on itself; the marquee dims the fallback rings). */
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity var(--dur-4) var(--ease-out);
+  pointer-events: none;
+}
+.canvas[data-live] {
+  opacity: 1;
+}

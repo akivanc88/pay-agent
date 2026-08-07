@@ -272,7 +272,36 @@ second user cannot read the first user's wallet, mandates, tokens or ledger, and
 authenticates as a **service role with its own scoped grants** — never as the user, and
 never with the anon key.
 
+### The agent is two layers: deterministic rails now, an LLM brain next
+
+It is worth separating two things this project calls "the agent", because they are different and,
+today, only one of them is built. Conflating them is what makes the system look like it is either
+more or less than it is.
+
+- **The rails (built — M1–M3).** `apps/agent` is a *deterministic* program: a destination-independent
+  planner/orchestrator plus the `PaymentDestination` adapters. It discovers what is owed, checks it
+  against the signed IntentMandate, plans the instrument mix, issues the Checkout/Payment mandates,
+  exchanges a scoped token, settles, and confirms — all by coded logic, **no language model**. It is
+  "agentic" in the payments-protocol sense (UCP/AP2/ACP all name the paying party "the agent"), not in
+  the LLM sense.
+- **The brain (M4 — planned).** The thing most people mean by *"an AI agent that pays for you"*: a
+  language model that reads a human instruction — "pay my StreamCo bill from my gift card, up to $50" —
+  turns it into an IntentMandate and a destination reference, and **drives the rails by calling
+  `startRun` / `resumeRun` as tools**. It narrates the result and handles the approval conversationally.
+
+The ordering is deliberate, and it is the whole safety argument: **an LLM must be boxed by rails it
+cannot exceed, not trusted to be careful.** The spend cap, the signed mandate that pins the exact
+amount, the approval gate and the append-only trail are all enforced by the deterministic core, so a
+confused or jailbroken model can never move more than the human authorized. Building that substrate
+*before* the brain is not a detour — it is the reason the standards this project is grounded in exist.
+Where **UCP** fits in this picture: it is the *destination-side* language the rails speak to a
+compliant merchant (the storefront serves `/.well-known/ucp` and settles an `instruments[]` array);
+StreamCo is the deliberate no-protocol contrast that makes the argument land.
+
 ### Agent loop
+
+These six steps are what the **rails** do; the **brain** (M4) wraps them by producing step 2's
+IntentMandate and step 1's reference from a human sentence, and voicing step 3's approval.
 
 1. `discover(ref)` — the reference is a cart id, a payment URL, or a StreamCo account. **The planner does not branch on destination type**; the adapter normalizes to `AmountDue`.
 2. Load the signed **IntentMandate** (spend cap, destination allowlist, expiry).
@@ -375,7 +404,22 @@ warning in the original draft was correct, and it very nearly cost the artifact.
 
 Each is independently demoable, so there are clean stop-early points.
 
-*Revised 2026-07-30 against the scope decisions at the top.*
+*Revised 2026-07-30 against the scope decisions at the top; re-sequenced 2026-08-06 to make the LLM
+"brain" a first-class milestone (M4) and to state the ordering principles below explicitly.*
+
+**Sequencing principles.** The order is not arbitrary; it follows a few rules, recorded so a later
+revision can weigh against them rather than reshuffle on instinct:
+
+1. **Safe substrate before autonomy.** The deterministic cap → mandate → approval → reversal → audit
+   core is built and proven *before* an LLM is allowed to initiate a payment. An agent that can be
+   talked into anything must be constrained by rails it cannot exceed — so the rails come first.
+2. **Each milestone is independently demoable** — a clean stop-early point, not a big-bang integration.
+3. **Test mode before live money.** Everything is exercised against Stripe test mode before the single
+   guarded live path is ever entered.
+4. **Environment-locked and irreversible work late.** The real-card live decline needs the physical
+   card and a local machine and takes a genuine network decline, so it sits near the end; nothing
+   depends on it.
+5. **Publish last** — the write-up and deployed demo describe finished work, not work in flight.
 
 - **M1 — Funding core. ✅ Done 2026-07-31** *(PR #2)*. pnpm workspace; adapt `samples/rest/nodejs` into `apps/store`; repository interface in `packages/db` over SQLite; append-only ledger with redeem + reverse; merchant admin pane. Enroll **both** card families — closed-loop by code+PIN (**hash only**, plus last4), open-loop via **Stripe Elements** so the PAN never reaches our server and we hold only a `pm_…`. Serve `/.well-known/ucp`. *Demo: issue a card, redeem it, watch the ledger.*
   - **Shipped beyond the plan:** the card rail itself. Settling the whole `instruments[]` array needed something for the remainder to fall through to, and upstream's mock token handler proves nothing — so `com.stripe.payments` is a real Stripe integration in test mode, authorize-then-capture, verified end to end by `stripe-check`. That was M2's "remainder to the card rail", pulled forward because M1 could not be honestly demonstrated without it.
@@ -387,8 +431,14 @@ Each is independently demoable, so there are clean stop-early points.
   - **Done — the architecture, one planner over two destinations** *(2026-08-04, `apps/agent`)*. The `PaymentDestination` interface (`discover`/`capabilities`/`pay`/`confirm`) and a planner that is destination-independent by construction: it branches on `capabilities()`, never on which destination it is. Two adapters behind it — the UCP storefront (submits the gift card to the merchant, which redeems it) and a Stripe hosted payment link (an external rail that can't, so the gift card is drawn on our own ledger via a new `POST /funding/redeem`, the remainder settled as a real test-mode PaymentIntent, and that draw reversed if the card declines). `pnpm demo:both` settles a $75 storefront split *and* a $50 payment-link split through the one planner; verified end to end, including the decline path restoring the gift balance to the cent. The planner-independence claim is checked two ways: a source lint (`test/independence.test.ts` — the planner imports only the contract, never names a destination, never compares a destination id) and, behaviourally, `demo:both` settling both destinations through the one planner. The lint guards against the honest mistake; the behavioural run is the evidence. A harsh review also verified the reconciliation: a stale-high balance hint draws less than planned, and the card leg is recomputed from the *actual* draw so the bill is never underpaid.
     - **Honestly scoped / simplified (for `docs/DESIGN.md`):** mandates carry the right fields and names but are unsigned (`signed: false`); real JWS/SD-JWT-VC is M3. The policy gate is a spend cap only; the destination allowlist and approval inbox are M3. The payment link *communicates the amount* (read from Stripe's API by link id) and is settled on a real card rail — the agent does not drive the hosted checkout page, which would need a browser. The card rail is test-mode only; a live key is refused by the adapter.
 - **M3 — StreamCo + simplified consent.** The scraped biller portal; policy gate, approval inbox, `CheckoutMandate` as plain JWS, append-only audit trail; Stripe Shared Payment Tokens with the bind demos. Every test-mode failure row, including reversal. *Demo: an over-limit purchase pauses for you; a decline gives your balance back exactly.*
-- **M4 — The real card** *(local only, recorded)*. Enrolled-balance-as-hint in the planner and the guarded live decline path. *Demo: your actual Visa gift card, a real over-balance attempt, a real network decline, and the agent recovering correctly.* The closing beat — everything before it could be simulation; this can't be.
-- **M5 — Publish.** GitHub Pages write-up, deployed test-mode demo, recorded video.
+  - **Done — the third destination and the human in the loop** *(2026-08-05)*. `@pay-agent/mandate` issues **`IntentMandate` / `CheckoutMandate` / `PaymentMandate`** as genuine EdDSA JWS (Node crypto, zero deps) with AP2 names, the checkout↔payment binding, and expiry — tamper-evident, self-verified, and stored. The agent's `orchestrator.ts` wraps the M2 planner with a **policy gate** that verifies the signed IntentMandate and halts an over-cap or non-allowlisted run into a persisted **approval** *before any draw*; a human approves/denies in the dashboard, and `resumeRun` refuses if the amount moved after they agreed. Everything a run does is appended to a **trigger-enforced append-only audit trail** (`packages/db` consent store), shown in a fintech-grade **approval inbox + run/audit timeline** (`apps/web/app/(console)`). **StreamCo** (`apps/web/app/streamco`) is the no-API biller — an AAA streaming-billing portal the agent must *scrape*, refusing to guess when the markup changes. Scoped **payment tokens** refuse replay/amount/expiry/reuse. `pnpm --filter @pay-agent/agent demo:streamco` runs the whole loop end to end (real gift draw + real test-mode card + scrape + confirm); `failure-matrix` and `token-binds` are the consolidated safety demos.
+    - **Honestly scoped / simplified (see `docs/DESIGN.md`):** mandates are plain JWS, **not** SD-JWT-VC (correct names + binds, weaker envelope); the scoped token is *our own* with the same binds, not Stripe's issued Shared Payment Token, and is not yet the credential the card rail charges; the consent store and `/api/consent/*` are unauthenticated and act for a fixture `demo-user` until the Supabase migration; RFC 9421 agent request signing (so destinations authenticate the agent) remains a stretch goal.
+- **M4 — The agent's brain: instruct-to-pay.** The LLM driver that makes *"an agent pays on your behalf"* literal, and the milestone that most directly answers "where does the AI come in?". A language model (Claude, via the Anthropic SDK) turns a natural-language instruction into a run: it drafts the signed **IntentMandate** (spend cap, destination allowlist) from what the human actually said, selects the destination and reference, and calls the orchestrator's `startRun` / `resumeRun` **as tools** — it never constructs a charge, holds a credential, or bypasses the policy gate itself. When a run halts at the gate it surfaces the approval in plain language and resumes once the human approves. **Test mode only, and boxed by the same cap, mandates and audit trail as the scripted runs** — the substrate M1–M3 built is exactly what keeps the model from exceeding what was authorized. *Demo: "Pay my StreamCo bill from my gift card, up to $50" discovers $45.99, checks your cap, settles gift-first + card, and shows the receipt; the same request "up to $20" pauses and asks you to approve — and approving it in the inbox settles it.*
+  - **Why here, not later:** the rails are complete enough to be driven meaningfully (three destinations, consent, approval, resume), the demo is test-mode safe, and it is the highest-value *demonstration* of the whole thesis — so it precedes the risky, environment-locked live-card beat, which the brain can then drive as its finale.
+  - **Done — the brain, and a console to watch it think** *(2026-08-06, `apps/agent/src/brain` + `apps/web/app/(console)/agent`)*. A **provider-agnostic** tool-calling driver: one `LlmClient` interface with an **OpenAI** backend and an **Anthropic** backend (both dependency-free over HTTP, matching the repo's zero-dep ethos), plus a **deterministic scripted stand-in** so the milestone runs in CI and demos with **no key and no network** — honestly reporting `live:false` on every surface. The model reads the instruction, calls `draft_intent` (the core signs the IntentMandate — the model can't), then `start_run` (the full M3 policy gate runs), and narrates the outcome; a paused run is sent to the same approval inbox, not forced through. The boxed surface (`brain/tools.ts`) is the safety story in one file: the model touches ids and amounts only — never a credential, a key, the wallet, or an instrument charge — and two mechanical belts back the gate (a spend-cap **ceiling** the model cannot raise; a destination allowlist of real adapters only). Driven end to end by `pnpm --filter @pay-agent/agent demo:instruct` (add `--stub` for offline, `--auto-approve` for the full pause→approve→resume loop) and by the **Agent Console**, which streams every beat over SSE (`/instruct` on the agent, proxied by `/api/agent/instruct`) into a surface built to the same restrained bar as the rest of the app, with one state-reactive marquee as its single flourish — a lazy-loaded three.js jewel (the same discipline as the wallet's 3D gift card: never in first paint, with a designed CSS orbital-core fallback under reduced-motion or without WebGL). Four brain tests prove the box holds: a within-cap instruction settles gift-first through the full mandate flow; an under-cap one halts with **nothing drawn**; a runaway drafted cap is clamped; `start_run` without a drafted intent is refused by the box, not the model.
+    - **Honestly scoped / simplified (see `docs/DESIGN.md`):** PLAN originally named Claude/Anthropic; the driver is **provider-agnostic** and this environment leans OpenAI, with Anthropic a drop-in. The reasoning is only *live* when a key is present — otherwise the scripted stand-in produces the same tool calls deterministically, and the surface says so. The model *proposes* the cap and allowlist from the human's words; a stricter design would have the human confirm the drafted IntentMandate before any run (the console shows it prominently, and the gate + ceiling bound it regardless). The Agent Console's demo wallet and StreamCo stub are the same test-mode / simulated pieces the scripted demos use.
+- **M5 — The real card** *(local only, recorded)*. Enrolled-balance-as-hint in the planner and the guarded live decline path. *Demo: your actual Visa gift card, a real over-balance attempt, a real network decline, and the agent recovering correctly.* The closing beat — everything before it could be simulation; this can't be.
+- **M6 — Publish.** GitHub Pages write-up, deployed test-mode demo, recorded video.
 
 **Stretch goals, explicitly optional:** SD-JWT-VC mandates, RFC 9421 TAP signing, the
 Supabase + RLS migration, and the x402 adapter.
@@ -407,8 +457,8 @@ Supabase + RLS migration, and the x402 adapter.
 6. Break StreamCo's markup → assert the agent reports inability rather than paying a guessed amount.
 7. **UCP conformance suite** run against our storefront — this is the headline evidence that the project follows the standard, and is worth citing directly in the writeup.
 8. Cross-check `docs/DESIGN.md`: every spec claim carries a URL and retrieval date; everything simulated (StreamCo, issued gift cards) and everything simplified (JWS instead of SD-JWT-VC, fixture `user_id`) is labeled as such.
-9. **Live-mode guards (assert before ever running live):** live path refuses when `amount <= enrolledBalance`; live keys read only from `STRIPE_LIVE_SECRET_KEY`; no code path can reach a live client from a test-mode run; **the deployed build refuses to boot if a live key is present**. Verify by unit test, not by trying it. *(Three of the four done in M1 — `assertSafeStripeConfig` runs before the server binds a port, and the live client is a separate function checkout cannot reach. The `amount <= enrolledBalance` refusal lands with the live path itself in M4.)*
-10. **Real-card run (M4, once):** enroll the Visa gift card via Elements, confirm no PAN appears in server logs or the DB, then attempt an over-balance charge and capture the genuine decline code.
+9. **Live-mode guards (assert before ever running live):** live path refuses when `amount <= enrolledBalance`; live keys read only from `STRIPE_LIVE_SECRET_KEY`; no code path can reach a live client from a test-mode run; **the deployed build refuses to boot if a live key is present**. Verify by unit test, not by trying it. *(Three of the four done in M1 — `assertSafeStripeConfig` runs before the server binds a port, and the live client is a separate function checkout cannot reach. The `amount <= enrolledBalance` refusal lands with the live path itself in M5.)*
+10. **Real-card run (M5, once):** enroll the Visa gift card via Elements, confirm no PAN appears in server logs or the DB, then attempt an over-balance charge and capture the genuine decline code.
 11. Screen-record the failure matrix and the real-card decline — those are the artifacts you present.
 
 ## Appendix — verified sources

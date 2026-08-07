@@ -1,0 +1,36 @@
+/** Styles the run-detail route's focused missing-run recovery state. Mirrors the product
+ *  not-found treatment so the two "we couldn't find that" moments feel like one voice. */
+
+.wrap {
+  padding-block: var(--sp-9);
+}
+.panel {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-7);
+}
+.icon {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  margin-bottom: var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--brand);
+  border: 1px solid var(--line);
+}
+.title {
+  font-size: 1.7rem;
+}
+.lede {
+  max-width: 30rem;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+.actions {
+  margin-top: var(--sp-3);
+}

@@ -23,3 +23,4 @@
 23. Treat transport-ambiguous payment outcomes as indeterminate: do not retry mutations or reverse possibly settled funds; use safe read-only confirmation and reconciliation.
 24. Keep Stripe integrations in test mode by default, reject live keys outside the single explicitly guarded live-decline path, and never broaden live-money access casually.
 25. Treat `docs/DESIGN.md` as the authority for implemented truth and preserve `apps/web/DESIGN-CONTRACT.md` whenever changing web behavior or presentation.
+26. Keep the LLM "brain" and the deterministic rails separate: a language-model layer may initiate or resume payments only through the orchestrator's tool surface (`startRun`/`resumeRun`), and must never construct instrument charges, hold raw credentials, or bypass the policy gate, signed mandates, or audit trail. The core — not the model — enforces the spend cap, destination allowlist, and reversal.

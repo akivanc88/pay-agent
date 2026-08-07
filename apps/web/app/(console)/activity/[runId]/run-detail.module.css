@@ -1,0 +1,111 @@
+/* /activity/[runId] — the run timeline. Amount prominent, trail dense and legible, mandates
+   as a receipt beside it. */
+
+.wrap {
+  padding-block: var(--sp-6) var(--sp-9);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  font-weight: 560;
+  color: var(--ink-3);
+  transition: color var(--dur-2) var(--ease-out);
+}
+.back:hover { color: var(--brand-ink); }
+
+.header {
+  padding-block: var(--sp-3) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-7);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.title {
+  max-width: 42ch;
+  font-size: var(--display-sm);
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+
+.amount {
+  font-family: var(--font-serif);
+  font-size: var(--display-md);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.meta {
+  margin-top: var(--sp-3);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55em;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.ref {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 0.1em 0.4em;
+  overflow-wrap: anywhere;
+}
+
+.dot { opacity: 0.6; }
+
+.decidePanel {
+  margin-top: var(--sp-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.decideReason {
+  flex: 1 1 20rem;
+  font-size: var(--text-md);
+  color: var(--ink);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--sp-7);
+  align-items: start;
+}
+
+.sectionTitle {
+  font-size: var(--display-sm);
+  margin-bottom: var(--sp-4);
+}
+
+.timelinePanel {
+  padding: var(--sp-5);
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; gap: var(--sp-6); }
+}
+
+@media (max-width: 560px) {
+  .amount { font-size: clamp(1.75rem, 8vw, 2.25rem); }
+  /* `.decideReason`'s `flex: 1 1 20rem` sets a *width* basis in the row layout above; once
+     this flips the container to a column, the same basis reads as a height and the reason
+     line stretches to a 320px-tall block with the buttons pushed to the bottom. Reset it. */
+  .decidePanel { flex-direction: column; align-items: stretch; }
+  .decideReason { flex: none; }
+}

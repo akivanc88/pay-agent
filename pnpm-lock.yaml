@@ -27,6 +27,12 @@ importers:
 
   apps/agent:
     dependencies:
+      '@pay-agent/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@pay-agent/mandate':
+        specifier: workspace:*
+        version: link:../../packages/mandate
       '@pay-agent/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -107,12 +113,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@pay-agent/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@pay-agent/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@types/three':
         specifier: ^0.185.3
         version: 0.185.3
+      better-sqlite3:
+        specifier: ^11.7.0
+        version: 11.10.0
       next:
         specifier: ^15.5.4
         version: 15.5.22(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -148,6 +160,18 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.12
         version: 7.6.13
+
+  packages/mandate:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
   packages/protocol: {}
 

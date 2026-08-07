@@ -16,8 +16,10 @@
     "card-contrast": "node scripts/card-contrast.mjs"
   },
   "dependencies": {
+    "@pay-agent/db": "workspace:*",
     "@pay-agent/protocol": "workspace:*",
     "@types/three": "^0.185.3",
+    "better-sqlite3": "^11.7.0",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

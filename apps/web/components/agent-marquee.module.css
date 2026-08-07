@@ -1,0 +1,196 @@
+/*
+ * The agent-console hero band. The one spectacle on the surface, kept on-system: the ground is built
+ * from --brand-ink (the same green as the wordmark), the accent is the gift-card gold, and every
+ * value is a token or a color-mix of tokens — no new hexes. State drives one custom property,
+ * --accent, plus a data-state hook the animations read.
+ */
+
+.marquee {
+  --accent: var(--foil-hi);
+  --accent-soft: color-mix(in srgb, var(--foil-mid) 55%, transparent);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  min-height: 232px;
+  padding: var(--sp-6);
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  align-items: center;
+  gap: var(--sp-5);
+  color: var(--on-brand-deep);
+  isolation: isolate;
+  background:
+    radial-gradient(120% 140% at 18% 12%, color-mix(in srgb, var(--brand-deep) 82%, #ffffff) 0%, transparent 46%),
+    linear-gradient(155deg, color-mix(in srgb, var(--brand-deep) 92%, #000000) 0%, var(--brand-deep) 58%, color-mix(in srgb, var(--brand-deep) 80%, #000000) 100%);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent);
+}
+
+/* A slow, blurred bloom of the accent — the "aura" that intensifies while thinking / on success. */
+.aurora {
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 150%;
+  z-index: 0;
+  background: radial-gradient(46% 60% at 22% 40%, var(--accent-soft) 0%, transparent 70%);
+  opacity: 0.55;
+  filter: blur(6px);
+  transition: opacity var(--dur-4) var(--ease-out);
+}
+
+/* A faint engineering grid, for texture — reads as a machine surface, not a poster. */
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, #ffffff 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, #ffffff 5%, transparent) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(120% 100% at 20% 30%, #000 0%, transparent 72%);
+  opacity: 0.6;
+}
+
+/* ── The core ─────────────────────────────────────────────────────────── */
+.core {
+  position: relative;
+  z-index: 1;
+  width: 200px;
+  height: 200px;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+}
+
+.ring {
+  position: absolute;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: 0 0 24px -6px var(--accent-soft) inset;
+  animation: spin 26s linear infinite;
+}
+.ring[data-r="1"] { width: 84px; height: 84px; border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.ring[data-r="2"] { width: 134px; height: 134px; animation-duration: 40s; animation-direction: reverse; }
+.ring[data-r="3"] { width: 188px; height: 188px; animation-duration: 60s; border-style: dashed; opacity: 0.7; }
+
+.node {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--accent) 92%, #ffffff) 0%, var(--accent) 40%, color-mix(in srgb, var(--accent) 60%, #000000) 100%);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 34px -2px var(--accent);
+  animation: breathe 4.6s var(--ease-in-out) infinite;
+}
+
+/* Little orbiting sparks; each sits on a ring and rides its own orbit. */
+.spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 10px 1px var(--accent);
+}
+.spark[data-s="a"] { animation: orbit 9s linear infinite; --orbit: 42px; }
+.spark[data-s="b"] { animation: orbit 14s linear infinite reverse; --orbit: 67px; opacity: 0.85; }
+.spark[data-s="c"] { animation: orbit 20s linear infinite; --orbit: 94px; opacity: 0.6; }
+
+/* When the WebGL jewel is live it stands in for the flat CSS node only — the orbital rings and sparks
+   stay as its frame, so the two renderings compose into one object rather than fighting. The node
+   eases out beneath the gem. */
+.node { transition: opacity var(--dur-4) var(--ease-out); }
+.core[data-orb-live] .node { opacity: 0; }
+
+/* ── Caption ──────────────────────────────────────────────────────────── */
+.caption {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.eyebrow {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--on-brand-deep) 66%, transparent);
+  margin: 0;
+}
+.title {
+  font-family: var(--font-serif);
+  font-size: var(--display-sm);
+  line-height: 1.04;
+  margin: 0;
+  color: var(--on-brand-deep);
+}
+.status {
+  font-size: var(--text-md);
+  color: color-mix(in srgb, var(--on-brand-deep) 82%, transparent);
+  margin: 0;
+  min-height: 1.4em;
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.badgeRail {
+  position: absolute;
+  z-index: 2;
+  top: var(--sp-4);
+  right: var(--sp-4);
+}
+.brainBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.32rem 0.6rem;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--on-brand-deep) 80%, transparent);
+  background: color-mix(in srgb, #000000 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--on-brand-deep) 16%, transparent);
+  backdrop-filter: blur(4px);
+}
+.brainDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--on-brand-deep) 60%, transparent);
+}
+.brainBadge[data-live] .brainDot {
+  background: var(--foil-hi);
+  box-shadow: 0 0 8px 1px var(--foil-hi);
+}
+
+/* ── State accents ────────────────────────────────────────────────────── */
+.marquee[data-state="idle"] { --accent: color-mix(in srgb, var(--foil-hi) 74%, var(--brand)); }
+.marquee[data-state="thinking"] .aurora { opacity: 0.9; animation: pulse 2.4s var(--ease-in-out) infinite; }
+.marquee[data-state="thinking"] .node { animation-duration: 1.8s; }
+.marquee[data-state="settled"] { --accent: var(--foil-hi); }
+.marquee[data-state="settled"] .aurora { opacity: 1; }
+.marquee[data-state="paused"] { --accent: color-mix(in srgb, var(--warn) 70%, #ffd27a); }
+.marquee[data-state="failed"] { --accent: color-mix(in srgb, var(--danger) 72%, #ff9a90); }
+
+/* ── Keyframes ────────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent), 0 0 30px -4px var(--accent); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 12%, transparent), 0 0 42px 0 var(--accent); }
+}
+@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(var(--orbit)) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(var(--orbit)) rotate(-360deg); }
+}
+
+@media (max-width: 640px) {
+  .marquee { grid-template-columns: 1fr; text-align: center; padding: var(--sp-5); min-height: 0; }
+  .core { width: 150px; height: 150px; }
+  .ring[data-r="3"] { width: 150px; height: 150px; }
+  .badgeRail { position: static; margin: 0 auto var(--sp-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring, .node, .spark, .aurora { animation: none !important; }
+  .node { transform: none; }
+}
