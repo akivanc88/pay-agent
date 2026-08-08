@@ -36,6 +36,15 @@ export interface IntentClaims extends BaseClaims {
   readonly mandateType: "IntentMandate";
   readonly userId: string;
   readonly spendCapMinor: number;
+  /**
+   * A cumulative ceiling on the *total* settled under this mandate within its validity window, in
+   * addition to the per-transaction `spendCapMinor`. The consent store sums settled runs gated by
+   * this mandate's `jti`; the policy gate refuses once that running total plus a new amount would
+   * cross this line. **Optional by design:** when absent, no cumulative ceiling is enforced and the
+   * gate behaves exactly as M3/M4 did (per-transaction cap only) — a mandate opts *in* to a budget.
+   * The window is the mandate's own `exp`; there is no independent rolling period (a further stretch).
+   */
+  readonly cumulativeCapMinor?: number;
   readonly currency: string;
   /** Destination ids the user pre-authorized; anything else needs approval even under the cap. */
   readonly destinationAllowlist: readonly string[];
@@ -102,6 +111,8 @@ export function checkoutStateHash(state: Canonicalizable): string {
 export interface IntentInput {
   readonly userId: string;
   readonly spendCapMinor: number;
+  /** Optional cumulative ceiling across settled runs under this mandate; omit for no budget cap. */
+  readonly cumulativeCapMinor?: number;
   readonly currency: string;
   readonly destinationAllowlist: readonly string[];
   /** Seconds the intent is valid for, from now. */
@@ -117,6 +128,9 @@ export function issueIntentMandate(input: IntentInput, key: IssuerKey): SignedMa
     iat,
     userId: input.userId,
     spendCapMinor: input.spendCapMinor,
+    // Only carry the field under signature when a budget was actually set, so an intent without a
+    // cumulative cap hashes and reads exactly as it did before this milestone.
+    ...(input.cumulativeCapMinor !== undefined ? { cumulativeCapMinor: input.cumulativeCapMinor } : {}),
     currency: input.currency,
     destinationAllowlist: [...input.destinationAllowlist],
     exp: iat + input.ttlSeconds,

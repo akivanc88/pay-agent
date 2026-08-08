@@ -68,7 +68,11 @@ export function ActivityInbox({ items, decidedBy }: { items: InboxItem[]; decide
           </p>
 
           <div className={styles.cardActions}>
-            <ActivityActions runId={run.id} decidedBy={decidedBy} />
+            <ActivityActions
+              runId={run.id}
+              decidedBy={decidedBy}
+              standingAuth={{ destinationId: run.destinationId, amountMinor: run.amountMinor, currency: run.currency }}
+            />
             <Link href={`/activity/${run.id}`} className={styles.detailLink}>
               View timeline →
             </Link>

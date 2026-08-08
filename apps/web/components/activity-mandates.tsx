@@ -9,8 +9,8 @@
 
 import type { MandateKind } from "@pay-agent/db";
 
-import { Badge, Panel } from "@/components/ui";
-import type { StoredMandate } from "@/lib/consent";
+import { Badge, Money, Panel } from "@/components/ui";
+import type { IntentCapUsage, StoredMandate } from "@/lib/consent";
 
 import { ActivityCopyButton } from "./activity-copy-button";
 import { formatClock, truncateMiddle } from "./activity-format";
@@ -18,7 +18,13 @@ import styles from "./activity-mandates.module.css";
 
 const KIND_ORDER: readonly MandateKind[] = ["IntentMandate", "CheckoutMandate", "PaymentMandate"];
 
-export function ActivityMandates({ mandates }: { mandates: StoredMandate[] }) {
+export function ActivityMandates({
+  mandates,
+  intentUsage,
+}: {
+  mandates: StoredMandate[];
+  intentUsage?: IntentCapUsage | null;
+}) {
   const sorted = [...mandates].sort(
     (a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind),
   );
@@ -52,6 +58,24 @@ export function ActivityMandates({ mandates }: { mandates: StoredMandate[] }) {
               <code className={styles.jws}>{truncateMiddle(mandate.jws)}</code>
               <ActivityCopyButton value={mandate.jws} />
             </div>
+
+            {mandate.kind === "IntentMandate" && intentUsage && intentUsage.jti === mandate.jti && (
+              <div className={styles.usage}>
+                <div className={styles.usageBar}>
+                  <span
+                    className={styles.usageFill}
+                    style={{
+                      width: `${Math.min(100, (intentUsage.usedMinor / intentUsage.cumulativeCapMinor) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <p className={styles.usageLabel}>
+                  Cumulative cap · used{" "}
+                  <Money minor={intentUsage.usedMinor} currency={intentUsage.currency} /> of{" "}
+                  <Money minor={intentUsage.cumulativeCapMinor} currency={intentUsage.currency} />
+                </p>
+              </div>
+            )}
           </div>
         ))
       )}

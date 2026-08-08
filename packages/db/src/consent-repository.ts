@@ -56,6 +56,17 @@ export interface ConsentStore {
   /** Recent runs first. `limit` caps the list for a dashboard. */
   listRuns(limit?: number): Promise<Run[]>;
   setRunStatus(runId: string, status: RunStatus): Promise<void>;
+  /**
+   * Record which IntentMandate gated a run (the cumulative-cap ceiling sums by this key). Set once,
+   * by `startRun`, after the intent is verified — never by a standing-authorization reissue.
+   */
+  setRunIntentJti(runId: string, jti: string): Promise<void>;
+  /**
+   * Sum the amounts of every *settled* run gated by this IntentMandate `jti`. This is the running
+   * total the policy gate checks a new amount against; the mandate's own `exp` bounds the window, so
+   * no separate rolling-period logic is needed.
+   */
+  sumSettledAmountForMandate(jti: string): Promise<number>;
 
   /** Append one event to the immutable trail. */
   appendEvent(

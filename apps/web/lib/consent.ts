@@ -68,12 +68,38 @@ export async function allApprovals(): Promise<PendingApproval[]> {
   return withConsent((s) => s.listApprovals());
 }
 
+/**
+ * How much of an IntentMandate's caps this run's gating authorization has used. Decoded from the
+ * mandate's own signed payload (our own JWS — this is display, not a trust boundary) plus the settled
+ * total the consent store sums by jti. Present only when an IntentMandate carries a cumulative cap.
+ */
+export interface IntentCapUsage {
+  readonly jti: string;
+  readonly spendCapMinor: number;
+  readonly cumulativeCapMinor: number;
+  readonly usedMinor: number;
+  readonly currency: string;
+}
+
 /** Everything one run produced, assembled for the timeline surface. */
 export interface RunDetail {
   readonly run: Run;
   readonly events: RunEvent[];
   readonly mandates: StoredMandate[];
   readonly approval: Approval | null;
+  /** Cumulative-cap usage for the run's gating IntentMandate, when it declares one. */
+  readonly intentUsage: IntentCapUsage | null;
+}
+
+/** Decode a compact JWS payload (base64url middle segment) — display of our own signed mandate. */
+function decodeJwsPayload(jws: string): Record<string, unknown> | null {
+  const parts = jws.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    return JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 export async function runDetail(runId: string): Promise<RunDetail | null> {
@@ -85,7 +111,27 @@ export async function runDetail(runId: string): Promise<RunDetail | null> {
       s.mandatesForRun(runId),
       s.getApproval(runId),
     ]);
-    return { run, events, mandates, approval };
+
+    // Surface cumulative-cap usage for the gating IntentMandate, if it declares a budget.
+    let intentUsage: IntentCapUsage | null = null;
+    const gatingJti = run.intentJti;
+    const intentMandate = mandates.find((m) => m.kind === "IntentMandate" && (gatingJti ? m.jti === gatingJti : true));
+    if (intentMandate) {
+      const claims = decodeJwsPayload(intentMandate.jws);
+      const cumulative = claims?.cumulativeCapMinor;
+      if (typeof cumulative === "number") {
+        const usedMinor = await s.sumSettledAmountForMandate(intentMandate.jti);
+        intentUsage = {
+          jti: intentMandate.jti,
+          spendCapMinor: typeof claims?.spendCapMinor === "number" ? claims.spendCapMinor : 0,
+          cumulativeCapMinor: cumulative,
+          usedMinor,
+          currency: typeof claims?.currency === "string" ? claims.currency : run.currency,
+        };
+      }
+    }
+
+    return { run, events, mandates, approval, intentUsage };
   });
 }
 

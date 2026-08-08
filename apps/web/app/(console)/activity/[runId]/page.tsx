@@ -40,7 +40,7 @@ export default async function RunDetailPage({ params }: PageProps) {
   const detail = await runDetail(runId);
   if (!detail) notFound();
 
-  const { run, events, mandates, approval } = detail;
+  const { run, events, mandates, approval, intentUsage } = detail;
   const isPending = approval?.status === "pending";
 
   return (
@@ -69,7 +69,12 @@ export default async function RunDetailPage({ params }: PageProps) {
             <p className={styles.decideReason}>
               <ApprovalReasonLine approval={approval} destinationId={run.destinationId} />
             </p>
-            <ActivityActions runId={run.id} decidedBy={DECIDED_BY} size="lg" />
+            <ActivityActions
+              runId={run.id}
+              decidedBy={DECIDED_BY}
+              size="lg"
+              standingAuth={{ destinationId: run.destinationId, amountMinor: run.amountMinor, currency: run.currency }}
+            />
           </Panel>
         )}
       </header>
@@ -88,7 +93,7 @@ export default async function RunDetailPage({ params }: PageProps) {
           <h2 id="mandates-heading" className={styles.sectionTitle}>
             Signed mandates
           </h2>
-          <ActivityMandates mandates={mandates} />
+          <ActivityMandates mandates={mandates} intentUsage={intentUsage} />
         </section>
       </div>
     </Container>
