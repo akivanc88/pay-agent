@@ -10,6 +10,18 @@ The critical word is **some place**. Stripe is one destination, not the point. A
 
 *(An earlier revision of this plan collapsed onto Stripe alone. That was wrong and has been corrected — Stripe is now one adapter among several.)*
 
+**This bet has since been tested in production, and it went the way this plan predicted.**
+OpenAI shipped close to the single-destination version of this idea — ACP-driven checkout
+built into ChatGPT — in September 2025, and pulled it in March 2026: only around 12 of
+Shopify's millions of merchants ever went live, and Walmart measured in-chat checkout
+converting roughly 3x worse than a normal click-through to walmart.com, despite the traffic
+being higher-intent. OpenAI's own stated reason was that it "did not offer the level of
+flexibility we aspire to provide." Retrieved 2026-08-07; see `docs/DESIGN.md` → Sources.
+This isn't proof that this project's answer is right — it's evidence that the problem this
+plan bet on (a destination-agnostic core with an explicit consent layer, not a checkout
+button bolted onto a chat window) is a real, current failure mode in the industry, not a
+hypothetical one invented for the capstone.
+
 ## Scope decisions
 
 Settled **2026-07-30**. These are recorded so no later session has to infer them.
@@ -437,6 +449,33 @@ revision can weigh against them rather than reshuffle on instinct:
   - **Why here, not later:** the rails are complete enough to be driven meaningfully (three destinations, consent, approval, resume), the demo is test-mode safe, and it is the highest-value *demonstration* of the whole thesis — so it precedes the risky, environment-locked live-card beat, which the brain can then drive as its finale.
   - **Done — the brain, and a console to watch it think** *(2026-08-06, `apps/agent/src/brain` + `apps/web/app/(console)/agent`)*. A **provider-agnostic** tool-calling driver: one `LlmClient` interface with an **OpenAI** backend and an **Anthropic** backend (both dependency-free over HTTP, matching the repo's zero-dep ethos), plus a **deterministic scripted stand-in** so the milestone runs in CI and demos with **no key and no network** — honestly reporting `live:false` on every surface. The model reads the instruction, calls `draft_intent` (the core signs the IntentMandate — the model can't), then `start_run` (the full M3 policy gate runs), and narrates the outcome; a paused run is sent to the same approval inbox, not forced through. The boxed surface (`brain/tools.ts`) is the safety story in one file: the model touches ids and amounts only — never a credential, a key, the wallet, or an instrument charge — and two mechanical belts back the gate (a spend-cap **ceiling** the model cannot raise; a destination allowlist of real adapters only). Driven end to end by `pnpm --filter @pay-agent/agent demo:instruct` (add `--stub` for offline, `--auto-approve` for the full pause→approve→resume loop) and by the **Agent Console**, which streams every beat over SSE (`/instruct` on the agent, proxied by `/api/agent/instruct`) into a surface built to the same restrained bar as the rest of the app, with one state-reactive marquee as its single flourish — a lazy-loaded three.js jewel (the same discipline as the wallet's 3D gift card: never in first paint, with a designed CSS orbital-core fallback under reduced-motion or without WebGL). Four brain tests prove the box holds: a within-cap instruction settles gift-first through the full mandate flow; an under-cap one halts with **nothing drawn**; a runaway drafted cap is clamped; `start_run` without a drafted intent is refused by the box, not the model.
     - **Honestly scoped / simplified (see `docs/DESIGN.md`):** PLAN originally named Claude/Anthropic; the driver is **provider-agnostic** and this environment leans OpenAI, with Anthropic a drop-in. The reasoning is only *live* when a key is present — otherwise the scripted stand-in produces the same tool calls deterministically, and the surface says so. The model *proposes* the cap and allowlist from the human's words; a stricter design would have the human confirm the drafted IntentMandate before any run (the console shows it prominently, and the gate + ceiling bound it regardless). The Agent Console's demo wallet and StreamCo stub are the same test-mode / simulated pieces the scripted demos use.
+- **M4.5 — Standing authorization and a cumulative cap.** Added 2026-08-07, closing two gaps
+  `docs/FINDINGS.md` names as the ones a user would notice missing first — the parts the
+  crypto-heavy M3 machinery doesn't cover. Sits before M5 because it changes the same policy
+  gate the real-card path and the brain both depend on; better to land it before the
+  environment-locked, harder-to-revisit live-money milestone than after.
+  1. **Standing authorization.** Today `resumeRun` resolves only the one run a human
+     approved; the IntentMandate it was gated by is untouched, so an identical recurring
+     charge needs approval again next time. An approval decision gets an explicit second
+     choice beyond "approve this once" — *"and trust `<destination>` up to `<amount>` going
+     forward"* — which reissues the user's IntentMandate (new cap/allowlist, fresh expiry)
+     rather than only releasing the run. Opt-in and explicit: an approval a human meant as
+     one-time must stay one-time; nothing widens a grant the human didn't ask to widen.
+  2. **A cumulative cap.** `evaluatePolicy` checks each discovered amount against the
+     spend cap independently — nothing tracks a total. The IntentMandate gains a
+     cumulative ceiling *in addition to* the existing per-transaction cap; the consent
+     store sums settled-run amounts under a mandate's `jti`, and the gate refuses once the
+     running total plus the new amount would exceed it. The mandate's own expiry is reused
+     as the window — no separate rolling-period logic; a calendar-period budget ("$50/month"
+     that resets independently of the mandate's validity) is a further stretch this
+     milestone does not claim.
+  - Both land in the one policy gate the brain already drives through `start_run`/
+    `resume_run` (`apps/agent/src/brain/tools.ts`), so the brain's tool surface doesn't
+    change — the box gets stricter without the model needing to know.
+  - *Demo: approve a StreamCo bill once with "trust this destination going forward," and
+    the identical bill next cycle settles with no prompt; run three charges each under the
+    per-transaction cap but summing past a smaller cumulative cap, and the third halts for
+    approval even though it would have passed alone.*
 - **M5 — The real card** *(local only, recorded)*. Enrolled-balance-as-hint in the planner and the guarded live decline path. *Demo: your actual Visa gift card, a real over-balance attempt, a real network decline, and the agent recovering correctly.* The closing beat — everything before it could be simulation; this can't be.
 - **M6 — Publish.** GitHub Pages write-up, deployed test-mode demo, recorded video.
 
