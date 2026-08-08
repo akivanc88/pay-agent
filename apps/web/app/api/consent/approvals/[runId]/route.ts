@@ -12,6 +12,8 @@ import { decideApproval } from "@/lib/consent";
 interface DecideBody {
   decision?: "granted" | "denied";
   by?: string;
+  /** The human's explicit, opt-in choice to also trust this destination going forward. */
+  standingAuth?: boolean;
 }
 
 export async function POST(
@@ -48,7 +50,9 @@ export async function POST(
       const res = await fetch(`${agentUrl}/runs/${encodeURIComponent(runId)}/resume`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        // Forward the human's standing-authorization choice so the agent reissues the mandate only
+        // when the person explicitly asked to trust this destination going forward.
+        body: JSON.stringify({ standingAuth: body.standingAuth === true }),
         signal: AbortSignal.timeout(30_000),
       });
       settle = (await res.json()) as { ok: boolean; status: string; detail: string };
