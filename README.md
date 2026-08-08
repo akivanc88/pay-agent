@@ -130,6 +130,7 @@ own code.
 |---|---|
 | [`docs/PLAN.md`](docs/PLAN.md) | The plan, the architecture, and the argument |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | What's implemented, which spec each piece comes from, what's faked |
+| [`docs/FINDINGS.md`](docs/FINDINGS.md) | The written findings piece: checked against what happened when a version of this shipped in production |
 
 ## Grounding
 

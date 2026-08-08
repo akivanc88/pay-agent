@@ -212,9 +212,9 @@ never placed.
 | The funding plan shown before payment | Projected from `GET /funding/cards` | **Simplified** — a projection, not a quote. The merchant does the real draw at settlement; where a balance isn't readable the UI says so instead of guessing |
 | Card selection at checkout | Stripe's published test PaymentMethods | **Standard** — real authorize/capture in test mode against Stripe's test issuer |
 | `IntentMandate` / `CheckoutMandate` / `PaymentMandate` (`@pay-agent/mandate`) | AP2, via UCP↔AP2 layering guidance | **Simplified** — genuine EdDSA JWS with AP2 names, binding and expiry; not SD-JWT-VC |
-| Policy gate (spend cap + destination allowlist) | This project's own design | **Real** — halts *before* any draw; verifies the signed IntentMandate |
+| Policy gate (spend cap + destination allowlist) | This project's own design | **Real, per-transaction only** — halts *before* any draw; verifies the signed IntentMandate. No cumulative cap across runs — see Known gaps |
 | Append-only audit trail (`run_events`) | This project's own design | **Real** — trigger-enforced append-only, like the ledger |
-| Approvals (persist + decide-once) | This project's own design | **Real** — a decided approval cannot be flipped |
+| Approvals (persist + decide-once) | This project's own design | **Real, scoped to one run** — a decided approval cannot be flipped, but does not widen the IntentMandate it resolved — see Known gaps |
 | Scoped payment tokens + bind refusals | Stripe Shared Payment Tokens | **Simplified** — our own EdDSA-JWS scoped token, exchanged from the PaymentMandate and redeemed single-use *in the settlement flow* before each card leg; replay/amount/expiry/reuse refusals are real. Stripe's *issued* token is the production path, and is **not enabled on this account** (verified: `GET /v1/shared_payment/granted_tokens` → "Unrecognized request URL") |
 | Stripe payment link destination | Stripe | **Real** — external rail (M2), split drawn on our side |
 | StreamCo biller destination | — (no spec; it's a simulation) | **Simulated** — a biller with no API; the adapter scrapes the amount and refuses to guess when it can't |
@@ -340,10 +340,30 @@ Recorded so they are never mistaken for oversights:
 - No real authentication until the Supabase migration; multi-tenant isolation is
   therefore untested. `/enroll` acts for a fixture `demo-user` and is not access-controlled
   — it must not be exposed on the deployed demo as it stands.
-- Destinations do not verify agent identity until RFC 9421 signing lands.
+- Destinations do not verify agent identity until RFC 9421 signing lands — the same gap
+  the industry cites as its top concern with agent-initiated purchases: Visa reported a
+  25–40% spike in malicious bot-initiated transactions tied to agentic shopping, and 78%
+  of financial institutions surveyed expect fraud to rise specifically because of AI
+  shopping agents (retrieved 2026-08-07; see Sources). Until signing lands, a destination
+  has no mechanical way to tell this agent apart from that traffic.
 - Enrolled prepaid balance is **a hint, not a fact** — no API can query an open-loop
   prepaid balance. The planner must handle a decline gracefully regardless of what the
   user recorded.
+- **The policy gate has no cumulative cap.** `evaluatePolicy` in `apps/agent/src/
+  orchestrator.ts` checks each discovered amount against the IntentMandate's spend cap
+  independently; no total is tracked across runs. Within one IntentMandate's validity
+  window, an allowlisted destination can be charged up to the cap repeatedly with no
+  aggregate ceiling. This is the shape of the "agents malfunctioning... impose unexpected
+  costs on small businesses" concern raised against Google's UCP (retrieved 2026-08-07;
+  see Sources) — a per-transaction cap bounds one bad call, not a runaway sequence of them.
+  **Tracked as M4.5** (`docs/PLAN.md`), not yet built.
+- **An approval does not become a standing authorization.** `resumeRun`
+  (`apps/agent/src/orchestrator.ts`) resolves only the one run a human approved; it does
+  not widen the IntentMandate's cap or allowlist. An identical recurring charge that needed
+  manual approval once needs it again next time, unless the cap was already high enough
+  that it never needed approval to begin with. "Approve once, remembered after that" is
+  not yet built, and no surface in this project currently claims otherwise — recorded here
+  so it stays that way. **Tracked as M4.5** (`docs/PLAN.md`), not yet built.
 
 ## Sources
 
@@ -366,6 +386,16 @@ added later carries its own date.
 | Stripe test cards | `https://docs.stripe.com/testing` |
 | Visa TAP (reference only, not a dependency) | `https://developer.visa.com/capabilities/trusted-agent-protocol/trusted-agent-protocol-specifications` |
 | RFC 9421 — HTTP Message Signatures | IETF |
+
+**Market/industry evidence, retrieved 2026-08-07** — cited in Known gaps above and in
+`docs/PLAN.md` → Context, not used to justify any technical claim in this document:
+
+| Topic | Source |
+|---|---|
+| OpenAI ends Instant Checkout — conversion and merchant-adoption numbers | `cnbc.com/2026/03/24/openai-revamps-shopping-experience-in-chatgpt-after-instant-checkout`, `modernretail.co/technology/what-went-wrong-with-chatgpts-instant-checkout` |
+| UCP co-developed by Google and Shopify (with Etsy, Wayfair, Target, Walmart) | `geekseller.com/blog/google-and-shopify-introduce-universal-commerce-protocol-for-agentic-commerce` |
+| Bot-initiated transaction fraud tied to agentic shopping (Visa data, FI survey) | `paymentsdive.com/news/bot-payments-lag-in-agentic-commerce-ai-shopping-retail/810815` |
+| UCP price-parity / antitrust criticism | `thesling.org/the-harm-to-consumers-and-sellers-from-universal-commerce-protocol-in-googles-own-words` |
 
 **Measured, not recalled:** `samples/rest/nodejs` passes **28/28 tests, 0
 vulnerabilities** on the development machine (2026-07-30). That result is why this project
