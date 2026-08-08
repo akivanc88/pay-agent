@@ -20,12 +20,16 @@ CREATE TABLE IF NOT EXISTS runs (
   description    TEXT NOT NULL,
   status         TEXT NOT NULL CHECK (status IN
                    ('open','pending_approval','approved','denied','settled','failed')),
+  -- The jti of the IntentMandate that gated this run; the cumulative-cap sum keys off it. Nullable
+  -- because it is stamped just after createRun, once the intent is verified.
+  intent_jti     TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_status ON runs (status);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs (created_at);
+CREATE INDEX IF NOT EXISTS idx_runs_intent ON runs (intent_jti);
 
 CREATE TABLE IF NOT EXISTS run_events (
   seq        INTEGER PRIMARY KEY AUTOINCREMENT,

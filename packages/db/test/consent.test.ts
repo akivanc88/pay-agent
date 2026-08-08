@@ -111,3 +111,43 @@ test("mandates are stored and returned per run", async () => {
   assert.deepEqual(mandates.map((m) => m.kind), ["CheckoutMandate", "PaymentMandate"]);
   await store.close();
 });
+
+test("cumulative sum totals only settled runs gated by a given IntentMandate jti", async () => {
+  const store = freshStore();
+  // Two runs gated by intent "int_A", one settled and one not; a third gated by "int_B".
+  const r1 = await seedRun(store, { amountMinor: 2000 });
+  const r2 = await seedRun(store, { amountMinor: 2500 });
+  const r3 = await seedRun(store, { amountMinor: 900 });
+  await store.setRunIntentJti(r1.id, "int_A");
+  await store.setRunIntentJti(r2.id, "int_A");
+  await store.setRunIntentJti(r3.id, "int_B");
+
+  // Nothing settled yet → zero under either mandate.
+  assert.equal(await store.sumSettledAmountForMandate("int_A"), 0);
+
+  await store.setRunStatus(r1.id, "settled");
+  assert.equal(await store.sumSettledAmountForMandate("int_A"), 2000, "only r1 (settled) counts");
+  await store.setRunStatus(r2.id, "settled");
+  assert.equal(await store.sumSettledAmountForMandate("int_A"), 4500, "r1 + r2 both settled under int_A");
+  await store.setRunStatus(r3.id, "settled");
+  assert.equal(await store.sumSettledAmountForMandate("int_A"), 4500, "r3 is gated by int_B, not int_A");
+  assert.equal(await store.sumSettledAmountForMandate("int_B"), 900);
+  await store.close();
+});
+
+test("the same IntentMandate can gate several runs, and each run's timeline still shows it", async () => {
+  const store = freshStore();
+  const r1 = await seedRun(store);
+  const r2 = await seedRun(store);
+  // The same signed IntentMandate gates both runs — recorded once per run, second is a no-op.
+  await store.recordMandate({ jti: "intent_shared", runId: r1.id, kind: "IntentMandate", jws: "i.j.k", kid: "mk_1" });
+  await store.recordMandate({ jti: "intent_shared", runId: r2.id, kind: "IntentMandate", jws: "i.j.k", kid: "mk_1" });
+  await store.setRunIntentJti(r1.id, "intent_shared");
+  await store.setRunIntentJti(r2.id, "intent_shared");
+
+  // Even though the row is stored under r1, r2's timeline includes the gating IntentMandate.
+  const m2 = await store.mandatesForRun(r2.id);
+  assert.deepEqual(m2.map((m) => m.kind), ["IntentMandate"]);
+  assert.equal(m2[0]!.jti, "intent_shared");
+  await store.close();
+});

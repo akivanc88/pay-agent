@@ -38,6 +38,7 @@ interface RunRow {
   currency: string;
   description: string;
   status: RunStatus;
+  intent_jti: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +83,7 @@ function toRun(row: RunRow): Run {
     currency: row.currency,
     description: row.description,
     status: row.status,
+    intentJti: row.intent_jti ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -156,6 +158,24 @@ class SqliteConsentStore implements ConsentStore {
       .prepare(`UPDATE runs SET status = ?, updated_at = ? WHERE id = ?`)
       .run(status, new Date().toISOString(), runId);
     if (res.changes === 0) throw new ConsentError(`no such run ${runId}`);
+  }
+
+  async setRunIntentJti(runId: string, jti: string): Promise<void> {
+    const res = this.db
+      .prepare(`UPDATE runs SET intent_jti = ?, updated_at = ? WHERE id = ?`)
+      .run(jti, new Date().toISOString(), runId);
+    if (res.changes === 0) throw new ConsentError(`no such run ${runId}`);
+  }
+
+  async sumSettledAmountForMandate(jti: string): Promise<number> {
+    const row = this.db
+      .prepare(
+        `SELECT COALESCE(SUM(amount_minor), 0) AS total
+           FROM runs
+          WHERE intent_jti = ? AND status = 'settled'`,
+      )
+      .get(jti) as { total: number };
+    return row.total;
   }
 
   async appendEvent(
@@ -250,18 +270,31 @@ class SqliteConsentStore implements ConsentStore {
   }
 
   async recordMandate(input: RecordMandateInput): Promise<void> {
+    // A single IntentMandate legitimately gates many runs, so the *same* jti is recorded once per
+    // run it authorizes. The row's content is immutable (same signed jws), so DO NOTHING on a
+    // repeat is correct — and it never fires the append-only UPDATE trigger, unlike DO UPDATE.
     this.db
       .prepare(
         `INSERT INTO mandates (jti, run_id, kind, jws, kid, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(jti) DO NOTHING`,
       )
       .run(input.jti, input.runId, input.kind, input.jws, input.kid, new Date().toISOString());
   }
 
   async mandatesForRun(runId: string): Promise<StoredMandate[]> {
+    // Rows recorded against this run, plus the gating IntentMandate — which, when the same intent
+    // gated an earlier run, is stored under that first run's id yet still belongs on this timeline.
     const rows = this.db
-      .prepare(`SELECT * FROM mandates WHERE run_id = ? ORDER BY created_at`)
-      .all(runId) as MandateRow[];
+      .prepare(
+        `SELECT m.* FROM mandates m WHERE m.run_id = ?
+         UNION
+         SELECT m.* FROM mandates m
+           JOIN runs r ON r.intent_jti = m.jti
+          WHERE r.id = ? AND m.kind = 'IntentMandate'
+         ORDER BY created_at`,
+      )
+      .all(runId, runId) as MandateRow[];
     return rows.map((row) => ({
       jti: row.jti,
       runId: row.run_id,
@@ -285,5 +318,14 @@ export function openConsentStore(filename: string): ConsentStore {
   const db = new Database(filename);
   db.pragma("journal_mode = WAL");
   db.exec(CONSENT_SCHEMA_SQL);
+  // Additive migration for consent DBs created before the cumulative cap landed: `CREATE TABLE IF
+  // NOT EXISTS` leaves an existing `runs` untouched, so backfill the column the M4.5 gate needs.
+  const hasIntentJti = (db.prepare(`PRAGMA table_info(runs)`).all() as { name: string }[]).some(
+    (c) => c.name === "intent_jti",
+  );
+  if (!hasIntentJti) {
+    db.exec(`ALTER TABLE runs ADD COLUMN intent_jti TEXT;
+             CREATE INDEX IF NOT EXISTS idx_runs_intent ON runs (intent_jti);`);
+  }
   return new SqliteConsentStore(db);
 }

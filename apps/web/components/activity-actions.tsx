@@ -27,6 +27,11 @@ interface DecideResponse {
   settle?: { ok: boolean; status: string; detail: string } | null;
 }
 
+/** Minor units → a readable amount for the checkbox label (the Money component renders an element). */
+function formatAmount(minor: number, currency: string): string {
+  return new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(minor / 100);
+}
+
 function CheckGlyph() {
   return (
     <svg
@@ -63,26 +68,39 @@ function XGlyph() {
   );
 }
 
+/** Where the "trust going forward" choice appears, it needs the destination and amount to name it. */
+export interface StandingAuthOffer {
+  readonly destinationId: string;
+  readonly amountMinor: number;
+  readonly currency: string;
+}
+
 export function ActivityActions({
   runId,
   decidedBy,
   size = "md",
+  standingAuth,
 }: {
   runId: string;
   decidedBy: string;
   size?: "sm" | "md" | "lg";
+  /** When present, offer an opt-in "also trust this destination going forward" checkbox. */
+  standingAuth?: StandingAuthOffer;
 }) {
   const router = useRouter();
   const [state, setState] = useState<DecideState>({ phase: "idle" });
+  const [trustForward, setTrustForward] = useState(false);
 
   async function decide(decision: Decision) {
     setState({ phase: "busy", decision });
+    // Standing authorization is opt-in and only meaningful on a grant; a denial never widens trust.
+    const standing = decision === "granted" && trustForward;
     let res: Response;
     try {
       res = await fetch(`/api/consent/approvals/${runId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, by: decidedBy }),
+        body: JSON.stringify({ decision, by: decidedBy, standingAuth: standing }),
       });
     } catch {
       setState({ phase: "error", message: "Couldn't reach the server. Try again." });
@@ -129,6 +147,21 @@ export function ActivityActions({
         </div>
       ) : (
         <>
+          {standingAuth && (
+            <label className={styles.standing}>
+              <input
+                type="checkbox"
+                className={styles.standingBox}
+                checked={trustForward}
+                disabled={state.phase === "busy"}
+                onChange={(e) => setTrustForward(e.target.checked)}
+              />
+              <span className={styles.standingText}>
+                Also trust {standingAuth.destinationId} up to{" "}
+                {formatAmount(standingAuth.amountMinor, standingAuth.currency)} going forward
+              </span>
+            </label>
+          )}
           <div className={styles.buttons}>
             <Button
               type="button"
@@ -138,7 +171,7 @@ export function ActivityActions({
               disabled={state.phase === "busy" && state.decision === "denied"}
               onClick={() => decide("granted")}
             >
-              Approve
+              {trustForward ? "Approve & trust" : "Approve"}
             </Button>
             <Button
               type="button"

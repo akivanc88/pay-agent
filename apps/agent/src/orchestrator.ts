@@ -21,6 +21,7 @@
 import type { ConsentStore, ApprovalReason, Run } from "@pay-agent/db";
 import {
   issueCheckoutMandate,
+  issueIntentMandate,
   issuePaymentMandate,
   issuePaymentToken,
   redeemPaymentToken,
@@ -54,13 +55,41 @@ export interface PolicyContext {
 export type RunOutcome =
   | { readonly status: "pending_approval"; readonly run: Run; readonly detail: string }
   | { readonly status: "denied"; readonly run: Run }
-  | { readonly status: "settled"; readonly run: Run; readonly result: PaymentResult; readonly confirmation: PaymentStatus }
+  | {
+      readonly status: "settled";
+      readonly run: Run;
+      readonly result: PaymentResult;
+      readonly confirmation: PaymentStatus;
+      /**
+       * When a human approved *with* standing authorization, the newly reissued IntentMandate — a
+       * brand-new signed mandate (new jti, widened cap/allowlist, fresh expiry) that a future run can
+       * present so the same recurring charge settles with no prompt. Absent on a plain one-time approve.
+       */
+      readonly reissuedIntent?: SignedMandate<IntentClaims>;
+    }
   | { readonly status: "failed"; readonly run: Run; readonly result: PaymentResult };
 
-/** The policy verdict, computed from the verified intent and the discovered amount. */
+/** How a human's approval decision may widen standing authorization. Never set by the model. */
+export interface ResumeOptions {
+  /**
+   * The human, in the approval UI, chose "approve **and** trust this destination going forward". When
+   * true, `resumeRun` reissues the run's gating IntentMandate — widened to cover this destination and
+   * amount, with a fresh expiry — and persists it before settling. Opt-in and explicit: a plain
+   * approve leaves this false and never widens the mandate. This flag is only ever plumbed from the
+   * human approval surface; the brain's `resume_run` tool does not expose it (AGENTS.md rule 26).
+   */
+  readonly grantStandingAuth?: boolean;
+}
+
+/**
+ * The policy verdict, computed from the verified intent, the discovered amount, and the total already
+ * settled under this mandate. Pure and synchronous: the running total is looked up by `startRun` and
+ * passed in, so this stays trivially testable and free of the store.
+ */
 function evaluatePolicy(
   intent: IntentClaims,
   due: AmountDue,
+  settledTotalMinor: number,
 ): { readonly ok: boolean; readonly reasons: ApprovalReason[]; readonly detail: string } {
   const reasons: ApprovalReason[] = [];
   const notes: string[] = [];
@@ -74,6 +103,18 @@ function evaluatePolicy(
     notes.push(
       `${formatMinor(due.amountMinor, due.currency)} exceeds the ` +
         `${formatMinor(intent.spendCapMinor, intent.currency)} spend cap`,
+    );
+  }
+  // Cumulative ceiling — opt-in. When set, a per-transaction-legal amount is still refused if it
+  // would push the running total under this mandate past the budget. `>` not `>=`: spending exactly
+  // to the cap is allowed; only crossing it halts.
+  if (intent.cumulativeCapMinor !== undefined && settledTotalMinor + due.amountMinor > intent.cumulativeCapMinor) {
+    reasons.push("over_cumulative_cap");
+    notes.push(
+      `${formatMinor(due.amountMinor, due.currency)} would bring spending under this authorization to ` +
+        `${formatMinor(settledTotalMinor + due.amountMinor, intent.currency)}, over the ` +
+        `${formatMinor(intent.cumulativeCapMinor, intent.currency)} cumulative cap ` +
+        `(already ${formatMinor(settledTotalMinor, intent.currency)} settled)`,
     );
   }
   if (!intent.destinationAllowlist.includes(due.destinationId)) {
@@ -112,10 +153,29 @@ export async function startRun(
   // Verify the user's standing authorization before trusting any field on it.
   const intent = verifyIntentMandate(policy.intent.jws, issuerKey.publicKey);
   await consent.recordMandate({ jti: intent.jti, runId: run.id, kind: "IntentMandate", jws: policy.intent.jws, kid: policy.intent.kid });
-  await consent.appendEvent(run.id, "mandate_verified", `Verified IntentMandate: cap ${formatMinor(intent.spendCapMinor, intent.currency)}, allowlist [${intent.destinationAllowlist.join(", ")}]`);
+  // Stamp this run's *gating* intent so the cumulative-cap sum can key off it.
+  await consent.setRunIntentJti(run.id, intent.jti);
+  await consent.appendEvent(
+    run.id,
+    "mandate_verified",
+    `Verified IntentMandate: cap ${formatMinor(intent.spendCapMinor, intent.currency)}` +
+      (intent.cumulativeCapMinor !== undefined ? `, cumulative ${formatMinor(intent.cumulativeCapMinor, intent.currency)}` : "") +
+      `, allowlist [${intent.destinationAllowlist.join(", ")}]`,
+  );
+
+  // The running total already settled under this mandate — the cumulative gate compares against it.
+  const settledTotalMinor = await consent.sumSettledAmountForMandate(intent.jti);
+  if (intent.cumulativeCapMinor !== undefined) {
+    await consent.appendEvent(
+      run.id,
+      "info",
+      `Cumulative usage under this authorization: ${formatMinor(settledTotalMinor, intent.currency)} of ${formatMinor(intent.cumulativeCapMinor, intent.currency)} settled before this run.`,
+      { settledTotalMinor, cumulativeCapMinor: intent.cumulativeCapMinor },
+    );
+  }
 
   // Policy gate — before any capabilities call or instrument work.
-  const verdict = evaluatePolicy(intent, due);
+  const verdict = evaluatePolicy(intent, due, settledTotalMinor);
   if (!verdict.ok) {
     await consent.setRunStatus(run.id, "pending_approval");
     await consent.appendEvent(run.id, "policy_blocked", `Policy blocked the run: ${verdict.detail}`, { reasons: verdict.reasons });
@@ -131,8 +191,18 @@ export async function startRun(
 /**
  * Resume a run a human approved. Re-discovers the amount and refuses if it moved from what was
  * approved — an amount that changed after the human agreed is not the amount they agreed to.
+ *
+ * `options.grantStandingAuth` carries the human's *separate, explicit* choice to also trust this
+ * destination going forward: when set, and only after a human's grant is on record, the run's gating
+ * IntentMandate is reissued (widened + fresh expiry) and persisted before settling. A plain approve
+ * leaves it untouched — nothing here silently escalates trust.
  */
-export async function resumeRun(runId: string, deps: OrchestratorDeps, policy: PolicyContext): Promise<RunOutcome> {
+export async function resumeRun(
+  runId: string,
+  deps: OrchestratorDeps,
+  policy: PolicyContext,
+  options: ResumeOptions = {},
+): Promise<RunOutcome> {
   const { destination, consent } = deps;
   const run = await consent.getRun(runId);
   if (!run) throw new Error(`no such run ${runId}`);
@@ -155,8 +225,74 @@ export async function resumeRun(runId: string, deps: OrchestratorDeps, policy: P
     return { status: "pending_approval", run: (await consent.getRun(runId)) as Run, detail };
   }
 
+  // Standing authorization — the human's explicit second choice. The grant above (a human decision on
+  // record) is the authority; this flag only reaches here from the approval surface, never the model.
+  let reissuedIntent: SignedMandate<IntentClaims> | undefined;
+  if (options.grantStandingAuth) {
+    reissuedIntent = await reissueStandingAuth(run, due, approval, deps);
+  }
+
   await consent.setRunStatus(runId, "approved");
-  return settle(runId, due, deps, policy);
+  const outcome = await settle(runId, due, deps, policy);
+  return outcome.status === "settled" && reissuedIntent ? { ...outcome, reissuedIntent } : outcome;
+}
+
+/**
+ * Reissue the run's gating IntentMandate as a new standing authorization: a brand-new signed mandate
+ * (new jti) that adds this destination to the allowlist, raises the per-transaction cap to at least
+ * cover the approved amount, carries any cumulative budget forward (raised to cover it too), and gets
+ * a fresh expiry equal to the original's window. Mandates are immutable — this mints a new one, never
+ * mutates the old — and it is persisted against the run for the audit trail, but is deliberately *not*
+ * made the run's `intent_jti`, so this settled run never back-counts against the new budget.
+ */
+async function reissueStandingAuth(
+  run: Run,
+  due: AmountDue,
+  approval: { readonly decidedBy: string | null },
+  deps: OrchestratorDeps,
+): Promise<SignedMandate<IntentClaims> | undefined> {
+  const { consent, issuerKey } = deps;
+
+  // The mandate this run was gated by is on record; read its claims (verifying the signature, but
+  // tolerating expiry — we are reissuing precisely because it may be stale).
+  const stored = await consent.mandatesForRun(run.id);
+  const intentRow = stored.find((m) => m.kind === "IntentMandate" && (run.intentJti ? m.jti === run.intentJti : true));
+  if (!intentRow) {
+    await consent.appendEvent(run.id, "info", "Standing authorization not granted: this run has no gating IntentMandate on record to reissue.");
+    return undefined;
+  }
+  const original = verifyIntentMandate(intentRow.jws, issuerKey.publicKey, 0);
+
+  const allowlist = original.destinationAllowlist.includes(due.destinationId)
+    ? [...original.destinationAllowlist]
+    : [...original.destinationAllowlist, due.destinationId];
+  const spendCapMinor = Math.max(original.spendCapMinor, due.amountMinor);
+  const cumulativeCapMinor =
+    original.cumulativeCapMinor !== undefined ? Math.max(original.cumulativeCapMinor, due.amountMinor) : undefined;
+  const ttlSeconds = Math.max(original.exp - original.iat, 3600);
+
+  const reissued = issueIntentMandate(
+    {
+      userId: original.userId,
+      spendCapMinor,
+      ...(cumulativeCapMinor !== undefined ? { cumulativeCapMinor } : {}),
+      currency: original.currency,
+      destinationAllowlist: allowlist,
+      ttlSeconds,
+    },
+    issuerKey,
+  );
+  await consent.recordMandate({ jti: reissued.claims.jti, runId: run.id, kind: "IntentMandate", jws: reissued.jws, kid: reissued.kid });
+  await consent.appendEvent(
+    run.id,
+    "mandate_issued",
+    `Reissued IntentMandate as a standing authorization at ${approval.decidedBy ?? "a reviewer"}'s request: trust ${due.destinationId} up to ` +
+      `${formatMinor(spendCapMinor, original.currency)}` +
+      (cumulativeCapMinor !== undefined ? ` (cumulative ${formatMinor(cumulativeCapMinor, original.currency)})` : "") +
+      ` going forward. New jti ${reissued.claims.jti}.`,
+    { jti: reissued.claims.jti, spendCapMinor, cumulativeCapMinor: cumulativeCapMinor ?? null, allowlist },
+  );
+  return reissued;
 }
 
 /** Issue the signed mandates, exchange a scoped token, settle the mix on the destination, and confirm. */

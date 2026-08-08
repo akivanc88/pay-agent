@@ -44,6 +44,16 @@ $ pnpm --filter @pay-agent/agent demo:instruct --stub "Pay my StreamCo bill from
 The same request "up to $20" **pauses** at the gate with nothing drawn and asks you to approve it in
 the inbox. `--auto-approve` plays the human's part end to end.
 
+**M4.5 done — standing authorization and a cumulative cap.** Two things a user notices missing first
+from an agent that pays on their behalf. Approving a paused run now offers an explicit, opt-in *"and
+trust this destination up to `<amount>` going forward"* — which **reissues** your signed IntentMandate
+(new id, widened cap and allowlist, fresh expiry) so the identical recurring bill next cycle settles
+with no prompt; a plain approve never widens it, and the model can never ask for it. And the mandate
+gains a **cumulative ceiling** on top of the per-transaction cap: the policy gate sums what has already
+settled under it and refuses once the running total plus a new charge would cross the budget — so three
+charges each under the per-charge cap still halt at the third once they'd exceed the total. The
+cumulative window is the mandate's own expiry (no independent monthly reset — a stated stretch).
+
 **M3 done — a third destination, signed consent, and a human in the loop.** One planner
 pays three destinations without branching on which: a UCP storefront, a Stripe payment link,
 and **StreamCo** — a simulated subscription biller with *no* payment API, whose amount the agent

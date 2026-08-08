@@ -124,11 +124,14 @@ const server = createServer(async (req, res) => {
   const resume = url.pathname.match(/^\/runs\/([^/]+)\/resume$/);
   if (req.method === "POST" && resume) {
     const runId = decodeURIComponent(resume[1]!);
+    const body = await readBody(req);
+    // The human's explicit "trust this destination going forward" choice, from the approval UI.
+    const standingAuth = body.standingAuth === true;
     // A fresh store handle per request — the file is shared with the dashboard, and a short-lived
     // handle can't go stale under WAL.
     const consent = openConsentStore(consentPath);
     try {
-      const result = await resumeAndSettle(runId, consent, issuerKey, env);
+      const result = await resumeAndSettle(runId, consent, issuerKey, env, standingAuth);
       return json(res, result.ok ? 200 : 200, result); // 200 either way; `ok` carries success
     } catch (err) {
       return json(res, 500, { ok: false, status: "error", detail: (err as Error).message });

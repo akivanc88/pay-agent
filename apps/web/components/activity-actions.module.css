@@ -10,6 +10,30 @@
   flex-wrap: wrap;
 }
 
+/* The opt-in standing-authorization choice — a quiet line above the buttons, never a default. */
+.standing {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  cursor: pointer;
+  line-height: 1.45;
+}
+
+.standingBox {
+  flex: none;
+  margin-top: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--brand);
+}
+
+.standingText {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
 .error {
   margin-top: var(--sp-2);
   font-size: var(--text-sm);
