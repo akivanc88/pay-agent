@@ -70,6 +70,33 @@
   overflow-wrap: anywhere;
 }
 
+/* Cumulative-cap usage, shown under an IntentMandate that declares a budget. */
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.usageBar {
+  height: 0.4rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.usageFill {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: inherit;
+}
+
+.usageLabel {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
 .empty {
   padding: var(--sp-5);
   font-size: var(--text-base);

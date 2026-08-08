@@ -21,6 +21,8 @@ function reasonText(
       ) : (
         "Over your spend cap"
       );
+    case "over_cumulative_cap":
+      return "Over your cumulative budget for this authorization";
     case "destination_not_allowlisted":
       return `${humanizeId(destinationId)} isn't on your allowlist`;
     case "uncovered":

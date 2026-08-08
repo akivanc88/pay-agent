@@ -38,7 +38,7 @@ const DRIVER_ALLOWED_DIRS = [
   join("apps", "store", "src", "data"),
 ];
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "coverage"]);
+const SKIP_DIRS = new Set(["node_modules", ".git", ".claude", "dist", "build", ".next", "coverage"]);
 
 function sourceFiles(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

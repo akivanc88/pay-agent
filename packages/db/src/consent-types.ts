@@ -45,6 +45,7 @@ export type RunEventKind =
 /** Why an approval was required. A run can trip more than one at once. */
 export type ApprovalReason =
   | "over_cap"
+  | "over_cumulative_cap"
   | "destination_not_allowlisted"
   | "uncovered"
   | "currency_mismatch";
@@ -63,6 +64,13 @@ export interface Run {
   readonly currency: string;
   readonly description: string;
   readonly status: RunStatus;
+  /**
+   * The `jti` of the IntentMandate that *gated* this run (set once, at `startRun`). This is the key
+   * the cumulative-cap ceiling sums by; a mandate reissued by a standing-authorization approval is
+   * recorded against the run but deliberately does not become its gating intent, so it never
+   * back-counts this run's spend against the new budget.
+   */
+  readonly intentJti: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

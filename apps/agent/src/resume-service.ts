@@ -81,12 +81,19 @@ export interface ResumeResult {
   readonly detail: string;
 }
 
-/** Resume and settle an approved run against its real destination. */
+/**
+ * Resume and settle an approved run against its real destination.
+ *
+ * `standingAuth` carries the human's explicit "trust this destination going forward" choice from the
+ * approval UI. It is threaded here from the dashboard, never from the model — the brain's tool surface
+ * has no way to set it — and `resumeRun` only honours it once a human's grant is on record.
+ */
 export async function resumeAndSettle(
   runId: string,
   consent: ConsentStore,
   issuerKey: IssuerKey,
   env: ResumeEnv,
+  standingAuth = false,
 ): Promise<ResumeResult> {
   const run = await consent.getRun(runId);
   if (!run) return { ok: false, status: "unknown", detail: `no such run ${runId}` };
@@ -108,10 +115,19 @@ export async function resumeAndSettle(
       { userId: run.userId, spendCapMinor: run.amountMinor, currency: run.currency, destinationAllowlist: [run.destinationId], ttlSeconds: 600 },
       issuerKey,
     );
-    const outcome = await resumeRun(runId, { destination, funding, consent, issuerKey }, { userId: run.userId, intent });
+    const outcome = await resumeRun(
+      runId,
+      { destination, funding, consent, issuerKey },
+      { userId: run.userId, intent },
+      { grantStandingAuth: standingAuth },
+    );
+    const standing =
+      outcome.status === "settled" && outcome.reissuedIntent
+        ? " — and reissued your IntentMandate to trust this destination going forward"
+        : "";
     const detail =
       outcome.status === "settled"
-        ? `settled (${outcome.result.detail})`
+        ? `settled (${outcome.result.detail})${standing}`
         : outcome.status === "pending_approval"
           ? `still pending: ${outcome.detail}`
           : `did not settle (${outcome.status})`;

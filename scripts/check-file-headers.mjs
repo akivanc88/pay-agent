@@ -19,6 +19,7 @@ if (!["--check", "--report"].includes(mode) || process.argv.length > 3) {
 const eligibleExtensions = new Set([".ts", ".tsx", ".mjs", ".css", ".html"]);
 const excludedDirectories = new Set([
   ".git",
+  ".claude",
   ".next",
   ".turbo",
   ".cache",
