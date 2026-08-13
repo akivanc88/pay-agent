@@ -25,7 +25,7 @@ export { STRIPE_HANDLER_ID } from "@pay-agent/protocol";
  * 2. **A deployed build refuses to boot if a live key is present at all.** The hosted demo
  *    is test-mode only; a public URL and live card rails must never meet.
  *
- * Nothing here reaches the live path. M4's guarded decline builds on `liveClient()`, which
+ * Nothing here reaches the live path. M5's guarded decline builds on `liveClient()`, which
  * exists but is unreachable from checkout.
  */
 
@@ -117,11 +117,14 @@ export function testClient(): Stripe | null {
 /**
  * The live client. Deliberately separate, deliberately unused by checkout.
  *
- * M4's one real transaction calls this directly, behind its own guard that refuses to run
+ * M5's one real transaction calls this directly, behind its own guard that refuses to run
  * unless the charge exceeds the enrolled balance. Keeping it out of the checkout path means
  * no request can reach it.
  */
+let liveOverride: Stripe | null = null;
+
 export function liveClient(): Stripe {
+  if (liveOverride) return liveOverride;
   assertSafeStripeConfig();
   const key = process.env["STRIPE_LIVE_SECRET_KEY"];
   if (!key) {
@@ -135,6 +138,11 @@ export function liveClient(): Stripe {
 /** Test seam — lets a test drive the checkout without reaching the network. */
 export function setStripeClient(replacement: Stripe | null): void {
   client = replacement;
+}
+
+/** Test seam — lets a test drive the guarded live path without a real live key or network. */
+export function setLiveClient(replacement: Stripe | null): void {
+  liveOverride = replacement;
 }
 
 export interface Authorization {
@@ -221,6 +229,93 @@ export async function authorizeCard(args: {
   } catch (err) {
     return declineOutcome(err);
   }
+}
+
+/** Refused because a live charge that could plausibly succeed must never reach `liveClient()`. */
+export class LiveGuardError extends StripeConfigError {}
+
+/**
+ * The one guard the M5 live path exists to enforce, split out so it can be asserted without a
+ * live key, a network call, or `liveClient()` ever being reached — "verify by unit test, not
+ * by trying it" (`docs/PLAN.md`, verification item 9).
+ *
+ * An enrolled open-loop balance is a hint the user typed, not a fact any API can confirm (see
+ * `docs/DESIGN.md` → Known gaps). That is exactly why this demo may only ever attempt an
+ * amount that *exceeds* it: the point is to observe a genuine issuer decline, and an amount
+ * that could plausibly succeed must never be tried against a live card.
+ */
+export function assertAmountExceedsEnrolledBalance(
+  amount: MinorUnits,
+  enrolledBalance: MinorUnits,
+): void {
+  if (amount <= enrolledBalance) {
+    throw new LiveGuardError(
+      `Refusing to attempt a live charge of ${amount} against an enrolled balance of ` +
+        `${enrolledBalance}. This path exists only to observe a genuine over-balance decline; ` +
+        `an amount that could plausibly succeed must never reach the live client.`,
+    );
+  }
+}
+
+/**
+ * The one real transaction this project ever makes.
+ *
+ * Guarded twice over: `assertAmountExceedsEnrolledBalance` refuses before any network call,
+ * and even if the card unexpectedly authorizes anyway (the enrolled balance was wrong, or
+ * stale in the card's favor), the authorization is cancelled immediately and reported as
+ * `unexpectedly_authorized` rather than treated as this demo's decline. `captureAuthorization`
+ * is never called from here, under any outcome — nothing this function does can ever move
+ * real money.
+ */
+export async function attemptGuardedLiveDecline(args: {
+  readonly paymentMethodId: string;
+  readonly amount: MinorUnits;
+  readonly enrolledBalance: MinorUnits;
+  readonly currency?: string;
+  readonly runId: string;
+}): Promise<AuthorizationOutcome> {
+  assertAmountExceedsEnrolledBalance(args.amount, args.enrolledBalance);
+
+  const stripe = liveClient();
+  const currency = (args.currency ?? DEFAULT_CURRENCY).toLowerCase();
+
+  try {
+    const intent = await stripe.paymentIntents.create(
+      {
+        amount: args.amount,
+        currency,
+        payment_method: args.paymentMethodId,
+        capture_method: "manual",
+        confirm: true,
+        off_session: true,
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+        metadata: { run_id: args.runId, purpose: "m5_guarded_live_decline" },
+      },
+      { idempotencyKey: `${args.runId}:live-decline-check` },
+    );
+
+    // Reaching here means Stripe did NOT decline the charge — the only outcome this path is
+    // allowed to produce is a decline, so any other status is treated as a guard failure, not
+    // a success. The authorization is released immediately; it is never captured.
+    await stripe.paymentIntents.cancel(intent.id).catch(() => {});
+    return {
+      ok: false,
+      indeterminate: false,
+      code: intent.status === "requires_capture" ? "unexpectedly_authorized" : "unexpectedly_not_declined",
+      message:
+        `Live authorization ended in status "${intent.status}" instead of declining ` +
+        `${amountAndBalance(args)}. The authorization (${intent.id}) was cancelled immediately ` +
+        `and nothing was captured — but the recorded enrolled balance for this card is wrong; ` +
+        `do not report this as the M5 decline.`,
+      status: 402,
+    };
+  } catch (err) {
+    return declineOutcome(err);
+  }
+}
+
+function amountAndBalance(args: { amount: MinorUnits; enrolledBalance: MinorUnits }): string {
+  return `(asked ${args.amount} against a recorded balance of ${args.enrolledBalance})`;
 }
 
 /** Take the authorized money. Called only once the order is certain to exist. */

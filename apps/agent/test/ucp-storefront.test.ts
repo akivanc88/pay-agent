@@ -46,7 +46,8 @@ const plan: InstrumentPlan = {
   cardMinor: 5500,
   uncoveredMinor: 0,
   giftCard: { code: "GC-TEST-0001", pin: "1234", hintMinor: 2000, verified: true },
-  card: { token: "pm_card_visa", label: "Visa" },
+  card: { token: "pm_card_visa", label: "Visa", enrolledBalanceMinor: null },
+  cardLikelyExceedsEnrolledBalance: false,
 };
 
 const due: AmountDue = {

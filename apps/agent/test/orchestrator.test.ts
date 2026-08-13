@@ -58,7 +58,7 @@ function stubDestination(amountMinor: number, id = "streamco"): PaymentDestinati
 
 const funding: Funding = {
   giftCard: { code: "GC-TEST", pin: "1234", hintMinor: 2000, verified: true },
-  card: { token: "pm_stub", label: "Visa •••• 4242" },
+  card: { token: "pm_stub", label: "Visa •••• 4242", enrolledBalanceMinor: null },
 };
 
 function deps(destination: PaymentDestination): OrchestratorDeps {

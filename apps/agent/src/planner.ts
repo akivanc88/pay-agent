@@ -72,6 +72,13 @@ export function planInstruments(
   const cardAmount = caps.acceptsCard && funding.card ? afterGift : 0;
   const uncovered = afterGift - cardAmount;
 
+  // A card is authorized in full or not at all — unlike the gift card, the enrolled balance
+  // never truncates what is asked for. It only labels the plan when the ask looks larger than
+  // what the user recorded, and only when that balance is actually known (M5).
+  const enrolledBalance = funding.card?.enrolledBalanceMinor ?? null;
+  const cardLikelyExceedsEnrolledBalance =
+    cardAmount > 0 && enrolledBalance !== null && cardAmount > enrolledBalance;
+
   return {
     amountMinor: amount,
     currency: due.currency,
@@ -80,6 +87,7 @@ export function planInstruments(
     uncoveredMinor: uncovered,
     giftCard: gift,
     card: funding.card,
+    cardLikelyExceedsEnrolledBalance,
   };
 }
 
@@ -158,6 +166,10 @@ export async function runPayment(
       `card ${formatMinor(plan.cardMinor, plan.currency)}` +
       (plan.uncoveredMinor > 0
         ? `, UNCOVERED ${formatMinor(plan.uncoveredMinor, plan.currency)}`
+        : "") +
+      (plan.cardLikelyExceedsEnrolledBalance
+        ? `, likely to exceed the recorded card balance ` +
+          `(${formatMinor(plan.card!.enrolledBalanceMinor!, plan.currency)}) — expect a decline`
         : ""),
   );
 

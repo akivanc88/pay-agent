@@ -17,9 +17,13 @@ import {
 } from "../src/models";
 import { setFundingStore } from "../src/payments/gift-card";
 import {
+  assertAmountExceedsEnrolledBalance,
   assertSafeStripeConfig,
+  attemptGuardedLiveDecline,
   isDeployedEnvironment,
   liveClient,
+  LiveGuardError,
+  setLiveClient,
   setStripeClient,
   StripeConfigError,
 } from "../src/payments/stripe";
@@ -450,10 +454,104 @@ test("an ordinary local test-mode configuration is allowed", () => {
   assert.equal(isDeployedEnvironment({}), false);
 });
 
-// Skipped rather than failed once M4's key is actually on the machine: the assertion is
+// Skipped rather than failed once M5's key is actually on the machine: the assertion is
 // about the variable being absent, and it stops being a meaningful test when it is present.
 test("the live client cannot be built without the live variable", {
   skip: Boolean(process.env["STRIPE_LIVE_SECRET_KEY"]) && "a live key is configured locally",
 }, () => {
   assert.throws(() => liveClient(), StripeConfigError);
+});
+
+// ---------------------------------------------------------------------------
+// M5 — the guarded live-decline path
+//
+// No real Stripe key or network reaches these: `assertAmountExceedsEnrolledBalance` is a pure
+// guard, and `attemptGuardedLiveDecline` is exercised through `setLiveClient`'s test seam, the
+// same pattern `fakeStripe()` already uses for the test-mode client above.
+// ---------------------------------------------------------------------------
+
+function fakeLiveStripe(opts: { failCreate?: Error; createStatus?: string } = {}) {
+  const created: CreateParams[] = [];
+  const captured: string[] = [];
+  const cancelled: string[] = [];
+
+  const stripe = {
+    paymentIntents: {
+      create: async (params: CreateParams) => {
+        created.push(params);
+        if (opts.failCreate) throw opts.failCreate;
+        return { id: "pi_live_fake_123", status: opts.createStatus ?? "requires_capture" };
+      },
+      capture: async (id: string) => {
+        captured.push(id);
+        return { id, status: "succeeded" };
+      },
+      cancel: async (id: string) => {
+        cancelled.push(id);
+        return { id, status: "canceled" };
+      },
+    },
+  };
+
+  setLiveClient(stripe as unknown as Stripe);
+  return { created, captured, cancelled };
+}
+
+after(() => setLiveClient(null));
+
+test("the guard refuses an amount that does not exceed the enrolled balance", () => {
+  assert.throws(() => assertAmountExceedsEnrolledBalance(minorUnits(5000), minorUnits(5000)), LiveGuardError);
+  assert.throws(() => assertAmountExceedsEnrolledBalance(minorUnits(4000), minorUnits(5000)), LiveGuardError);
+});
+
+test("the guard allows an amount that exceeds the enrolled balance", () => {
+  assert.doesNotThrow(() => assertAmountExceedsEnrolledBalance(minorUnits(5001), minorUnits(5000)));
+});
+
+test("the guard refuses before any network call — no live client is ever touched", async () => {
+  const calls = fakeLiveStripe();
+  await assert.rejects(
+    attemptGuardedLiveDecline({
+      paymentMethodId: "pm_test",
+      amount: minorUnits(5000),
+      enrolledBalance: minorUnits(5000),
+      runId: "run_guard",
+    }),
+    LiveGuardError,
+  );
+  assert.deepEqual(calls.created, [], "the guard must fire before liveClient() is even reached");
+});
+
+test("a genuine issuer decline is reported as this demo's expected outcome", async () => {
+  fakeLiveStripe({ failCreate: declinedCard() });
+
+  const outcome = await attemptGuardedLiveDecline({
+    paymentMethodId: "pm_test",
+    amount: minorUnits(9000),
+    enrolledBalance: minorUnits(5000),
+    runId: "run_decline",
+  });
+
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok && !outcome.indeterminate) {
+    assert.equal(outcome.code, "insufficient_funds", "the issuer's own decline_code is reported");
+  }
+});
+
+test("an unexpected authorization is cancelled immediately and never captured", async () => {
+  const calls = fakeLiveStripe({ createStatus: "requires_capture" });
+
+  const outcome = await attemptGuardedLiveDecline({
+    paymentMethodId: "pm_test",
+    amount: minorUnits(9000),
+    enrolledBalance: minorUnits(5000),
+    runId: "run_unexpected",
+  });
+
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok && !outcome.indeterminate) {
+    assert.equal(outcome.code, "unexpectedly_authorized");
+  }
+  assert.deepEqual(calls.cancelled, ["pi_live_fake_123"], "an unexpected authorization must be released");
+  assert.deepEqual(calls.captured, [], "capture must never be reachable from the live-decline path");
 });

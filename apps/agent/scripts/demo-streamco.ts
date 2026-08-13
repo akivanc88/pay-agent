@@ -56,7 +56,7 @@ async function main(): Promise<void> {
       destination,
       funding: {
         giftCard: { ...gift, hintMinor: 2000, verified: true },
-        card: { token: "pm_card_visa", label: "Visa (test)" },
+        card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null },
       },
       consent,
       issuerKey,

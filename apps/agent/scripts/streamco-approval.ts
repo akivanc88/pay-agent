@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   // Cap $20 < the $45.99 bill → the policy gate halts it for approval, nothing drawn.
   const outcome = await startRun(
     "acct_demo",
-    { destination, funding: { giftCard: null, card: { token: "pm_card_visa", label: "Visa (test)" } }, consent, issuerKey },
+    { destination, funding: { giftCard: null, card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null } }, consent, issuerKey },
     { userId: "demo-user", intent: issueIntentMandate({ userId: "demo-user", spendCapMinor: 2000, currency: "CAD", destinationAllowlist: ["streamco"], ttlSeconds: 3600 }, issuerKey) },
   );
 

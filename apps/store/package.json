@@ -13,6 +13,7 @@
     "issue-card": "tsx scripts/issue-card.ts",
     "show-ledger": "tsx scripts/show-ledger.ts",
     "stripe-check": "tsx --env-file-if-exists=../../.env scripts/stripe-check.ts",
+    "live-decline-check": "tsx --env-file-if-exists=../../.env scripts/live-decline-check.ts",
     "start": "tsx --env-file-if-exists=../../.env src/index.ts"
   },
   "dependencies": {

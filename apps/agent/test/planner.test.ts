@@ -28,10 +28,14 @@ const gift = (hintMinor: number | null, verified = true) => ({
   hintMinor,
   verified,
 });
-const card = { token: "pm_card_visa", label: "Visa" };
+const card = (enrolledBalanceMinor: number | null = null) => ({
+  token: "pm_card_visa",
+  label: "Visa",
+  enrolledBalanceMinor,
+});
 
 test("gift drawn first, card takes the remainder", () => {
-  const funding: Funding = { giftCard: gift(2000), card };
+  const funding: Funding = { giftCard: gift(2000), card: card() };
   const plan = planInstruments(due(7500), caps(), funding);
   assert.equal(plan.giftDrawMinor, 2000);
   assert.equal(plan.cardMinor, 5500);
@@ -39,7 +43,7 @@ test("gift drawn first, card takes the remainder", () => {
 });
 
 test("a gift card that covers everything leaves the card untouched", () => {
-  const funding: Funding = { giftCard: gift(10000), card };
+  const funding: Funding = { giftCard: gift(10000), card: card() };
   const plan = planInstruments(due(7500), caps(), funding);
   assert.equal(plan.giftDrawMinor, 7500);
   assert.equal(plan.cardMinor, 0);
@@ -47,14 +51,14 @@ test("a gift card that covers everything leaves the card untouched", () => {
 });
 
 test("an unknown gift balance plans no draw rather than guessing", () => {
-  const funding: Funding = { giftCard: gift(null, false), card };
+  const funding: Funding = { giftCard: gift(null, false), card: card() };
   const plan = planInstruments(due(7500), caps(), funding);
   assert.equal(plan.giftDrawMinor, 0);
   assert.equal(plan.cardMinor, 7500);
 });
 
 test("a zero-balance gift card is a valid $0 draw, not a failure", () => {
-  const funding: Funding = { giftCard: gift(0), card };
+  const funding: Funding = { giftCard: gift(0), card: card() };
   const plan = planInstruments(due(7500), caps(), funding);
   assert.equal(plan.giftDrawMinor, 0);
   assert.equal(plan.cardMinor, 7500);
@@ -70,7 +74,7 @@ test("no card and a short gift card leaves the remainder uncovered, not silently
 });
 
 test("a destination whose currency differs from the amount due is refused, not converted", () => {
-  const funding: Funding = { giftCard: gift(2000), card };
+  const funding: Funding = { giftCard: gift(2000), card: card() };
   assert.throws(
     () => planInstruments(due(7500), caps({ currency: "USD" }), funding),
     CurrencyMismatch,
@@ -79,7 +83,7 @@ test("a destination whose currency differs from the amount due is refused, not c
 });
 
 test("a destination that does not accept a card plans no card leg", () => {
-  const funding: Funding = { giftCard: gift(2000), card };
+  const funding: Funding = { giftCard: gift(2000), card: card() };
   const plan = planInstruments(due(7500), caps({ acceptsCard: false }), funding);
   assert.equal(plan.giftDrawMinor, 2000);
   assert.equal(plan.cardMinor, 0, "no card leg when the destination won't take one");
@@ -89,7 +93,7 @@ test("a destination that does not accept a card plans no card leg", () => {
 test("the mix always sums to the amount due", () => {
   for (const amount of [1, 99, 2000, 7500, 12345]) {
     for (const hint of [null, 0, 500, 2000, 999999]) {
-      const plan = planInstruments(due(amount), caps(), { giftCard: gift(hint), card });
+      const plan = planInstruments(due(amount), caps(), { giftCard: gift(hint), card: card() });
       assert.equal(
         plan.giftDrawMinor + plan.cardMinor + plan.uncoveredMinor,
         amount,
@@ -97,4 +101,37 @@ test("the mix always sums to the amount due", () => {
       );
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// M5 — the enrolled balance as a planning hint for the card leg
+// ---------------------------------------------------------------------------
+
+test("a card leg is authorized in full even when it exceeds the recorded balance", () => {
+  // The enrolled balance never truncates the ask — only the gift card is drawn "up to". A
+  // card is authorized for the real remainder or not touched; the rail decides, not a guess.
+  const funding: Funding = { giftCard: gift(0), card: card(2000) };
+  const plan = planInstruments(due(7500), caps(), funding);
+  assert.equal(plan.cardMinor, 7500, "the full remainder is still asked for, never clamped to the hint");
+  assert.equal(plan.cardLikelyExceedsEnrolledBalance, true);
+});
+
+test("a card leg within the recorded balance is not flagged", () => {
+  const funding: Funding = { giftCard: gift(0), card: card(10000) };
+  const plan = planInstruments(due(7500), caps(), funding);
+  assert.equal(plan.cardLikelyExceedsEnrolledBalance, false);
+});
+
+test("an unknown enrolled balance is never flagged as exceeded", () => {
+  // Honesty rule made mechanical: an unknown balance cannot be claimed to be too low.
+  const funding: Funding = { giftCard: gift(0), card: card(null) };
+  const plan = planInstruments(due(7500), caps(), funding);
+  assert.equal(plan.cardLikelyExceedsEnrolledBalance, false);
+});
+
+test("a card leg of zero is never flagged, whatever the recorded balance", () => {
+  const funding: Funding = { giftCard: gift(7500), card: card(0) };
+  const plan = planInstruments(due(7500), caps(), funding);
+  assert.equal(plan.cardMinor, 0);
+  assert.equal(plan.cardLikelyExceedsEnrolledBalance, false);
 });

@@ -33,7 +33,7 @@ export function issueDemoCard(dollars: number): { code: string; pin: string } {
 export function demoWallet(gift: { code: string; pin: string }, giftHintMinor = 2000): Funding {
   return {
     giftCard: { ...gift, hintMinor: giftHintMinor, verified: true },
-    card: { token: "pm_card_visa", label: "Visa (test)" },
+    card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null },
   };
 }
 
@@ -41,7 +41,7 @@ export function demoWallet(gift: { code: string; pin: string }, giftHintMinor = 
 export function stubWallet(giftHintMinor = 2000): Funding {
   return {
     giftCard: { code: "GC-STUB", pin: "1234", hintMinor: giftHintMinor, verified: true },
-    card: { token: "pm_card_visa", label: "Visa (test)" },
+    card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null },
   };
 }
 

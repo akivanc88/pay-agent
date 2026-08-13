@@ -34,7 +34,7 @@ function issueCard(dollars: number): { code: string; pin: string } {
   return { code, pin: "1234" };
 }
 
-const card = { token: "pm_card_visa", label: "Visa (test)" } as const;
+const card = { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null } as const;
 
 function report(title: string, run: RunResult): void {
   console.log(`\n\x1b[1m${title}\x1b[0m`);
