@@ -84,8 +84,8 @@ export function OrderSummary({
           full
           className={styles.payBtn}
           onClick={onPay}
-          disabled={!canPay || paying}
-          aria-busy={paying}
+          disabled={!canPay}
+          loading={paying}
         >
           {paying ? (
             <span className={styles.payBusy}>

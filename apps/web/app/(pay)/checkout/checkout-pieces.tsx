@@ -163,7 +163,7 @@ export function Paid({ session }: { session: Session }) {
   const orderId = session.order?.id;
   return (
     <Container narrow>
-      <div className={`${styles.standalone} rise`}>
+      <div className={`${styles.standalone} rise`} role="status">
         <span className={styles.paidMark} aria-hidden>
           <svg
             viewBox="0 0 24 24"

@@ -190,7 +190,11 @@ export default function CheckoutPage() {
     Boolean(session) && fulfilled && !busy && (hasGift || hasCard) && !planFallsShort(plan);
 
   const onPay = async () => {
-    if (!session || !canPay) return;
+    // The button is never natively `disabled` while paying (that would eject focus mid-submit —
+    // see components/ui.tsx's `loading` prop), and `[data-loading] { pointer-events: none }`
+    // only blocks pointer double-clicks, not a second keyboard activation. This guard is what
+    // actually stops a double-submit.
+    if (!session || !canPay || phase === "paying") return;
     setPhase("paying");
     setFailure(null);
 
