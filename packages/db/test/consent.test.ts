@@ -1,6 +1,10 @@
 /** Verifies the consent store: runs, the append-only trail, approvals, decisions, and mandates. */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 
 import type { ConsentStore } from "../src/consent-repository.js";
@@ -150,4 +154,35 @@ test("the same IntentMandate can gate several runs, and each run's timeline stil
   assert.deepEqual(m2.map((m) => m.kind), ["IntentMandate"]);
   assert.equal(m2[0]!.jti, "intent_shared");
   await store.close();
+});
+
+test("opening a pre-M4.5 consent DB (runs without intent_jti) migrates in place instead of throwing", async () => {
+  // Reproduces the exact shape a real DB predating the cumulative-cap column has: a `runs` table
+  // that exists but lacks `intent_jti`. `CREATE TABLE IF NOT EXISTS` is a no-op against it, so
+  // openConsentStore must backfill the column (and its index) rather than assume a fresh file.
+  const dir = mkdtempSync(join(tmpdir(), "consent-migration-"));
+  const file = join(dir, "consent.db");
+  try {
+    // Built purely with the Node built-in driver, never better-sqlite3 — this file exists to
+    // build a legacy *fixture*, not to touch the app's storage boundary (packages/db/test is
+    // not in DRIVER_ALLOWED_DIRS, and rightly so; see invariants.test.ts).
+    const legacy = new DatabaseSync(file);
+    legacy.exec(`
+      CREATE TABLE runs (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, reference TEXT NOT NULL,
+        destination_id TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL,
+        description TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+    `);
+    legacy.close();
+
+    const store = openConsentStore(file);
+    const run = await seedRun(store);
+    assert.equal(run.status, "open");
+    // The column the M4.5 gate needs is queryable, not just silently absent.
+    assert.equal(await store.sumSettledAmountForMandate("int_never_used"), 0);
+    await store.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

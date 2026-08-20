@@ -74,7 +74,10 @@
   padding-top: var(--sp-4);
   border-top: 1px solid var(--line);
   display: flex;
-  align-items: center;
+  /* flex-end, not center: when the "trust this destination" checkbox is present, the actions
+     column is taller than this link, and centering left it floating in the middle of that
+     extra height instead of sitting beside the actual buttons — an L-shaped gap. */
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--sp-4) var(--sp-5);
   flex-wrap: wrap;

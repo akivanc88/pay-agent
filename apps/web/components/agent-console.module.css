@@ -102,7 +102,7 @@
 .agentBubble {
   background: var(--surface-2);
   color: var(--ink);
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 1.15rem;
   border-radius: var(--r-xs) var(--r-lg) var(--r-lg) var(--r-lg);
   font-size: var(--text-md);
   line-height: 1.5;

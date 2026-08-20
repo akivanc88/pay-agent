@@ -9,8 +9,11 @@ import commonStyles from "./wallet-common.module.css";
 import styles from "./wallet-ledgers.module.css";
 
 function CardFlag({ card }: { card: FundingCard }) {
-  if (card.balance_stale) return <Badge tone="warn">stale</Badge>;
-  if (!card.balance_verified) return <Badge tone="warn">unverified</Badge>;
+  // soft, matching the hero's treatment of the same "unverified" concept — the outline
+  // variant used here previously was a heavier weight for the identical word elsewhere on
+  // the same screen.
+  if (card.balance_stale) return <Badge tone="warn" soft>stale</Badge>;
+  if (!card.balance_verified) return <Badge tone="warn" soft>unverified</Badge>;
   return null;
 }
 
@@ -147,7 +150,7 @@ export function PrepaidCardLedger({ cards }: { cards: FundingCard[] }) {
                   {card.exp && <span className={styles.exp}>exp {card.exp}</span>}
                 </span>
                 <span className={styles.rowAmount}>
-                  <Badge tone="warn">unverified</Badge>
+                  <Badge tone="warn" soft>unverified</Badge>
                   {minor === null ? (
                     <span className={commonStyles.unknown}>Unknown</span>
                   ) : (

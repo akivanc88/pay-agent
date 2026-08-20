@@ -224,6 +224,11 @@
   scroll-snap-type: x proximity;
   scrollbar-width: thin;
   scrollbar-color: var(--sc-line-2) transparent;
+  /* This is the one <ul> of the four on this page that doesn't already suppress its own
+     marker (the others are grid/flex items that lost list-item display incidentally) — as a
+     flex item it stayed list-item and kept its bullet, leaking a "•" beside every poster
+     title. No real streaming row has bullets; it's the one artifact that gives the fake away. */
+  list-style: none;
 }
 .watchingRow::-webkit-scrollbar { height: 6px; }
 .watchingRow::-webkit-scrollbar-thumb { background: var(--sc-line-2); border-radius: 999px; }

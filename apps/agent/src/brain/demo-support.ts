@@ -50,7 +50,7 @@ export function stubStreamco(amountMinor: number): PaymentDestination {
   return {
     id: "streamco",
     async discover(reference: string): Promise<AmountDue> {
-      return { destinationId: "streamco", reference, amountMinor, currency: "CAD", description: "StreamCo Premium (stub)", handle: reference };
+      return { destinationId: "streamco", reference, amountMinor, currency: "CAD", description: "StreamCo Premium — offline simulation", handle: reference };
     },
     async capabilities(): Promise<AcceptedInstruments> {
       return { currency: "CAD", redeemsGiftCard: false, acceptsCard: true };

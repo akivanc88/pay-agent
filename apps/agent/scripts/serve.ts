@@ -69,11 +69,12 @@ async function handleInstruct(req: IncomingMessage, res: ServerResponse): Promis
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  const { client, reason } = selectBrain();
-  send("meta", { model: client.name, live: client.live, reason, mode: stub ? "stub" : "live" });
-
-  const consent = openConsentStore(consentPath);
+  let consent: ReturnType<typeof openConsentStore> | undefined;
   try {
+    const { client, reason } = selectBrain();
+    send("meta", { model: client.name, live: client.live, reason, mode: stub ? "stub" : "live" });
+
+    consent = openConsentStore(consentPath);
     let destination: PaymentDestination | undefined;
     let wallet: () => Funding;
     if (stub) {
@@ -104,12 +105,32 @@ async function handleInstruct(req: IncomingMessage, res: ServerResponse): Promis
   } catch (err) {
     send("error", { message: (err as Error).message });
   } finally {
-    await consent.close();
+    await consent?.close();
     res.end();
   }
 }
 
+/*
+ * A single bad request must never take the whole demo process down — this is the public-facing
+ * server once deployed (M6), and the SSE handlers above intentionally start writing a 200 before
+ * they know whether the rest of the work will succeed. This outer boundary is the last line of
+ * defense: anything that still escapes a handler's own try/catch lands here instead of becoming
+ * an unhandled rejection that kills the process for every other in-flight request too.
+ */
 const server = createServer(async (req, res) => {
+  try {
+    await route(req, res);
+  } catch (err) {
+    console.error("unhandled request error:", err);
+    if (!res.headersSent) {
+      json(res, 500, { ok: false, detail: "internal error" });
+    } else if (!res.writableEnded) {
+      res.end();
+    }
+  }
+});
+
+async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
   if (req.method === "GET" && url.pathname === "/health") {
@@ -129,19 +150,20 @@ const server = createServer(async (req, res) => {
     const standingAuth = body.standingAuth === true;
     // A fresh store handle per request — the file is shared with the dashboard, and a short-lived
     // handle can't go stale under WAL.
-    const consent = openConsentStore(consentPath);
+    let consent: ReturnType<typeof openConsentStore> | undefined;
     try {
+      consent = openConsentStore(consentPath);
       const result = await resumeAndSettle(runId, consent, issuerKey, env, standingAuth);
       return json(res, result.ok ? 200 : 200, result); // 200 either way; `ok` carries success
     } catch (err) {
       return json(res, 500, { ok: false, status: "error", detail: (err as Error).message });
     } finally {
-      await consent.close();
+      await consent?.close();
     }
   }
 
   json(res, 404, { ok: false, detail: "not found" });
-});
+}
 
 server.listen(PORT, () => {
   console.log(`pay-agent resume service on http://localhost:${PORT} (stripe: ${Boolean(env.stripeSecretKey)})`);

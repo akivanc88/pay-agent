@@ -56,7 +56,12 @@ export function FundingPlanRows({
             {plan.giftDraw === null ? (
               notYetKnown
             ) : (
-              <span key={plan.giftDraw} className={`${styles.planDraw} ${styles.settle}`}>
+              <span
+                key={plan.giftDraw}
+                // Gold marks a real draw; a $0 draw isn't one, so it stays neutral rather than
+                // sharing the same non-neutral color as the actual contribution below it.
+                className={`${styles.planDraw} ${plan.giftDraw === 0 ? styles.planDrawZero : ""} ${styles.settle}`}
+              >
                 &minus;<Money minor={plan.giftDraw} />
               </span>
             )}
@@ -101,7 +106,9 @@ export function FundingPlanRows({
       )}
 
       {plan.hasGift && plan.giftDraw === 0 && (
-        <p className={styles.planNote}>
+        // planFoot, not planNote: this is a reassurance ("still valid, just $0"), not a
+        // caution, and planNote's amber left border reads as a warning on a line that isn't one.
+        <p className={styles.planFoot}>
           This card has nothing left on it. It is still valid to present — it simply
           contributes nothing, and the card covers the whole amount.
         </p>

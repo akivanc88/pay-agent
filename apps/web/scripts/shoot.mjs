@@ -9,7 +9,11 @@
  * Assumes the store (:3000) and web (:3001) are already running.
  */
 import { chromium } from "playwright";
+import { execSync } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
 const BASE = process.env.WEB_URL ?? "http://localhost:3001";
 const outDir = process.argv[2] ?? "/tmp/pay-agent-shots";
@@ -54,10 +58,42 @@ const SURFACES = [
     path: "/agent",
     prep: async (page) => {
       await page.getByRole("button", { name: /up to \$50/i }).first().click();
-      await page.getByText("Paid — StreamCo", { exact: true }).waitFor({ timeout: 20000 });
+      await page.getByText("Paid — StreamCo", { exact: true }).waitFor({ timeout: 35000 });
       await page.waitForTimeout(700);
     },
   },
+  // The pause-for-approval beat — the other half of the M4 demo claim, and the run that
+  // seeds a real pending item for the "activity" shots below to show.
+  {
+    name: "agent-pending",
+    path: "/agent",
+    prep: async (page) => {
+      await page.getByRole("button", { name: /up to \$20/i }).first().click();
+      await page.getByText("Paused for your approval", { exact: true }).waitFor({ timeout: 35000 });
+      await page.waitForTimeout(700);
+    },
+  },
+  // The consent dashboard. Reseeded immediately before capture: each of the four viewport/theme
+  // contexts above re-runs its click prep from a fresh browser context (deliberately — theme and
+  // viewport need real isolation), which means agent-pending and agent-settled each write four
+  // real backend runs, not one. Left alone, the inbox reads as flooded test data by the time we
+  // get here. `seed-consent` gives a clean, deliberately varied 5-run demo state instead — closer
+  // to what a real approval queue looks like than either the flood or an empty page.
+  { name: "activity", path: "/activity", reseed: true },
+  {
+    name: "activity-run",
+    path: "/activity",
+    prep: async (page) => {
+      const link = page.locator('a[href^="/activity/"]').first();
+      await link.waitFor({ timeout: 10000 });
+      await link.click();
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(300);
+    },
+  },
+  // StreamCo — destination 3, the no-API biller portal the agent must scrape. The deliberate
+  // contrast pole to the UCP storefront's machine-readable checkout.
+  { name: "streamco", path: "/streamco/acct_demo" },
   // The designed dead ends. These are surfaces like any other — rubric failure #3 is an
   // *undesigned* 404 or error, which is a judgement only the critic can make, and it can
   // only make it if these are in the set it looks at.
@@ -76,6 +112,11 @@ await mkdir(outDir, { recursive: true });
 let shots = 0;
 for (const surface of SURFACES) {
   if (only && surface.path !== only && surface.name !== only) continue;
+
+  if (surface.reseed) {
+    console.log(`  ↻ reseeding consent DB before ${surface.name}`);
+    execSync("pnpm --filter @pay-agent/agent seed-consent", { cwd: REPO_ROOT, stdio: "ignore" });
+  }
 
   for (const vp of VIEWPORTS) {
     for (const theme of THEMES) {
@@ -138,7 +179,10 @@ for (const surface of SURFACES) {
       await page.waitForTimeout(700);
 
       const file = `${outDir}/${surface.name}-${vp.tag}-${theme}.png`;
-      await page.screenshot({ path: file, fullPage: vp.tag === "desktop" });
+      // Full-page on both viewports: a mobile-viewport-height-only shot silently crops any
+      // surface taller than 844px, which is most of them — a reviewer judging "mobile" from
+      // that crop is judging an artifact of the harness, not the page.
+      await page.screenshot({ path: file, fullPage: true });
       console.log(`  ✓ ${file}`);
       shots++;
       await context.close();

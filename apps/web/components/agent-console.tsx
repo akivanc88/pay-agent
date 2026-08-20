@@ -111,7 +111,13 @@ export function AgentConsole() {
       }
       if (event === "meta") setMeta(payload as Meta);
       else if (event === "step") setSteps((s) => [...s, payload as Step]);
-      else if (event === "done") setRunIds((payload as { runIds?: string[] }).runIds ?? []);
+      else if (event === "done") {
+        setRunIds((payload as { runIds?: string[] }).runIds ?? []);
+        // Clear the composer on a completed run — otherwise the sent instruction sits in the
+        // field (clipped on mobile) as if it hadn't been sent, and the pill still reads
+        // ready-to-submit. Left alone on error/offline so the same text can be retried.
+        setInstruction("");
+      }
       else if (event === "offline") setOffline((payload as { message: string }).message);
       else if (event === "error") setSteps((s) => [...s, { kind: "error", text: (payload as { message: string }).message }]);
     }

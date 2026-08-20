@@ -26,7 +26,7 @@ export default function NotFound() {
         <StatePage
           eyebrow="Not found"
           title="That path doesn’t lead anywhere"
-          body="The link may have a typo in it, or it may point at something we've since retired. The shop, the wallet and the checkout are all reachable from the header."
+          body="The link may have a typo in it, or it may point at something we’ve since retired. The shop, the wallet and the checkout are all reachable from the header."
           action={{ href: "/", label: "Browse the shop" }}
           art={
             <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

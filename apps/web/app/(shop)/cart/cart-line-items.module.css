@@ -35,6 +35,7 @@
   letter-spacing: -0.008em;
   color: var(--ink);
   margin-left: -0.03em;
+  text-wrap: balance;
   transition: color var(--dur-2) var(--ease-out);
 }
 .rowTitle:hover { color: var(--brand-ink); }
@@ -126,7 +127,11 @@
     padding: var(--sp-4);
     align-items: start;
   }
-  .thumb { grid-area: thumb; width: 5.5rem; align-self: stretch; aspect-ratio: auto; }
+  /* A fixed portrait ratio, not align-self: stretch — stretching to the row's full two-line
+     height (title+total over the stepper) squashed center-weighted product art into a tall
+     frame with visible background padding above/below, and made the crop height depend on
+     whether the title wrapped to one line or two. */
+  .thumb { grid-area: thumb; width: 5.5rem; align-self: start; aspect-ratio: 4 / 5; }
   .rowInfo { grid-area: info; }
   .rowTotal { grid-area: total; align-self: start; }
   .stepper { grid-area: step; justify-self: start; }
