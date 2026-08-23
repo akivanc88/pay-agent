@@ -74,6 +74,16 @@ export interface CardFunding {
   /** A Stripe test PaymentMethod / a scoped token. The agent never holds the number behind it. */
   readonly token: string;
   readonly label: string;
+  /**
+   * The open-loop balance the user *told us* is on this card, minor units, or null when
+   * unknown. A hint for planning only, exactly like `GiftCardFunding.hintMinor` — no API can
+   * query an open-loop prepaid balance (see `docs/DESIGN.md` → Known gaps), so this can only
+   * ever be stale. The planner never draws less than the true remainder because of it — a
+   * card is authorized in full or not at all — it only flags when the remainder looks larger
+   * than what the user recorded, so a likely decline is labelled before it happens rather
+   * than discovered cold.
+   */
+  readonly enrolledBalanceMinor: Minor | null;
 }
 
 /** The funding the user has granted the agent for a run. */
@@ -98,6 +108,13 @@ export interface InstrumentPlan {
   readonly uncoveredMinor: Minor;
   readonly giftCard: GiftCardFunding | null;
   readonly card: CardFunding | null;
+  /**
+   * `cardMinor` is planned in full regardless — this only *labels* the plan when the card
+   * leg looks larger than the balance the user recorded, so a likely decline is surfaced
+   * honestly instead of only being discovered when the rail says no. False whenever the
+   * balance is unknown (`enrolledBalanceMinor: null`): never claim a risk we can't see.
+   */
+  readonly cardLikelyExceedsEnrolledBalance: boolean;
 }
 
 /**

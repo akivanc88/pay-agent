@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pay·agent — a funding-and-consent core, tested against what actually happened</title>
+<meta name="description" content="A capstone: a gift-card-funded payment agent with a destination-agnostic planner, a signed consent layer, and an LLM boxed by rails it cannot exceed — checked against how a similar bet played out in production." />
+<style>
+  :root {
+    color-scheme: light dark;
+    --paper: #fbfaf7; --surface: #ffffff; --surface-2: #f6f4ef; --surface-sunk: #f1eee7;
+    --ink: #1b1a17; --ink-2: #55504a; --ink-3: #6f6a61;
+    --line: #e8e3da; --line-strong: #d9d3c7;
+    --brand: #1e5b3a; --brand-ink: #16472d; --brand-contrast: #ffffff; --brand-tint: #eaf2ec;
+    --gold: #8d6118; --gold-tint: #f6efdd;
+    --danger: #a32c24; --danger-tint: #fbeceb;
+    --warn: #8a5a00; --warn-tint: #fdf6e6;
+    --success: #1e5b3a; --success-tint: #eaf2ec;
+    --shadow-sm: 0 1px 2px rgba(27,26,23,.04), 0 1px 1px rgba(27,26,23,.03);
+    --shadow-md: 0 2px 4px rgba(27,26,23,.04), 0 6px 16px rgba(27,26,23,.06);
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --r-xs: 6px; --r-sm: 9px; --r-md: 13px; --r-lg: 18px; --r-pill: 999px;
+    --sp-2: .5rem; --sp-3: .75rem; --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem; --sp-7: 3rem; --sp-8: 4rem;
+    --ease-out: cubic-bezier(.22,1,.36,1);
+    --content: 46rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #14130f; --surface: #1c1b17; --surface-2: #23211c; --surface-sunk: #100f0c;
+      --ink: #ede8df; --ink-2: #a8a197; --ink-3: #918a7e;
+      --line: #302d27; --line-strong: #423e36;
+      --brand: #6fc498; --brand-ink: #8fd3ae; --brand-contrast: #0e2117; --brand-tint: #17241c;
+      --gold: #d9b36a; --gold-tint: #241d10;
+      --danger: #e79289; --danger-tint: #2a1614;
+      --warn: #e0b25c; --warn-tint: #241d10;
+      --success: #6fc498; --success-tint: #17241c;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+      --shadow-md: 0 2px 4px rgba(0,0,0,.28), 0 8px 20px rgba(0,0,0,.34);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-sans);
+    font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--content); margin: 0 auto; padding: 0 var(--sp-5); }
+  a { color: var(--brand-ink); }
+  h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.18; letter-spacing: -.012em; color: var(--ink); }
+  h1 { font-size: clamp(2rem, 1.5rem + 2vw, 2.75rem); margin: 0 0 var(--sp-4); }
+  h2 { font-size: clamp(1.375rem, 1.1rem + 1vw, 1.75rem); margin: var(--sp-8) 0 var(--sp-4); }
+  h3 { font-size: 1.15rem; margin: var(--sp-6) 0 var(--sp-2); }
+  p { margin: 0 0 var(--sp-4); color: var(--ink-2); }
+  p.lead { color: var(--ink); font-size: 1.125rem; }
+  .eyebrow {
+    font-size: .75rem; font-weight: 650; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brand-ink); margin: 0 0 var(--sp-3);
+  }
+
+  header.site {
+    border-bottom: 1px solid var(--line); padding: var(--sp-4) 0;
+  }
+  header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+  .wordmark { font-family: var(--font-serif); font-weight: 600; font-size: 1.1rem; text-decoration: none; color: var(--ink); }
+  .wordmark b { color: var(--brand-ink); }
+  nav.site a { color: var(--ink-2); text-decoration: none; margin-left: var(--sp-5); font-size: .9rem; font-weight: 550; }
+  nav.site a:hover { color: var(--brand-ink); }
+
+  .hero { padding: var(--sp-8) 0 var(--sp-6); }
+  .hero .thesis { font-family: var(--font-serif); font-style: italic; color: var(--brand-ink); }
+  .cta-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-5); }
+  .btn {
+    display: inline-flex; align-items: center; gap: .4em; padding: .7rem 1.15rem; border-radius: var(--r-pill);
+    font-size: .9375rem; font-weight: 600; text-decoration: none; transition: transform .15s var(--ease-out), background-color .15s var(--ease-out);
+  }
+  .btn-primary { background: var(--brand); color: var(--brand-contrast); box-shadow: var(--shadow-sm); }
+  .btn-primary:hover { background: var(--brand-ink); }
+  .btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
+  .btn-ghost:hover { border-color: var(--ink-3); }
+  .btn:active { transform: scale(.97); }
+
+  .callout {
+    background: var(--surface-2); border-left: 3px solid var(--warn); border-radius: var(--r-md);
+    padding: var(--sp-4) var(--sp-5); margin: var(--sp-6) 0; font-size: .9375rem;
+  }
+  .callout p { color: var(--ink-2); margin: 0 0 var(--sp-2); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout strong { color: var(--ink); }
+
+  .table-wrap { overflow-x: auto; margin: var(--sp-5) 0; }
+  table { width: 100%; min-width: 32rem; border-collapse: collapse; font-size: .875rem; }
+  caption { text-align: left; caption-side: top; color: var(--ink-3); font-size: .8rem; margin-bottom: var(--sp-2); }
+  th, td { text-align: left; padding: var(--sp-3) var(--sp-3) var(--sp-3) 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 650; }
+  td.status { white-space: nowrap; }
+  .tag { display: inline-block; padding: .15em .55em; border-radius: var(--r-xs); font-size: .75rem; font-weight: 650; }
+  .tag-built { background: var(--success-tint); color: var(--success); }
+  .tag-not { background: var(--surface-sunk); color: var(--ink-3); }
+  .tag-simplified { background: var(--gold-tint); color: var(--gold); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--sp-4); margin: var(--sp-5) 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-4); }
+  .card h3 { margin-top: 0; font-size: 1rem; }
+  .card p { font-size: .875rem; margin-bottom: 0; }
+
+  ol.milestones, ul.plain { list-style: none; padding: 0; margin: var(--sp-5) 0; }
+  ol.milestones li { display: flex; gap: var(--sp-4); padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+  ol.milestones li:last-child { border-bottom: none; }
+  ol.milestones .m { flex: none; width: 2.75rem; font-family: var(--font-mono); font-size: .8rem; color: var(--ink-3); padding-top: .15em; }
+  ol.milestones .body b { color: var(--ink); }
+  ol.milestones .body p { margin: .15em 0 0; font-size: .9rem; }
+
+  code { font-family: var(--font-mono); font-size: .875em; background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
+
+  footer.site { border-top: 1px solid var(--line); margin-top: var(--sp-8); padding: var(--sp-6) 0 var(--sp-8); }
+  footer.site .links { display: flex; gap: var(--sp-5); flex-wrap: wrap; font-size: .875rem; }
+  footer.site .links a { color: var(--ink-2); text-decoration: none; }
+  footer.site .links a:hover { color: var(--brand-ink); }
+  footer.site .fine { color: var(--ink-3); font-size: .8rem; margin-top: var(--sp-5); }
+
+  @media (max-width: 30rem) {
+    nav.site a { margin-left: var(--sp-4); }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="wordmark" href="#top">pay·<b>agent</b></a>
+    <nav class="site">
+      <a href="#findings">Findings</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#milestones">Milestones</a>
+      <a href="https://github.com/akivanc88/pay-agent">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+
+  <section class="hero">
+    <p class="eyebrow">Capstone — funding &amp; consent for AI-initiated payments</p>
+    <h1>An agent that pays for you needs rails it can't talk its way out of.</h1>
+    <p class="lead">
+      A user loads gift cards into a dashboard. An agent goes to <span class="thesis">some place that wants money</span> —
+      a spec-native storefront, a hosted payment link, a subscription biller with no API at all — works out what's owed,
+      decides how to pay from what it's been given, gets human approval when it should, pays, and handles failure sensibly.
+    </p>
+    <p>
+      The architecture's whole bet is <strong>one funding-and-consent core, many destination adapters</strong> — and
+      an LLM that can only ever move money through rails it cannot exceed, never rails it talks its own way past.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://web-production-5a199f.up.railway.app">Try the live demo →</a>
+      <a class="btn btn-ghost" href="https://github.com/akivanc88/pay-agent">View source</a>
+    </div>
+  </section>
+
+  <div class="callout">
+    <p><strong>This bet has since been tested in production, and it went the way this plan predicted.</strong></p>
+    <p>
+      OpenAI shipped close to the single-destination version of this idea — ACP-driven Instant Checkout inside
+      ChatGPT — on 2025-09-29, live with Etsy and Shopify. It was pulled on 2026-03-24: only about 12 of
+      Shopify's millions of merchants ever went live, and Walmart measured in-chat checkout converting roughly
+      3x worse than a normal click-through, despite higher-intent traffic. OpenAI's stated reason: it
+      "did not offer the level of flexibility we aspire to provide."
+    </p>
+    <p>
+      That isn't proof this project's answer is right. It's evidence that the problem it bet on — a
+      destination-agnostic core with an explicit consent layer, not a checkout button bolted onto a chat window —
+      is a real, current failure mode, not a hypothetical invented for a capstone.
+    </p>
+  </div>
+
+  <section id="findings">
+    <h2>What the architecture answers, and what it doesn't yet</h2>
+    <p>
+      Revised 2026-08-23. The parts of "an agent that pays on your behalf" a user notices missing first —
+      don't make me re-approve the same bill, don't let one high cap become unlimited spend — are built.
+      What's left is harder and easier to defer: whether a destination can mechanically tell this agent apart
+      from bot traffic, and real authentication in place of a fixture user.
+    </p>
+    <div class="table-wrap"><table>
+      <caption>Industry-documented problem → this project's answer → build status</caption>
+      <thead>
+        <tr><th>Documented problem</th><th>This project's answer</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Checkout-as-a-button, no visible consent or spend control</td>
+          <td>Signed <code>IntentMandate</code> (spend cap + destination allowlist), a policy gate that halts before any draw, an approval inbox a human decides in</td>
+          <td class="status"><span class="tag tag-built">Built</span></td>
+        </tr>
+        <tr>
+          <td>No audit trail for what an agent actually did</td>
+          <td>Append-only, trigger-enforced event log; every mandate persisted</td>
+          <td class="status"><span class="tag tag-built">Built</span></td>
+        </tr>
+        <tr>
+          <td>Approve once, expect it remembered for the recurring bill</td>
+          <td>Opt-in "approve, and trust this destination going forward" — reissues the mandate, never automatic, never available to the model</td>
+          <td class="status"><span class="tag tag-built">Built — M4.5</span></td>
+        </tr>
+        <tr>
+          <td>Spend-cap-as-budget, not just a per-charge ceiling</td>
+          <td>Opt-in cumulative cap on the mandate, summed across settled runs</td>
+          <td class="status"><span class="tag tag-built">Built — M4.5</span></td>
+        </tr>
+        <tr>
+          <td>Destinations can't tell a legitimate agent from bot traffic</td>
+          <td>RFC 9421 HTTP message signing</td>
+          <td class="status"><span class="tag tag-not">Not built</span></td>
+        </tr>
+        <tr>
+          <td>The credential a real merchant would need (Stripe's own Shared Payment Token)</td>
+          <td>A hand-rolled EdDSA-JWS token with the same binds</td>
+          <td class="status"><span class="tag tag-simplified">Simplified</span></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <p>
+      Full reasoning, sources, and what would still be needed for this to be more than a demo:
+      <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/FINDINGS.md">FINDINGS.md</a>.
+    </p>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture, in three layers</h2>
+    <p>Each layer maps to a published standard, checked against real reference implementations rather than invented from scratch.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Funding</h3>
+        <p><strong>What money, in what mix.</strong> UCP split-payments across a real <code>instruments[]</code> array — gift card drawn first, card rail for the remainder, byte-exact reversal on failure.</p>
+      </div>
+      <div class="card">
+        <h3>Consent</h3>
+        <p><strong>Did a human actually authorize this.</strong> AP2-named Intent/Checkout/Payment mandates, signed EdDSA-JWS, a policy gate before any draw, an append-only trail.</p>
+      </div>
+      <div class="card">
+        <h3>Arrival</h3>
+        <p><strong>Who is this agent, for whom.</strong> RFC 9421 request signing, as profiled by Visa TAP — the one layer still a stretch goal.</p>
+      </div>
+    </div>
+    <h3>One planner, three destinations</h3>
+    <p>
+      The planner branches on <em>capabilities</em>, never on which destination it's talking to — enforced by a source
+      lint (it never names a destination) and proven behaviourally by settling all three through it:
+      a spec-native UCP storefront (machine-readable checkout), a hosted Stripe payment link (the real-rails leg —
+      also where the physical Visa gift card's guarded live-decline path lives), and a simulated subscription biller
+      with <em>no</em> API at all, which the agent has to scrape and knows to refuse rather than guess when the markup changes.
+    </p>
+    <h3>The brain is boxed by the rails, not trusted to be careful</h3>
+    <p>
+      A language model reads a plain instruction, drafts the spend cap and destination allowlist, and drives the
+      deterministic orchestrator as tools — <code>start_run</code>, <code>resume_run</code>. It never constructs a
+      charge, never holds a credential, never bypasses the policy gate. The core enforces the cap; the model proposes,
+      it doesn't authorize. That ordering — safe substrate before autonomy — is the actual safety argument, not a
+      disclaimer bolted on after.
+    </p>
+  </section>
+
+  <section id="milestones">
+    <h2>Milestones</h2>
+    <ol class="milestones">
+      <li><span class="m">M1</span><div class="body"><b>Funding core.</b><p>Gift-card ledger, append-only, both card families enrolled — closed-loop by code+PIN, open-loop via Stripe Elements so the PAN never reaches the server.</p></div></li>
+      <li><span class="m">M2</span><div class="body"><b>Destinations + the money story.</b><p>The <code>PaymentDestination</code> contract; one planner settling a UCP storefront and a Stripe payment link with no destination-specific branching.</p></div></li>
+      <li><span class="m">M3</span><div class="body"><b>StreamCo + consent.</b><p>The no-API biller; signed mandates; the policy gate and approval inbox; scoped payment tokens refusing replay, amount tampering, and reuse.</p></div></li>
+      <li><span class="m">M4</span><div class="body"><b>The agent's brain.</b><p>Instruct-to-pay: a provider-agnostic LLM driver, boxed by the same cap, mandates, and audit trail as the scripted runs.</p></div></li>
+      <li><span class="m">M4.5</span><div class="body"><b>Standing authorization + cumulative cap.</b><p>The two gaps a user notices first, closed without weakening the mandate model — both opt-in, both human-only.</p></div></li>
+      <li><span class="m">M5</span><div class="body"><b>The real card — code path done.</b><p>Enrolled-balance-as-hint in the planner; a guarded live path that can only ever produce a decline. The physical run itself is local-only, by design.</p></div></li>
+      <li><span class="m">M6</span><div class="body"><b>Publish.</b><p>This page, a deployed test-mode demo (Railway), and a recorded walkthrough.</p></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What's honestly simplified</h2>
+    <ul class="plain">
+      <li style="margin-bottom: .6em;">Mandates are plain signed JWS, not the spec's full SD-JWT-VC — correct names and binds, a simpler envelope.</li>
+      <li style="margin-bottom: .6em;">Scoped payment tokens are this project's own, with the same binds as Stripe's issued Shared Payment Token — not enabled on this test account.</li>
+      <li style="margin-bottom: .6em;">No real user authentication yet — the consent layer acts for a fixture user until a Supabase migration lands.</li>
+      <li>StreamCo is a faithful simulation of "a real biller with no agent-facing API" — real billers can't legally or technically be automated against, which is the point it's demonstrating.</li>
+    </ul>
+    <p>Complete, dated accounting of every simplification: <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/DESIGN.md">DESIGN.md</a>.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="links">
+      <a href="https://web-production-5a199f.up.railway.app">Live demo</a>
+      <a href="https://github.com/akivanc88/pay-agent">Repository</a>
+      <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/PLAN.md">Plan</a>
+      <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/DESIGN.md">Design</a>
+      <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/FINDINGS.md">Findings</a>
+      <a href="https://github.com/akivanc88/pay-agent/blob/main/docs/DEPLOY.md">Deploy notes</a>
+    </div>
+    <p class="fine">
+      Test mode only, throughout. No live payment key is ever set on the deployed services — the build refuses
+      to boot if one is present, mechanically, not by discipline. Fernbank &amp; Co. and StreamCo are fictional.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

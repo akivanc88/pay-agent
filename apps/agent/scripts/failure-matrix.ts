@@ -71,7 +71,7 @@ function stub(amountMinor: number, opts: { id?: string; declined?: boolean } = {
 function funding(giftHint: number, withCard = true): Funding {
   return {
     giftCard: { code: "GC", pin: "1234", hintMinor: giftHint, verified: true },
-    card: withCard ? { token: "pm_stub", label: "Visa" } : null,
+    card: withCard ? { token: "pm_stub", label: "Visa", enrolledBalanceMinor: null } : null,
   };
 }
 

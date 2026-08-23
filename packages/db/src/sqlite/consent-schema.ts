@@ -29,7 +29,12 @@ CREATE TABLE IF NOT EXISTS runs (
 
 CREATE INDEX IF NOT EXISTS idx_runs_status ON runs (status);
 CREATE INDEX IF NOT EXISTS idx_runs_created ON runs (created_at);
-CREATE INDEX IF NOT EXISTS idx_runs_intent ON runs (intent_jti);
+
+-- idx_runs_intent is deliberately NOT created here: on a consent DB created before the
+-- cumulative-cap column landed, "runs" already exists (the CREATE TABLE above is a no-op)
+-- but lacks intent_jti, and an unconditional index on it would fail before the additive
+-- migration in openConsentStore() gets a chance to ALTER TABLE it in. That migration creates
+-- this same index right after backfilling the column, so it belongs there, not here.
 
 CREATE TABLE IF NOT EXISTS run_events (
   seq        INTEGER PRIMARY KEY AUTOINCREMENT,

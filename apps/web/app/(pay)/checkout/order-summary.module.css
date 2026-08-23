@@ -155,6 +155,10 @@
   white-space: nowrap;
 }
 
+.planDrawZero {
+  color: var(--ink-3);
+}
+
 .planUnknown {
   font-size: var(--text-sm);
   font-style: italic;

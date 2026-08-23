@@ -41,8 +41,8 @@ export default async function ActivityPage() {
         <SectionLabel>Activity</SectionLabel>
         <h1 className={styles.title}>What the agent has tried to pay</h1>
         <p className={styles.lead}>
-          Every run the agent starts lands here — halted for your decision the moment it trips
-          a policy, and fully audited whether it settles, fails, or waits on you.
+          Every run the agent starts shows up here — halted for your decision the moment it
+          trips a policy, and fully audited whether it settles, fails, or waits on you.
         </p>
       </header>
 

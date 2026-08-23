@@ -1,0 +1,45 @@
+# Publishes site/index.html — the capstone's written findings piece, per docs/PLAN.md's M6
+# scope ("Judged on: a working live demo and a written findings piece").
+#
+# Deliberately not Jekyll: site/ is one hand-built, self-contained page styled with the same
+# design tokens as apps/web, not a markdown-to-default-theme dump — the whole point of the
+# page is that it reads as part of the same product as the deployed demo.
+#
+# Requires a one-time repo setting this workflow cannot make for itself: Settings → Pages →
+# Source → "GitHub Actions". Until that's set, this workflow will build successfully but the
+# deploy-pages step will fail with a permissions/not-enabled error.
+
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

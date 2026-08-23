@@ -71,7 +71,7 @@ function demoFunding(amountMinor: number): Funding {
   });
   return {
     giftCard: { code, pin: "1234", hintMinor: giftMinor, verified: true },
-    card: { token: "pm_card_visa", label: "Visa (test)" },
+    card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null },
   };
 }
 

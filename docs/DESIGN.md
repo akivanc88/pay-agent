@@ -205,7 +205,7 @@ never placed.
 | Gift-card instrument settlement | ACP seller-backed handler RFC | **Standard** — settles the whole `instruments[]` array |
 | Card rail (`com.stripe.payments`) | Stripe PaymentIntents | **Real** — test mode, authorize/capture, genuine decline codes |
 | Split payment across both rails | UCP `instruments[]` | **Real** — the card is authorized for the remainder only |
-| Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key; five tests |
+| Live-mode guards | This project's own design | **Real** — refuses to boot deployed with a live key, and refuses to attempt a live charge unless it exceeds the enrolled balance; ten tests. The guard code is done (M5); the physical decline run is not — see M5, verification item 10 |
 | Open-loop card enrollment | Stripe Elements + SetupIntents | **Real** — the card number is collected by Stripe in the browser; we store only a `pm_…` |
 | Mock token handler | Upstream sample | **Simulated** — retained so the reference merchant's own tests still pass |
 | Storefront / wallet / checkout (`apps/web`) | This project's own design | **Real** — drives the same UCP endpoints an agent does; no mocked responses |
@@ -300,7 +300,8 @@ it**.
   objects, real error codes.
 - **The live decline** (one path, guarded) is a genuine `insufficient_funds` from the Visa
   network against a physical prepaid card. It is the one claim in this project that cannot
-  be simulation.
+  be simulation. The guard is real code (M5, `docs/PLAN.md`, 2026-08-12); the physical run
+  itself is still outstanding — see verification item 10.
 - **The UCP conformance suite**, once passing, is the standards body's own test of our
   storefront — not a test we wrote to grade ourselves.
 
@@ -324,15 +325,28 @@ These are invariants, and each has a test in `PLAN.md`'s verification list.
 - **The deployed demo is test-mode only** — the build fails at startup if a live key is
   present. Mechanical, not a matter of discipline.
 
-The last two are now enforced in code rather than described. `assertSafeStripeConfig` runs
-before the server binds a port and refuses four configurations: a live key in
-`STRIPE_SECRET_KEY`, a live key present under `NODE_ENV=production` or any of five platform
-markers (`VERCEL`, `RENDER`, `FLY_APP_NAME`, `RAILWAY_ENVIRONMENT`, `K_SERVICE`, `DYNO`), and
-a test key parked in the live variable — which would silently disarm every guard that keys
-off its presence. The live client is a separate function that checkout cannot reach.
+These are now enforced in code rather than described. `assertSafeStripeConfig` runs before
+the server binds a port and refuses four configurations: a live key in `STRIPE_SECRET_KEY`,
+a live key present under `NODE_ENV=production` or any of five platform markers (`VERCEL`,
+`RENDER`, `FLY_APP_NAME`, `RAILWAY_ENVIRONMENT`, `K_SERVICE`, `DYNO`), and a test key parked
+in the live variable — which would silently disarm every guard that keys off its presence.
+The live client is a separate function that checkout cannot reach. The "exceeds the enrolled
+balance" guard is `assertAmountExceedsEnrolledBalance` (`apps/store/src/payments/stripe.ts`,
+M5) — a pure function checked before `liveClient()` is ever reached, so the refusal is
+verified without a live key or a network call.
 
 These tests were written *before* a live key ever touched the machine, because the failure
 they prevent cannot be undone by noticing it afterwards.
+
+**M6, 2026-08-23 — no longer only a test.** `apps/store` and `apps/web`+`apps/agent` are
+deployed to Railway (`docs/DEPLOY.md`); `RAILWAY_ENVIRONMENT` is now a marker this guard
+actually observes on a real host, not just a name in a list. No `STRIPE_LIVE_SECRET_KEY` has
+ever been set on either deployed service — the guard's absence-is-safe design means this
+was never exercised as a refusal in production, which is the point: the deployed demo simply
+never had the chance to be wrong. `docs/DEPLOY.md` also records three deploy-time bugs that
+had nothing to do with this guard (build ordering, container loopback binding, a local-disk
+assumption in the agent's demo-card minting) — worth reading alongside this section as the
+difference between "passes on a laptop" and "survives being someone else's infrastructure."
 
 ### Known gaps
 
@@ -348,8 +362,15 @@ Recorded so they are never mistaken for oversights:
   shopping agents (retrieved 2026-08-07; see Sources). Until signing lands, a destination
   has no mechanical way to tell this agent apart from that traffic.
 - Enrolled prepaid balance is **a hint, not a fact** — no API can query an open-loop
-  prepaid balance. The planner must handle a decline gracefully regardless of what the
-  user recorded.
+  prepaid balance, and that does not change with M5. The planner must handle a decline
+  gracefully regardless of what the user recorded, which it already did (M1–M2); M5
+  (`docs/PLAN.md`, 2026-08-12) adds that the plan now says so out loud — `CardFunding`
+  carries the hint (`enrolledBalanceMinor`) exactly as the gift card does, and a run whose
+  card leg looks larger than that hint is labelled before anything is attempted, not just
+  after. The one live path this project has is guarded by the same fact: it refuses to run
+  at all unless the attempted amount exceeds the recorded balance, so it can only ever
+  observe a decline. The physical run — a real card, a real over-balance attempt, a real
+  decline — is still outstanding; see `docs/PLAN.md` M5, verification item 10.
 - ~~The policy gate has no cumulative cap.~~ **Closed by M4.5** (`docs/PLAN.md`,
   2026-08-07) — the IntentMandate now carries an opt-in cumulative ceiling, summed across
   settled runs under its `jti` and bounded by its own expiry. This closes the shape of the

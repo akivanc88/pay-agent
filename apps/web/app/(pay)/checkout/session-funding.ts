@@ -80,7 +80,11 @@ export const TEST_CARDS: TestCard[] = [
     brand: "Visa",
     last4: "0002",
     outcome: "Declines",
-    code: "card_declined",
+    // Stripe's issuer decline_code for this test PaymentMethod is generic_decline, not the
+    // card_declined *category* code — apps/store/src/payments/stripe.ts's declineOutcome()
+    // reports decline_code (the issuer's reason) in preference to Stripe's own code, so the
+    // label here has to match what actually comes back or the two disagree on screen.
+    code: "generic_decline",
     declines: true,
   },
 ];

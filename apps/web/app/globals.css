@@ -254,8 +254,11 @@ h3 { font-size: 1.24rem; letter-spacing: -0.006em; }
 
 ::selection { background: color-mix(in srgb, var(--brand) 22%, transparent); }
 
-/* One focus ring for the whole app — visible, on-brand, keyboard-only. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+/* One focus ring for the whole app — visible, on-brand, keyboard-only. `summary` is here
+   explicitly: it's natively keyboard-focusable (a <details> disclosure) but isn't a button,
+   link, form control, or [tabindex], so it silently fell through to the UA default ring
+   without this. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
   border-radius: var(--r-xs);

@@ -48,3 +48,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Claude Code local state — machine-local settings and ephemeral agent worktrees, neither
+# of which belongs in version control or a deploy upload.
+.claude/

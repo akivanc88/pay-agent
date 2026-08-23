@@ -324,8 +324,10 @@ export function openConsentStore(filename: string): ConsentStore {
     (c) => c.name === "intent_jti",
   );
   if (!hasIntentJti) {
-    db.exec(`ALTER TABLE runs ADD COLUMN intent_jti TEXT;
-             CREATE INDEX IF NOT EXISTS idx_runs_intent ON runs (intent_jti);`);
+    db.exec(`ALTER TABLE runs ADD COLUMN intent_jti TEXT;`);
   }
+  // Created here rather than in CONSENT_SCHEMA_SQL, unconditionally, so it applies the same way
+  // to a fresh DB (column just created above by CREATE TABLE) and a migrated one (just backfilled).
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_intent ON runs (intent_jti);`);
   return new SqliteConsentStore(db);
 }

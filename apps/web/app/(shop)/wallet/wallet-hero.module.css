@@ -22,7 +22,7 @@
 .lead {
   max-width: 46ch;
   color: var(--ink-2);
-  font-size: 1.0625rem;
+  font-size: var(--text-lg);
   line-height: 1.6;
 }
 
@@ -84,7 +84,7 @@
 .totalNote {
   margin-top: var(--sp-2);
   max-width: 34ch;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--ink-3);
 }
@@ -103,13 +103,13 @@
 
 .noCardTitle {
   font-family: var(--font-serif);
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   font-weight: 600;
   color: var(--ink);
 }
 
 .noCardBody {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   line-height: 1.6;
   color: var(--ink-3);
 }

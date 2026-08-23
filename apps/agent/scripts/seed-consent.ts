@@ -77,7 +77,7 @@ function stub(opts: StubOpts): PaymentDestination {
 function funding(giftHintMinor: number): Funding {
   return {
     giftCard: { code: "GC-DEMO-0001", pin: "1234", hintMinor: giftHintMinor, verified: true },
-    card: { token: "pm_seed_visa", label: "Visa •••• 4242" },
+    card: { token: "pm_seed_visa", label: "Visa •••• 4242", enrolledBalanceMinor: null },
   };
 }
 

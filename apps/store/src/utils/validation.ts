@@ -62,3 +62,24 @@ export type IdParamContext = Context<
     out: { param: z.output<typeof IdParamSchema> };
   }
 >;
+
+/**
+ * Body for the testing-only "issue a gift card" endpoint. `dollars` matches the CLI script's
+ * own unit (`issue-card.ts` takes a dollar string) rather than minor units, since this is the
+ * one surface meant to be driven by a human-chosen amount rather than computed.
+ */
+export const IssueCardRequestSchema = z.object({
+  code: z.string().min(1),
+  pin: z.string().min(1),
+  dollars: z.number().nonnegative(),
+  userId: z.string().optional(),
+});
+
+export type IssueCardContext = Context<
+  Env,
+  string,
+  {
+    in: { json: z.input<typeof IssueCardRequestSchema> };
+    out: { json: z.output<typeof IssueCardRequestSchema> };
+  }
+>;
