@@ -338,6 +338,16 @@ verified without a live key or a network call.
 These tests were written *before* a live key ever touched the machine, because the failure
 they prevent cannot be undone by noticing it afterwards.
 
+**M6, 2026-08-23 — no longer only a test.** `apps/store` and `apps/web`+`apps/agent` are
+deployed to Railway (`docs/DEPLOY.md`); `RAILWAY_ENVIRONMENT` is now a marker this guard
+actually observes on a real host, not just a name in a list. No `STRIPE_LIVE_SECRET_KEY` has
+ever been set on either deployed service — the guard's absence-is-safe design means this
+was never exercised as a refusal in production, which is the point: the deployed demo simply
+never had the chance to be wrong. `docs/DEPLOY.md` also records three deploy-time bugs that
+had nothing to do with this guard (build ordering, container loopback binding, a local-disk
+assumption in the agent's demo-card minting) — worth reading alongside this section as the
+difference between "passes on a laptop" and "survives being someone else's infrastructure."
+
 ### Known gaps
 
 Recorded so they are never mistaken for oversights:
