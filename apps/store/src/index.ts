@@ -20,7 +20,7 @@ import {
   OrderSchema,
 } from "./models";
 import { assertSafeStripeConfig } from "./payments/stripe";
-import { IdParamSchema, prettyValidation } from "./utils/validation";
+import { IdParamSchema, IssueCardRequestSchema, prettyValidation } from "./utils/validation";
 
 /**
  * Before anything else, and before any port is bound.
@@ -169,13 +169,25 @@ app.post(
   zValidator("param", IdParamSchema, prettyValidation),
   testingService.shipOrder
 );
+app.post(
+  "/testing/issue-card",
+  zValidator("json", IssueCardRequestSchema, prettyValidation),
+  testingService.issueCard
+);
 
 serve(
   {
     fetch: app.fetch,
-    port: 3000,
+    // Most PaaS hosts assign the port via $PORT and route their edge proxy to whatever
+    // that variable holds; 3000 remains the local-dev default.
+    port: process.env["PORT"] ? Number(process.env["PORT"]) : 3000,
+    // Explicit, not the library default: @hono/node-server's default hostname can resolve to
+    // loopback-only inside a container, which is unreachable from a platform's edge proxy
+    // outside the container network namespace (worked locally, 502'd every request once
+    // deployed). 0.0.0.0 binds every interface, which is what a containerized server needs.
+    hostname: "0.0.0.0",
   },
   (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
+    console.log(`Server is running on http://0.0.0.0:${info.port}`);
   }
 );

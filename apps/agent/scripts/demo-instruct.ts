@@ -98,7 +98,7 @@ async function main(): Promise<void> {
   } else {
     // Fresh bill + a fresh $20 gift card, exactly like demo:streamco.
     await fetch(`${WEB}/api/streamco/reset`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account: ACCOUNT }) });
-    const gift = issueDemoCard(20);
+    const gift = await issueDemoCard(20);
     wallet = () => demoWallet(gift);
   }
 

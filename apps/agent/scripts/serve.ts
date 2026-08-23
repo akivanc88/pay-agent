@@ -86,7 +86,7 @@ async function handleInstruct(req: IncomingMessage, res: ServerResponse): Promis
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ account: ACCOUNT }),
       }).catch(() => undefined);
-      const gift = issueDemoCard(20);
+      const gift = await issueDemoCard(20);
       wallet = () => demoWallet(gift);
     }
 

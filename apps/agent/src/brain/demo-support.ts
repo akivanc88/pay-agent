@@ -5,10 +5,6 @@
  * Kept here so the CLI demo (`demo-instruct.ts`) and the HTTP endpoint (`serve.ts /instruct`) build
  * the exact same run, rather than each hand-rolling a wallet and a stub that could drift apart.
  */
-import { execFileSync } from "node:child_process";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type {
   AcceptedInstruments,
   AmountDue,
@@ -20,13 +16,31 @@ import type {
   PaymentStatus,
 } from "../destination.js";
 
-const storeDir = join(dirname(fileURLToPath(import.meta.url)), "../../../store");
+const STORE_URL = process.env["STORE_URL"] ?? "http://localhost:3000";
+const SIMULATION_SECRET = process.env["SIMULATION_SECRET"] || "super-secret-sim-key";
 
-/** Issue a fresh closed-loop gift card in the store's ledger and return its code + pin. */
-export function issueDemoCard(dollars: number): { code: string; pin: string } {
+/**
+ * Issue a fresh closed-loop gift card in the store's ledger and return its code + pin.
+ *
+ * Goes over the store's HTTP API (a testing-only, Simulation-Secret-guarded endpoint), not a
+ * shelled-out local script — the agent and the store are separate deployed services, each with
+ * their own disk, so a local `pnpm issue-card` child process used to write to the *caller's*
+ * filesystem rather than reaching the store's actual ledger. That is the same "agent and
+ * merchant separated by HTTP" boundary the rest of this codebase already holds to (AGENTS.md
+ * rule 6); this was the one place it had quietly slipped.
+ */
+export async function issueDemoCard(dollars: number): Promise<{ code: string; pin: string }> {
   const code = `GC-IN-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-  execFileSync("pnpm", ["issue-card", code, "1234", dollars.toFixed(2)], { cwd: storeDir, stdio: "ignore" });
-  return { code, pin: "1234" };
+  const pin = "1234";
+  const res = await fetch(`${STORE_URL}/testing/issue-card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Simulation-Secret": SIMULATION_SECRET },
+    body: JSON.stringify({ code, pin, dollars }),
+  });
+  if (!res.ok) {
+    throw new Error(`issueDemoCard: store refused (${res.status}): ${await res.text()}`);
+  }
+  return { code, pin };
 }
 
 /** A demo wallet: a real fresh gift card (given a code) plus a Stripe test card. */

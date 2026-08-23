@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @pay-agent/web... --filter @pay-agent/agent... build"
+  },
+  "deploy": {
+    "startCommand": "bash -c \"pnpm --filter @pay-agent/agent serve & pnpm --filter @pay-agent/web start & wait -n\"",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
