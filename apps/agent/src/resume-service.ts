@@ -14,10 +14,6 @@
  *  - Seed/demo runs whose destination has no live adapter (e.g. `acme-store`) cannot be auto-settled;
  *    the approval is still recorded, and this reports that it cannot finish them.
  */
-import { execFileSync } from "node:child_process";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type { ConsentStore } from "@pay-agent/db";
 import { issueIntentMandate, type IssuerKey } from "@pay-agent/mandate";
 
@@ -26,8 +22,6 @@ import { streamco } from "./adapters/streamco.js";
 import { ucpStorefront } from "./adapters/ucp-storefront.js";
 import type { Funding, PaymentDestination } from "./destination.js";
 import { resumeRun } from "./orchestrator.js";
-
-const storeDir = join(dirname(fileURLToPath(import.meta.url)), "../../store");
 
 export interface ResumeEnv {
   readonly storeUrl: string;
@@ -61,16 +55,31 @@ export function reconstructDestination(destinationId: string, env: ResumeEnv): P
   }
 }
 
-/** Issue a fresh demo gift card and pair it with a Stripe test card — the resume-time demo wallet. */
-function demoFunding(amountMinor: number): Funding {
+const SIMULATION_SECRET = process.env["SIMULATION_SECRET"] || "super-secret-sim-key";
+
+/**
+ * Issue a fresh demo gift card and pair it with a Stripe test card — the resume-time demo wallet.
+ *
+ * Over the store's HTTP API, not a shelled-out `pnpm issue-card` against the local filesystem — the
+ * same "agent and store are separate deployed services, not one laptop" fix as `issueDemoCard` in
+ * `brain/demo-support.ts`. This call site hit the exact same bug independently (a real "Resume
+ * errored: Command failed: pnpm issue-card ..." in production), because it's a second, separate
+ * function that happened to do the identical wrong thing rather than share the fixed one.
+ */
+async function demoFunding(amountMinor: number, storeUrl: string): Promise<Funding> {
   const giftMinor = Math.min(2000, amountMinor); // a real split when the bill exceeds $20
   const code = `GC-RESUME-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-  execFileSync("pnpm", ["issue-card", code, "1234", (giftMinor / 100).toFixed(2)], {
-    cwd: storeDir,
-    stdio: "ignore",
+  const pin = "1234";
+  const res = await fetch(`${storeUrl}/testing/issue-card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Simulation-Secret": SIMULATION_SECRET },
+    body: JSON.stringify({ code, pin, dollars: giftMinor / 100 }),
   });
+  if (!res.ok) {
+    throw new Error(`demoFunding: store refused (${res.status}): ${await res.text()}`);
+  }
   return {
-    giftCard: { code, pin: "1234", hintMinor: giftMinor, verified: true },
+    giftCard: { code, pin, hintMinor: giftMinor, verified: true },
     card: { token: "pm_card_visa", label: "Visa (test)", enrolledBalanceMinor: null },
   };
 }
@@ -108,7 +117,7 @@ export async function resumeAndSettle(
   }
 
   try {
-    const funding = demoFunding(run.amountMinor);
+    const funding = await demoFunding(run.amountMinor, env.storeUrl);
     // resumeRun does not re-decide policy (a human already approved); a minimal intent satisfies the
     // signature and is never used to gate anything here.
     const intent = issueIntentMandate(

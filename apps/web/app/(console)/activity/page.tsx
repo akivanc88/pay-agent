@@ -18,7 +18,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 // The signed-in reviewer. A real deployment would read this from a session; this dashboard
-// has exactly one human in the loop, so it is named once, here.
+// has exactly one human in the loop, so it is named once, here. A fixture identity, not a
+// real person's — this dashboard is publicly reachable on the deployed demo (no auth yet;
+// see DESIGN.md's Known gaps), and a real email address doesn't belong on a public page.
 const DECIDED_BY = "demo-user@pay-agent.demo";
 
 export default async function ActivityPage() {

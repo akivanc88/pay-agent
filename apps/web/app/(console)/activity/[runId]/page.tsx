@@ -19,6 +19,7 @@ import { runDetail } from "@/lib/consent";
 
 import styles from "./run-detail.module.css";
 
+// Fixture identity, not a real person's — see the matching note in activity/page.tsx.
 const DECIDED_BY = "demo-user@pay-agent.demo";
 
 interface PageProps {
