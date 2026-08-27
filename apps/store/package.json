@@ -22,7 +22,7 @@
     "@pay-agent/db": "workspace:*",
     "@pay-agent/protocol": "workspace:*",
     "@ucp-js/sdk": "0.4.3",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^13.0.3",
     "hono": "^4.12.34",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
@@ -32,7 +32,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.10.2",
     "@types/uuid": "^9.0.8",
     "tsx": "^4.19.2",
