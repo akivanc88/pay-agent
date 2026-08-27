@@ -19,6 +19,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge, Button, Money, SectionLabel } from "@/components/ui";
 import { AgentMarquee, type AgentState } from "@/components/agent-marquee";
+import {
+  destinationDescription,
+  explainGetRun,
+  explainPending,
+  failedFootnote,
+  intentFootnote,
+  settledFootnote,
+  type DestinationInfo,
+} from "./agent-console-narration";
 import styles from "./agent-console.module.css";
 
 /* ── The step shapes streamed from the agent (mirrors apps/agent BrainStep / ToolTrace). ── */
@@ -44,6 +53,8 @@ interface Meta {
 const EXAMPLES = [
   "Pay my StreamCo bill from my gift card, up to $50",
   "Pay my StreamCo bill, up to $20",
+  "Buy a bouquet of red roses from the flower shop, up to $50",
+  "Buy some orchids, up to $10",
 ];
 
 export function AgentConsole() {
@@ -229,8 +240,8 @@ function ToolCard({ tool, runIds }: { tool: ToolTrace; runIds: string[] }) {
   const data = tool.data ?? {};
   if (tool.name === "draft_intent") return <DraftIntentCard data={data} />;
   if (tool.name === "start_run" || tool.name === "resume_run") return <OutcomeCard data={data} runIds={runIds} />;
-  if (tool.name === "list_destinations") return <ToolNote label="Looked up destinations" body={tool.result} />;
-  if (tool.name === "get_run") return <ToolNote label="Checked the run" body={tool.result} />;
+  if (tool.name === "list_destinations") return <DestinationsNote data={data} fallback={tool.result} />;
+  if (tool.name === "get_run") return <GetRunNote data={data} body={tool.result} />;
   return <ToolNote label={tool.name} body={tool.result} />;
 }
 
@@ -238,7 +249,6 @@ function DraftIntentCard({ data }: { data: Record<string, unknown> }) {
   const cap = Number(data.spendCapMinor ?? 0);
   const currency = String(data.currency ?? "CAD");
   const allow = Array.isArray(data.allowlist) ? (data.allowlist as string[]) : [];
-  const clamped = Boolean(data.clamped);
   return (
     <article className={`${styles.card} ${styles.cardIntent}`}>
       <header className={styles.cardHead}>
@@ -261,10 +271,7 @@ function DraftIntentCard({ data }: { data: Record<string, unknown> }) {
           </div>
         </div>
       </div>
-      <p className={styles.cardFoot}>
-        {clamped ? "Your instruction asked for more than the safety ceiling, so it was clamped down. " : ""}
-        The model proposed these limits; the deterministic core signed the mandate — the model can’t.
-      </p>
+      <p className={styles.cardFoot}>{intentFootnote(data)}</p>
     </article>
   );
 }
@@ -304,6 +311,7 @@ function OutcomeCard({ data, runIds }: { data: Record<string, unknown>; runIds: 
             </div>
           )}
         </dl>
+        {settledFootnote(data) && <p className={styles.cardFoot}>{settledFootnote(data)}</p>}
         {runId && (
           <Link className={styles.cardLink} href={`/activity/${runId}`}>
             See the full run →
@@ -314,6 +322,7 @@ function OutcomeCard({ data, runIds }: { data: Record<string, unknown>; runIds: 
   }
 
   if (status === "pending_approval") {
+    const detail = String(data.detail ?? "This needs a closer look before anything is paid.");
     return (
       <article className={`${styles.card} ${styles.cardPending}`}>
         <header className={styles.cardHead}>
@@ -324,7 +333,10 @@ function OutcomeCard({ data, runIds }: { data: Record<string, unknown>; runIds: 
           <Money minor={amount} currency={currency} className={styles.pendingAmount} />
           <span className={styles.pendingDest}>at {prettyDest(dest)}</span>
         </div>
-        <p className={styles.cardFoot}>{String(data.detail ?? "This needs a closer look before anything is paid.")}</p>
+        <div className={styles.cardFootGroup}>
+          <p className={styles.cardFoot}>{explainPending(detail)}</p>
+          <p className={styles.cardFoot}>{detail}</p>
+        </div>
         {runId && (
           <Button href={`/activity/${runId}`} variant="secondary" size="sm">
             Review in your inbox →
@@ -341,7 +353,8 @@ function OutcomeCard({ data, runIds }: { data: Record<string, unknown>; runIds: 
           <span className={styles.cardKicker}>Payment failed</span>
           <Badge tone="danger">reversed</Badge>
         </header>
-        <p className={styles.cardFoot}>{String(data.detail ?? "The payment did not go through; any gift-card draw was reversed exactly.")}</p>
+        <p className={styles.cardFoot}>{String(data.detail ?? "The payment did not go through.")}</p>
+        {failedFootnote(data) && <p className={styles.cardFoot}>{failedFootnote(data)}</p>}
       </article>
     );
   }
@@ -354,6 +367,39 @@ function ToolNote({ label, body }: { label: string; body: string }) {
     <div className={styles.toolNote}>
       <span className={styles.toolNoteLabel}>{label}</span>
       <span className={styles.toolNoteBody}>{body}</span>
+    </div>
+  );
+}
+
+function DestinationsNote({ data, fallback }: { data: Record<string, unknown>; fallback: string }) {
+  const destinations = Array.isArray(data.destinations) ? (data.destinations as DestinationInfo[]) : null;
+  if (!destinations || destinations.length === 0) {
+    return <ToolNote label="Looked up destinations" body={fallback} />;
+  }
+  return (
+    <div className={styles.toolNote}>
+      <span className={styles.toolNoteLabel}>Looked up destinations</span>
+      <ul className={styles.destList}>
+        {destinations.map((d) => (
+          <li key={d.id} className={styles.destItem}>
+            <span className={styles.destLabel}>{d.label}</span>
+            <span className={styles.destNote}>{destinationDescription(d)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className={styles.cardFoot}>
+        Only destinations on this list can be paid — anything else, the agent has to ask again rather than guess.
+      </p>
+    </div>
+  );
+}
+
+function GetRunNote({ data, body }: { data: Record<string, unknown>; body: string }) {
+  return (
+    <div className={styles.toolNote}>
+      <span className={styles.toolNoteLabel}>Checked the run</span>
+      <span className={styles.toolNoteBody}>{body}</span>
+      <p className={styles.cardFoot}>{explainGetRun(data)}</p>
     </div>
   );
 }

@@ -101,12 +101,32 @@ function parseDestination(text: string): { destinationId: string; reference: str
     const url = text.match(/https?:\/\/\S+/)?.[0] ?? text.match(/\bplink_\w+/i)?.[0] ?? "";
     return { destinationId: "stripe-payment-link", reference: url };
   }
-  if (/store|storefront|\bcart\b|checkout|flower|bouquet|order/.test(t)) {
-    const cs = text.match(/\bcs_\w+/i)?.[0] ?? text.match(/\bcheckout[_-]?\w+/i)?.[0] ?? "";
-    return { destinationId: "ucp-storefront", reference: cs };
+  if (/store|storefront|\bcart\b|checkout|flower|bouquet|rose|sunflower|tulip|orchid|gardenia/.test(t)) {
+    // An explicit line-item reference always wins (e.g. "bouquet_roses:2").
+    const explicit = text.match(/\b(?:bouquet_roses|pot_ceramic|bouquet_sunflowers|bouquet_tulips|orchid_white|gardenias)(?::\d+)?\b/i)?.[0];
+    return { destinationId: "ucp-storefront", reference: explicit?.toLowerCase() ?? flowerReference(t) };
   }
   // Default to the marquee destination — a StreamCo bill — which needs no external reference.
   return { destinationId: "streamco", reference: "acct_demo" };
+}
+
+/** The demo catalogue's keywords, matched in order — first hit wins. Defaults to roses, the marquee item. */
+const FLOWER_KEYWORDS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/rose/, "bouquet_roses"],
+  [/sunflower/, "bouquet_sunflowers"],
+  [/tulip/, "bouquet_tulips"],
+  [/orchid/, "orchid_white"],
+  [/gardenia/, "gardenias"],
+  [/\bpot\b|ceramic/, "pot_ceramic"],
+];
+
+/** Map plain flower words to a "product_id:1" cart reference the storefront adapter understands. */
+function flowerReference(lowercased: string): string {
+  const qty = lowercased.match(/\b(\d+)\s*(?:x\b|of\b|bouquets?\b)/)?.[1] ?? "1";
+  for (const [re, id] of FLOWER_KEYWORDS) {
+    if (re.test(lowercased)) return `${id}:${qty}`;
+  }
+  return `bouquet_roses:${qty}`;
 }
 
 /** Turn a tool's compact status line into a warm, user-facing closing message. */

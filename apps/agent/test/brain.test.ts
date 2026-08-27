@@ -62,6 +62,43 @@ function stubStreamco(amountMinor: number): PaymentDestination & { paid: Instrum
   };
 }
 
+/**
+ * A flower-shop stand-in for the UCP storefront. Records the cart reference it was asked to
+ * `discover`, so a test can assert the scripted brain mapped plain flower words to a real catalogue
+ * id — never a guessed checkout-session id, which is not what this destination's reference means.
+ */
+function stubUcpStorefront(amountMinor: number): PaymentDestination & { paid: InstrumentPlan[]; discovered: string[] } {
+  const paid: InstrumentPlan[] = [];
+  const discovered: string[] = [];
+  return {
+    id: "ucp-storefront",
+    paid,
+    discovered,
+    async discover(reference: string): Promise<AmountDue> {
+      discovered.push(reference);
+      return { destinationId: "ucp-storefront", reference, amountMinor, currency: "CAD", description: `flower shop cart (${reference})`, handle: reference };
+    },
+    async capabilities(): Promise<AcceptedInstruments> {
+      return { currency: "CAD", redeemsGiftCard: true, acceptsCard: true };
+    },
+    async pay(plan: InstrumentPlan, mandate: Mandate): Promise<PaymentResult> {
+      paid.push(plan);
+      assert.equal(mandate.signed, true, "the brain must drive the signed-mandate rails");
+      return {
+        ok: true,
+        handle: "stub_ok",
+        detail: "settled on stub",
+        giftDrawnMinor: plan.giftDrawMinor > 0 ? plan.giftDrawMinor : null,
+        cardChargedMinor: plan.cardMinor > 0 ? plan.cardMinor : null,
+        reversed: false,
+      };
+    },
+    async confirm(handle: string): Promise<PaymentStatus> {
+      return { settled: true, handle, detail: "stub confirmed" };
+    },
+  };
+}
+
 const funding: Funding = {
   giftCard: { code: "GC-TEST", pin: "1234", hintMinor: 2000, verified: true },
   card: { token: "pm_stub", label: "Visa •••• 4242", enrolledBalanceMinor: null },
@@ -133,6 +170,23 @@ test("a runaway drafted cap is clamped to the ceiling the model cannot raise", a
   const run = await ctx.consent.getRun(runId);
   assert.equal(run!.status, "pending_approval");
   assert.equal(dest.paid.length, 0);
+
+  await ctx.consent.close();
+});
+
+test("a plain flower instruction resolves to the storefront's own catalogue id, not a guessed session id", async () => {
+  const dest = stubUcpStorefront(3500); // the real seed price for a bouquet of roses
+  const ctx = context(dest);
+  const session = new BrainSession(ctx);
+
+  const result = await drive("Buy a bouquet of red roses from the flower shop, up to $50", scriptedBrain(), session);
+
+  assert.equal(dest.discovered[0], "bouquet_roses:1", "natural language maps to the real catalogue reference");
+  assert.equal(dest.paid.length, 1, "exactly one settlement");
+  assert.equal(dest.paid[0]!.giftDrawMinor, 2000, "gift card drawn first");
+  assert.equal(dest.paid[0]!.cardMinor, 1500, "remainder on the card");
+  assert.match(result.final, /35\.00/, "the closing message states the amount paid");
+  assert.match(result.final, /flower shop/i);
 
   await ctx.consent.close();
 });

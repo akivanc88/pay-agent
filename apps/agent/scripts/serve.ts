@@ -14,8 +14,21 @@ import { fileURLToPath } from "node:url";
 import { openConsentStore } from "@pay-agent/db";
 import { loadIssuerKey } from "@pay-agent/mandate";
 
-import { BrainSession, drive, selectBrain, type BrainStep, type BrainToolContext } from "../src/brain/index.js";
-import { demoWallet, issueDemoCard, stubStreamco, stubWallet } from "../src/brain/demo-support.js";
+import {
+  BrainSession,
+  drive,
+  parseInstruction,
+  selectBrain,
+  type BrainStep,
+  type BrainToolContext,
+} from "../src/brain/index.js";
+import {
+  demoWallet,
+  issueDemoCard,
+  stubStreamco,
+  stubUcpStorefront,
+  stubWallet,
+} from "../src/brain/demo-support.js";
 import type { Funding, PaymentDestination } from "../src/destination.js";
 import { resumeAndSettle, resumeEnv } from "../src/resume-service.js";
 
@@ -75,17 +88,24 @@ async function handleInstruct(req: IncomingMessage, res: ServerResponse): Promis
     send("meta", { model: client.name, live: client.live, reason, mode: stub ? "stub" : "live" });
 
     consent = openConsentStore(consentPath);
+    // Only used to pick which destination/wallet to wire up before the brain runs — the brain (real
+    // or scripted) parses the instruction again, independently, when it actually drafts the intent.
+    const guessedDestinationId = parseInstruction(instruction).destinationId;
+
     let destination: PaymentDestination | undefined;
     let wallet: () => Funding;
     if (stub) {
-      destination = stubStreamco(4599);
+      destination = guessedDestinationId === "ucp-storefront" ? stubUcpStorefront() : stubStreamco(4599);
       wallet = () => stubWallet();
     } else {
-      await fetch(`${WEB}/api/streamco/reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ account: ACCOUNT }),
-      }).catch(() => undefined);
+      if (guessedDestinationId === "streamco") {
+        await fetch(`${WEB}/api/streamco/reset`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ account: ACCOUNT }),
+        }).catch(() => undefined);
+      }
+      // A fresh gift card against the real store's ledger either way — the storefront redeems it itself.
       const gift = await issueDemoCard(20);
       wallet = () => demoWallet(gift);
     }

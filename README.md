@@ -44,6 +44,18 @@ $ pnpm --filter @pay-agent/agent demo:instruct --stub "Pay my StreamCo bill from
 The same request "up to $20" **pauses** at the gate with nothing drawn and asks you to approve it in
 the inbox. `--auto-approve` plays the human's part end to end.
 
+The driver reaches the UCP storefront the same way — no cart or checkout-session id handed to it
+first. The instruction's own words resolve to the storefront's real catalogue id, and the agent builds
+the cart itself against the live store:
+
+```
+$ pnpm --filter @pay-agent/agent demo:instruct "Buy a bouquet of red roses from the flower shop, up to $50"
+  You:  Buy a bouquet of red roses from the flower shop, up to $50
+  → draft_intent   Signed an IntentMandate: cap $50.00, allowlist [ucp-storefront]
+  → start_run      SETTLED $35.00 at ucp-storefront  ← a real checkout session, opened and paid by the agent
+  Agent: Done — I paid the flower shop of $35.00 from your gift card.
+```
+
 **M4.5 done — standing authorization and a cumulative cap.** Two things a user notices missing first
 from an agent that pays on their behalf. Approving a paused run now offers an explicit, opt-in *"and
 trust this destination up to `<amount>` going forward"* — which **reissues** your signed IntentMandate
