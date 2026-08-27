@@ -2,15 +2,17 @@
  * The M4 marquee: instruct-to-pay. A human sentence becomes a real, gated, audited payment run.
  *
  *   pnpm --filter @pay-agent/agent demo:instruct "Pay my StreamCo bill from my gift card, up to $50"
- *   pnpm --filter @pay-agent/agent demo:instruct --stub "Pay my StreamCo bill, up to $20"   # offline
+ *   pnpm --filter @pay-agent/agent demo:instruct --stub "Buy a bouquet of red roses, up to $50"  # offline
  *   pnpm --filter @pay-agent/agent demo:instruct --auto-approve "…up to $20"                # full loop
  *
  * The brain (a real model when OPENAI_API_KEY / ANTHROPIC_API_KEY is set, otherwise the deterministic
  * scripted stand-in) reads the instruction, drafts the signed IntentMandate, and calls the
  * orchestrator's start_run / resume_run *as tools*. It never moves money itself — the same policy
  * gate, signed mandates, scoped token, reversal and append-only trail that gate every scripted run
- * gate this one. `--stub` swaps StreamCo for an in-process stub so the whole thing runs with no
- * servers and no Stripe key; the default is the real end-to-end run and needs both servers + a test key.
+ * gate this one. Which destination it drives — StreamCo's no-API bill, or the UCP flower-shop
+ * storefront — is read from the instruction itself. `--stub` swaps the real destination for an
+ * in-process stand-in so the whole thing runs with no servers and no Stripe key; the default is the
+ * real end-to-end run and needs both servers + a test key (and, for the storefront, the store running).
  */
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,11 +23,18 @@ import { loadIssuerKey } from "@pay-agent/mandate";
 import {
   BrainSession,
   drive,
+  parseInstruction,
   selectBrain,
   type BrainStep,
   type BrainToolContext,
 } from "../src/brain/index.js";
-import { demoWallet, issueDemoCard, stubStreamco, stubWallet } from "../src/brain/demo-support.js";
+import {
+  demoWallet,
+  issueDemoCard,
+  stubStreamco,
+  stubUcpStorefront,
+  stubWallet,
+} from "../src/brain/demo-support.js";
 import type { Funding, PaymentDestination } from "../src/destination.js";
 import { resumeEnv } from "../src/resume-service.js";
 
@@ -80,10 +89,15 @@ async function main(): Promise<void> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!stub && !key) throw new Error("STRIPE_SECRET_KEY not set — run with --stub for an offline demo, or set a test key and start both servers.");
 
+  // Only used to pick which destination/wallet to wire up before the brain runs — the brain (real or
+  // scripted) parses the instruction again, independently, when it actually drafts the intent and run.
+  const guessedDestinationId = parseInstruction(instruction).destinationId;
+  const destLabel = guessedDestinationId === "ucp-storefront" ? "the flower shop" : "StreamCo";
+
   const { client, reason } = selectBrain();
   console.log(bold("\npay-agent — instruct to pay"));
   console.log(dim(`brain: ${client.name} (${client.live ? "real model" : "scripted stand-in"}) — ${reason}`));
-  console.log(dim(stub ? "mode: --stub (in-process StreamCo, no settlement)" : "mode: live end-to-end (StreamCo scrape + real test-mode card)"));
+  console.log(dim(stub ? `mode: --stub (in-process ${destLabel}, no settlement)` : `mode: live end-to-end (${destLabel}, real test-mode card)`));
 
   const issuerKey = loadIssuerKey();
   const consent = openConsentStore(consentPath);
@@ -93,11 +107,14 @@ async function main(): Promise<void> {
   let wallet: () => Funding;
 
   if (stub) {
-    destination = stubStreamco(4599);
+    destination = guessedDestinationId === "ucp-storefront" ? stubUcpStorefront() : stubStreamco(4599);
     wallet = () => stubWallet();
   } else {
-    // Fresh bill + a fresh $20 gift card, exactly like demo:streamco.
-    await fetch(`${WEB}/api/streamco/reset`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account: ACCOUNT }) });
+    if (guessedDestinationId === "streamco") {
+      // Fresh bill, exactly like demo:streamco.
+      await fetch(`${WEB}/api/streamco/reset`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account: ACCOUNT }) });
+    }
+    // A fresh gift card against the real store's ledger either way — the storefront redeems it itself.
     const gift = await issueDemoCard(20);
     wallet = () => demoWallet(gift);
   }
@@ -125,7 +142,7 @@ async function main(): Promise<void> {
         await consent.setRunStatus(runId, "approved");
         const session2 = new BrainSession(ctx);
         // Re-drafting the intent for the resume session, then resuming the same run.
-        await session2.execute({ id: "d", name: "draft_intent", arguments: { spendCapMinor: 20000, destinationAllowlist: ["streamco"] } });
+        await session2.execute({ id: "d", name: "draft_intent", arguments: { spendCapMinor: 20000, destinationAllowlist: [guessedDestinationId] } });
         const trace = await session2.execute({ id: "r", name: "resume_run", arguments: { runId } });
         console.log(`  ${green("→")} ${cyan("resume_run")}`);
         for (const line of trace.result.split("\n")) console.log(`      ${dim(line)}`);

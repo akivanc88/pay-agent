@@ -59,6 +59,58 @@ export function stubWallet(giftHintMinor = 2000): Funding {
   };
 }
 
+/** The demo catalogue's real seed prices (`apps/store/scripts/seed.ts`), so an offline run quotes the same total the live store would. */
+const STUB_CATALOGUE: Record<string, number> = {
+  bouquet_roses: 3500,
+  pot_ceramic: 1500,
+  bouquet_sunflowers: 2500,
+  bouquet_tulips: 3000,
+  orchid_white: 4500,
+  gardenias: 2000,
+};
+
+/** An in-process flower shop, so the ucp-storefront path runs with no servers and no network. */
+export function stubUcpStorefront(): PaymentDestination {
+  return {
+    id: "ucp-storefront",
+    async discover(reference: string): Promise<AmountDue> {
+      const amountMinor = reference
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .reduce((sum, part) => {
+          const [id, qty] = part.split(":");
+          const price = STUB_CATALOGUE[id ?? ""] ?? STUB_CATALOGUE["bouquet_roses"]!;
+          return sum + price * (qty ? Number.parseInt(qty, 10) : 1);
+        }, 0);
+      return {
+        destinationId: "ucp-storefront",
+        reference,
+        amountMinor,
+        currency: "CAD",
+        description: `flower shop cart (${reference}) — offline simulation`,
+        handle: reference,
+      };
+    },
+    async capabilities(): Promise<AcceptedInstruments> {
+      return { currency: "CAD", redeemsGiftCard: true, acceptsCard: true };
+    },
+    async pay(plan: InstrumentPlan): Promise<PaymentResult> {
+      return {
+        ok: true,
+        handle: "stub_ok",
+        detail: "settled on stub",
+        giftDrawnMinor: plan.giftDrawMinor > 0 ? plan.giftDrawMinor : null,
+        cardChargedMinor: plan.cardMinor > 0 ? plan.cardMinor : null,
+        reversed: false,
+      };
+    },
+    async confirm(handle: string): Promise<PaymentStatus> {
+      return { settled: true, handle, detail: "stub confirmed" };
+    },
+  };
+}
+
 /** An in-process StreamCo, so the brain runs with no servers and no Stripe key. */
 export function stubStreamco(amountMinor: number): PaymentDestination {
   return {

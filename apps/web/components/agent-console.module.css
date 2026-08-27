@@ -206,6 +206,16 @@
 }
 .toolNoteLabel { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
 .toolNoteBody { font-size: var(--text-sm); color: var(--ink-2); white-space: pre-line; }
+.toolNote .cardFoot { margin-top: var(--sp-2); }
+
+/* narration: stacks the pending card's two explanatory lines tighter than the card's default gap */
+.cardFootGroup { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+/* list_destinations */
+.destList { display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-1) 0 0; padding: 0; list-style: none; }
+.destItem { display: flex; flex-direction: column; gap: 2px; }
+.destLabel { font-size: var(--text-sm); font-weight: 600; color: var(--ink); }
+.destNote { font-size: var(--text-xs); color: var(--ink-3); line-height: 1.45; }
 
 .errorCard {
   border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line));

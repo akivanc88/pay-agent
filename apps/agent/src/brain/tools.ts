@@ -50,9 +50,12 @@ export const KNOWN_DESTINATIONS: readonly KnownDestination[] = [
   },
   {
     id: "ucp-storefront",
-    label: "the UCP storefront",
-    referenceHint: "a checkout-session id from the storefront",
-    note: "A spec-native merchant that redeems the gift card itself and returns a machine-readable amount.",
+    label: "the flower shop",
+    referenceHint:
+      'a cart as "product_id:quantity" pairs, e.g. "bouquet_roses:1" — never an existing ' +
+      "checkout-session id, the storefront builds one fresh from this. Catalogue: bouquet_roses, " +
+      "pot_ceramic, bouquet_sunflowers, bouquet_tulips, orchid_white, gardenias.",
+    note: "A spec-native UCP merchant (the demo catalogue is a flower shop) that redeems the gift card itself and returns a machine-readable amount.",
   },
   {
     id: "stripe-payment-link",
