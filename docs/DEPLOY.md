@@ -34,17 +34,26 @@ bash -c "pnpm --filter @pay-agent/agent serve & pnpm --filter @pay-agent/web sta
 *either* process dies, so a crash in one restarts the whole container rather than leaving a
 half-dead service running silently.
 
-## Config-as-code: two files, one slot
+## Deploying: GitHub auto-deploy (as of 2026-08-27)
 
-Railway's `railway.json` config-as-code is **single-service per file** — there is no
-multi-service key. With two services in one project, only one file can be the checked-in
-`railway.json` at a time. The two real configs live at:
+Both services are connected directly to this repo — `akivanc88/pay-agent`, `main` branch —
+via Railway's Settings → Source. **A push to `main` auto-builds and redeploys both**; no CLI
+step is required for the normal case. Each service's build/start command is set directly on
+the service itself (Settings → Build / Deploy), not read from a config-as-code file:
 
-- `deploy/railway.store.json`
-- `deploy/railway.web-agent.json`
+- `store` — build `pnpm install --frozen-lockfile && pnpm --filter @pay-agent/store... build`,
+  start `pnpm --filter @pay-agent/store start`
+- `web` — build `pnpm install --frozen-lockfile && pnpm --filter @pay-agent/web... --filter @pay-agent/agent... build`,
+  start `bash -c "pnpm --filter @pay-agent/agent serve & pnpm --filter @pay-agent/web start & wait -n"`
 
-**To (re)deploy either service:** copy the matching file over the root `railway.json`, then
-deploy that service specifically:
+`deploy/railway.store.json` and `deploy/railway.web-agent.json` are kept as a **reference**
+for exactly those values (e.g. if a service ever needs recreating from scratch) — they are no
+longer copied into a root `railway.json` as part of a normal deploy.
+
+### Manual deploy, if you ever need one
+
+Before GitHub was connected, deploying meant copying the matching config file over the root
+`railway.json` and pushing local source directly:
 
 ```bash
 cp deploy/railway.store.json railway.json
@@ -54,17 +63,9 @@ cp deploy/railway.web-agent.json railway.json
 railway up -s web --ci
 ```
 
-Nothing is committed at the repo root — a `railway.json` sitting there at rest would be
-ambiguous about which service it belongs to. It only exists transiently, copied into place
-right before a `railway up`.
-
-A cleaner one-time alternative: in the Railway dashboard, each service has a Config-as-code
-**Path** setting under Settings → Build. Pointing `store`'s at `deploy/railway.store.json` and
-`web`'s at `deploy/railway.web-agent.json` removes the copy-before-deploy step entirely. Not
-done here because the CLI's config-editing commands (`environment edit --service-config`)
-didn't reliably apply `build.*`/`deploy.*`/`source.*` fields in this session (silent no-ops,
-and one outright crash on `volume add` by service name rather than ID) — worth trying again
-from the dashboard directly rather than fighting the CLI further.
+This still works as a one-off (e.g. to test an uncommitted change without pushing to `main`),
+but is no longer the path a normal change takes. Nothing is committed at the repo root — a
+`railway.json` sitting there at rest would be ambiguous about which service it belongs to.
 
 ## Environment variables
 
