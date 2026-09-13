@@ -1,0 +1,19 @@
+# Shopify app configuration (Shopify CLI "app config" format).
+#
+# client_id is a placeholder — create a real app at https://partners.shopify.com to get one, or
+# run `shopify app config link` from a Shopify Partner account, which rewrites this file in place.
+# Nothing in this repo can create that account or app registration; that step is the merchant/
+# maintainer's own Shopify Partner identity, not something automatable here.
+name = "pay-agent"
+client_id = "REPLACE_WITH_REAL_CLIENT_ID"
+application_url = "https://REPLACE_WITH_DEPLOYED_URL"
+embedded = true
+
+[access_scopes]
+scopes = "read_orders"
+
+[auth]
+redirect_urls = ["https://REPLACE_WITH_DEPLOYED_URL/auth/callback"]
+
+[webhooks]
+api_version = "2026-01"
