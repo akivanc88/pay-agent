@@ -17,6 +17,7 @@
     "serve": "tsx --env-file-if-exists=../../.env scripts/serve.ts",
     "telegram-bot": "tsx --env-file-if-exists=../../.env scripts/telegram-bot.ts",
     "slack-bot": "tsx --env-file-if-exists=../../.env scripts/slack-bot.ts",
+    "whatsapp-bot": "tsx --env-file-if-exists=../../.env scripts/whatsapp-bot.ts",
     "streamco-approval": "tsx --env-file-if-exists=../../.env scripts/streamco-approval.ts",
     "token-binds": "tsx scripts/token-binds.ts",
     "failure-matrix": "tsx scripts/failure-matrix.ts"

@@ -136,6 +136,11 @@ The same pattern exists for Slack — `pnpm --filter @pay-agent/agent slack-bot`
 channel via Socket Mode (no public URL needed) and calls the identical decide endpoint on tap. Needs
 `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID`.
 
+A third channel, WhatsApp, exists too (`whatsapp-bot`) — gated to
+[pay-agent Cloud](https://github.com/akivanc88/pay-agent-cloud) pro-plan tenants, since the
+WhatsApp Business API needs Meta Business verification and has real per-message cost. It refuses
+to start against a free-plan API key.
+
 Next: **M5**, the real Visa gift card and the one guarded live-decline path — the closing beat the
 brain can drive as its finale. Then **M6**, publish.
 
