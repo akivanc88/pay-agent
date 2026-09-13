@@ -18,7 +18,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomBytes } from "node:crypto";
 
-import { authorizeUrl, exchangeCodeForToken, isValidShopDomain, verifyHmac, type ShopifyOAuthConfig } from "./oauth.js";
+import { authorizeUrl, exchangeCodeForToken, isValidShopDomain, verifyHmac, verifyWebhookHmac, type ShopifyOAuthConfig } from "./oauth.js";
 import { openShopStore } from "./shop-store.js";
 import { provisionCloudTenant } from "./cloud-link.js";
 
@@ -41,6 +41,12 @@ const pendingStates = new Set<string>();
 function html(res: ServerResponse, status: number, body: string): void {
   res.writeHead(status, { "Content-Type": "text/html; charset=utf-8" });
   res.end(body);
+}
+
+async function readRawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -137,10 +143,29 @@ async function handleAdminPage(url: URL, res: ServerResponse): Promise<void> {
   );
 }
 
+/**
+ * `POST /webhooks/app/uninstalled` — no query-string HMAC to check (this isn't a redirect); the
+ * body itself is signed via `X-Shopify-Hmac-Sha256`, same discipline as the OAuth callback in
+ * `oauth.ts` but a different algorithm (see `verifyWebhookHmac`). Once verified, drop the shop's
+ * row — its access token is dead the moment the merchant uninstalls, so there is nothing left to
+ * keep it around for.
+ */
+async function handleUninstalled(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const rawBody = await readRawBody(req);
+  const header = req.headers["x-shopify-hmac-sha256"];
+  if (typeof header !== "string" || !verifyWebhookHmac(rawBody, header, config.apiSecret)) {
+    return json(res, 401, { error: "invalid hmac — request did not come from Shopify" });
+  }
+  const shopDomain = req.headers["x-shopify-shop-domain"];
+  if (typeof shopDomain === "string") shops.deleteShop(shopDomain);
+  json(res, 200, { received: true });
+}
+
 const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   try {
     const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
     if (url.pathname === "/health") return json(res, 200, { ok: true, service: "pay-agent-shopify" });
+    if (req.method === "POST" && url.pathname === "/webhooks/app/uninstalled") return await handleUninstalled(req, res);
     if (url.pathname === "/auth") return handleInstall(url, res);
     if (url.pathname === "/auth/callback") return await handleCallback(url, res);
     if (url.pathname === "/") return await handleAdminPage(url, res);
