@@ -20,6 +20,7 @@ import { randomBytes } from "node:crypto";
 
 import { authorizeUrl, exchangeCodeForToken, isValidShopDomain, verifyHmac, type ShopifyOAuthConfig } from "./oauth.js";
 import { openShopStore } from "./shop-store.js";
+import { provisionCloudTenant } from "./cloud-link.js";
 
 const PORT = Number(process.env.PORT ?? 3020);
 const config: ShopifyOAuthConfig = {
@@ -29,6 +30,7 @@ const config: ShopifyOAuthConfig = {
   appUrl: process.env.SHOPIFY_APP_URL ?? `http://localhost:${PORT}`,
 };
 const CLOUD_URL = process.env.PAY_AGENT_CLOUD_URL; // e.g. https://api.pay-agent.dev — the hosted mandate API
+const CLOUD_ADMIN_TOKEN = process.env.CLOUD_ADMIN_TOKEN; // lets this app provision a Cloud tenant at install time
 
 const shops = openShopStore(process.env.SHOP_DB_PATH ?? ".data/shops.db");
 
@@ -65,7 +67,20 @@ async function handleCallback(url: URL, res: ServerResponse): Promise<void> {
   if (!verifyHmac(url.searchParams, config.apiSecret)) return json(res, 403, { error: "invalid hmac — request did not come from Shopify" });
 
   const { accessToken } = await exchangeCodeForToken(shop, code, config);
+  const wasKnown = shops.getShop(shop);
   shops.upsertShop(shop, accessToken);
+
+  if (!wasKnown?.cloudApiKey && CLOUD_URL && CLOUD_ADMIN_TOKEN) {
+    try {
+      const cloudApiKey = await provisionCloudTenant(shop, { cloudUrl: CLOUD_URL, cloudAdminToken: CLOUD_ADMIN_TOKEN });
+      shops.setCloudApiKey(shop, cloudApiKey);
+    } catch (err) {
+      // Best-effort: a shop can still use the app without a linked Cloud tenant (it just won't
+      // show usage yet). Never fail the install over this.
+      console.error(`pay-agent Cloud tenant provisioning failed for ${shop}:`, err);
+    }
+  }
+
   res.writeHead(302, { Location: `/?shop=${encodeURIComponent(shop)}` });
   res.end();
 }
