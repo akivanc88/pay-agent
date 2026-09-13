@@ -10,6 +10,7 @@
   },
   "packageManager": "pnpm@10.22.0",
   "scripts": {
+    "demo": "bash scripts/demo.sh",
     "test": "pnpm check:headers && pnpm -r test",
     "check:headers": "node scripts/check-file-headers.mjs",
     "build": "pnpm -r build",
