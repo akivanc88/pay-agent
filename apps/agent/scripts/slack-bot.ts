@@ -44,27 +44,75 @@ function formatAmount(amountMinor: number, currency: string): string {
   return `${(amountMinor / 100).toFixed(2)} ${currency}`;
 }
 
-async function slackApi(method: string, body: Record<string, unknown>): Promise<{ ok: boolean; [k: string]: unknown }> {
+/** "streamco" → "Streamco" — same convention the web inbox's `humanizeId` uses, so every front door reads the same. */
+function humanizeId(id: string): string {
+  return id
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** Mirrors `apps/web/components/activity-reason.tsx` — the plain-language "why this paused" sentence, not the machine reason code. */
+function reasonText(pending: PendingApproval): string {
+  const { approval, run } = pending;
+  const lines = approval.reasons.map((reason) => {
+    switch (reason) {
+      case "over_cap":
+        return approval.capMinor != null
+          ? `it's over the ${formatAmount(approval.capMinor, run.currency)} cap you set for this agent`
+          : "it's over the spend cap you set for this agent";
+      case "over_cumulative_cap":
+        return "it's over the cumulative budget for this authorization";
+      case "destination_not_allowlisted":
+        return `${humanizeId(run.destinationId)} isn't on the list of places you've allowed this agent to pay`;
+      case "uncovered":
+        return "your funding doesn't cover the amount";
+      case "currency_mismatch":
+        return "the currency doesn't match your funding";
+      default:
+        return approval.detail;
+    }
+  });
+  return lines.join(" and ");
+}
+
+/**
+ * `token` defaults to the bot token (every Web API call except one uses it); `apps.connections.open`
+ * is the one exception — Slack requires the *app-level* token there and answers
+ * `not_allowed_token_type` if you send the bot token, which is exactly what this call site used to do.
+ */
+async function slackApi(
+  method: string,
+  body: Record<string, unknown>,
+  token: string | undefined = BOT_TOKEN,
+): Promise<{ ok: boolean; [k: string]: unknown }> {
   const res = await fetch(`https://slack.com/api/${method}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${BOT_TOKEN}` },
+    headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
   return (await res.json()) as { ok: boolean; [k: string]: unknown };
 }
 
 function approvalBlocks(pending: PendingApproval): unknown[] {
-  const { run, approval } = pending;
+  const { run } = pending;
+  const merchant = humanizeId(run.destinationId);
+  const amount = formatAmount(run.amountMinor, run.currency);
   return [
-    { type: "section", text: { type: "mrkdwn", text: `*Approval needed*\n${run.description}` } },
+    { type: "section", text: { type: "mrkdwn", text: `:bell: *Your agent wants to pay ${merchant}*` } },
+    { type: "section", text: { type: "mrkdwn", text: `:moneybag: *${amount}* — the amount ${merchant} says is owed` } },
+    {
+      type: "context",
+      elements: [{ type: "mrkdwn", text: `:double_vertical_bar: Paused because ${reasonText(pending)}. Nothing has been charged yet.` }],
+    },
     {
       type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*Amount:*\n\`${formatAmount(run.amountMinor, run.currency)}\`` },
-        { type: "mrkdwn", text: `*Destination:*\n\`${run.destinationId}\`` },
-      ],
+      text: {
+        type: "mrkdwn",
+        text: `*Approve* → pay ${amount} now, this time only.\n*Deny* → nothing is charged; the bill stays unpaid.`,
+      },
     },
-    { type: "context", elements: [{ type: "mrkdwn", text: `Why: ${approval.reasons.join(", ")} — ${approval.detail}` }] },
     {
       type: "actions",
       block_id: `approval_${run.id}`,
@@ -101,6 +149,19 @@ interface SlackInteractionPayload {
   readonly actions?: ReadonlyArray<{ readonly action_id: string; readonly value: string }>;
 }
 
+/**
+ * Plain-language outcome line. `settle.detail` on success is already a human-safe sentence (see
+ * `paidSummary` in `resume-service.ts`, e.g. "Paid — $20.00 gift card + $25.99 card.") — never the
+ * adapter's own log-facing detail, and never a raw JSON dump of the settle result.
+ */
+function outcomeText(decision: "granted" | "denied", settle: unknown): string {
+  if (decision === "denied") return ":x: *Denied* — nothing was charged; the bill stays unpaid.";
+  const s = settle as { ok?: boolean; detail?: string } | null;
+  if (s?.ok) return `:white_check_mark: *${s.detail ?? "Paid."}*`;
+  if (s?.detail) return `:white_check_mark: *Approved*\n_Not paid yet:_ ${s.detail}`;
+  return ":white_check_mark: *Approved*";
+}
+
 async function handleInteraction(payload: SlackInteractionPayload): Promise<void> {
   if (payload.type !== "block_actions" || !payload.actions?.[0] || !payload.channel || !payload.message) return;
   const action = payload.actions[0];
@@ -110,14 +171,12 @@ async function handleInteraction(payload: SlackInteractionPayload): Promise<void
   const decision = action.action_id === "approve" ? "granted" : "denied";
   try {
     const result = await decide(runId, decision);
-    const verb = decision === "granted" ? "Approved" : "Denied";
-    const settleNote =
-      decision === "granted" && result.settle && typeof result.settle === "object" ? ` — ${JSON.stringify(result.settle)}` : "";
+    const text = outcomeText(decision, result.settle);
     await slackApi("chat.update", {
       channel: payload.channel.id,
       ts: payload.message.ts,
-      text: `${verb} run ${runId}${settleNote}`,
-      blocks: [{ type: "section", text: { type: "mrkdwn", text: `${verb} run \`${runId}\`${settleNote}` } }],
+      text,
+      blocks: [{ type: "section", text: { type: "mrkdwn", text } }],
     });
   } catch (err) {
     console.error("slack-bot: decide failed:", (err as Error).message);
@@ -128,7 +187,7 @@ async function handleInteraction(payload: SlackInteractionPayload): Promise<void
 async function runSocketMode(): Promise<void> {
   for (;;) {
     try {
-      const open = await slackApi("apps.connections.open", {}).catch(() => null);
+      const open = await slackApi("apps.connections.open", {}, APP_TOKEN).catch(() => null);
       const url = open && typeof open["url"] === "string" ? (open["url"] as string) : null;
       if (!open?.ok || !url) {
         console.error("slack-bot: apps.connections.open failed:", JSON.stringify(open));
