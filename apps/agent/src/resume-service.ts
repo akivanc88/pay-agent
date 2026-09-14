@@ -21,6 +21,7 @@ import { stripePaymentLink } from "./adapters/payment-link.js";
 import { streamco } from "./adapters/streamco.js";
 import { ucpStorefront } from "./adapters/ucp-storefront.js";
 import type { Funding, PaymentDestination } from "./destination.js";
+import { formatMinor } from "./money.js";
 import { resumeRun } from "./orchestrator.js";
 
 export interface ResumeEnv {
@@ -91,6 +92,19 @@ export interface ResumeResult {
 }
 
 /**
+ * A human-safe "what was paid" sentence, built from the amounts a settled `PaymentResult` carries —
+ * never the adapter's own `result.detail`, which is written for logs and can carry minor-unit
+ * integers or internal jargon (e.g. a raw "settled 2599 …"). Mirrors the orchestrator's own
+ * `paidSummary` (`orchestrator.ts`'s `settle()`), which a chat-approval surface has no way to reach.
+ */
+function paidSummary(result: { giftDrawnMinor: number | null; cardChargedMinor: number | null }, currency: string): string {
+  const parts: string[] = [];
+  if (result.giftDrawnMinor && result.giftDrawnMinor > 0) parts.push(`${formatMinor(result.giftDrawnMinor, currency)} gift card`);
+  if (result.cardChargedMinor && result.cardChargedMinor > 0) parts.push(`${formatMinor(result.cardChargedMinor, currency)} card`);
+  return parts.length > 0 ? `Paid — ${parts.join(" + ")}.` : "Paid — the gift card covered it in full.";
+}
+
+/**
  * Resume and settle an approved run against its real destination.
  *
  * `standingAuth` carries the human's explicit "trust this destination going forward" choice from the
@@ -130,13 +144,9 @@ export async function resumeAndSettle(
       { userId: run.userId, intent },
       { grantStandingAuth: standingAuth },
     );
-    const standing =
-      outcome.status === "settled" && outcome.reissuedIntent
-        ? " — and reissued your IntentMandate to trust this destination going forward"
-        : "";
     const detail =
       outcome.status === "settled"
-        ? `settled (${outcome.result.detail})${standing}`
+        ? paidSummary(outcome.result, run.currency)
         : outcome.status === "pending_approval"
           ? `still pending: ${outcome.detail}`
           : `did not settle (${outcome.status})`;

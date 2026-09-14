@@ -43,31 +43,87 @@ if (!CHAT_ID) {
 
 const API = `https://api.telegram.org/bot${TOKEN}`;
 
+/**
+ * HTML, not legacy Markdown: Telegram's Markdown mode requires hand-escaping `_*[]()` in every
+ * dynamic string (a run description or a destination id can contain any of those) or the whole
+ * message silently fails to send. HTML only needs `&<>` escaped, so it's the one that's actually
+ * safe to build from server-supplied text.
+ */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function formatAmount(amountMinor: number, currency: string): string {
   return `${(amountMinor / 100).toFixed(2)} ${currency}`;
 }
 
-async function sendApprovalCard(pending: PendingApproval): Promise<void> {
-  const { run, approval } = pending;
-  const text =
-    `*Approval needed*\n` +
-    `${run.description}\n\n` +
-    `Amount: \`${formatAmount(run.amountMinor, run.currency)}\`\n` +
-    `Destination: \`${run.destinationId}\`\n` +
-    `Why: ${approval.reasons.join(", ")} — ${approval.detail}`;
+/** "streamco" → "Streamco" — same convention `humanizeId` uses in the web inbox, so the two front doors read consistently. */
+function humanizeId(id: string): string {
+  return id
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
+/**
+ * The plain-language "why this paused" sentence, mirroring `apps/web/components/activity-reason.tsx`
+ * so the same run reads the same way whether a person opens the web inbox or approves from Telegram.
+ * A machine reason code like `over_cap` means nothing to someone deciding whether to pay $45 — this
+ * is the sentence that does.
+ */
+function reasonText(pending: PendingApproval): string {
+  const { approval, run } = pending;
+  const lines = approval.reasons.map((reason) => {
+    switch (reason) {
+      case "over_cap":
+        return approval.capMinor != null
+          ? `it's over the ${formatAmount(approval.capMinor, run.currency)} cap you set for this agent`
+          : "it's over the spend cap you set for this agent";
+      case "over_cumulative_cap":
+        return "it's over the cumulative budget for this authorization";
+      case "destination_not_allowlisted":
+        return `${humanizeId(run.destinationId)} isn't on the list of places you've allowed this agent to pay`;
+      case "uncovered":
+        return "your funding doesn't cover the amount";
+      case "currency_mismatch":
+        return "the currency doesn't match your funding";
+      default:
+        return approval.detail;
+    }
+  });
+  return lines.join(" and ");
+}
+
+const RULE = "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄";
+
+function approvalCardText(pending: PendingApproval): string {
+  const { run } = pending;
+  const merchant = humanizeId(run.destinationId);
+  const amount = formatAmount(run.amountMinor, run.currency);
+  return (
+    `🔔 <b>Your agent wants to pay ${escapeHtml(merchant)}</b>\n` +
+    `${RULE}\n` +
+    `💰 <b>${escapeHtml(amount)}</b> — the amount ${escapeHtml(merchant)} says is owed\n\n` +
+    `⏸ Paused because ${escapeHtml(reasonText(pending))}. Nothing has been charged yet.\n\n` +
+    `✅ <b>Approve</b> → pay ${escapeHtml(amount)} now, this time only.\n` +
+    `❌ <b>Deny</b> → nothing is charged; the bill stays unpaid.`
+  );
+}
+
+async function sendApprovalCard(pending: PendingApproval): Promise<void> {
   await fetch(`${API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: CHAT_ID,
-      text,
-      parse_mode: "Markdown",
+      text: approvalCardText(pending),
+      parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ Approve", callback_data: `approve:${run.id}` },
-            { text: "❌ Deny", callback_data: `deny:${run.id}` },
+            { text: "✅  Approve", callback_data: `approve:${pending.run.id}` },
+            { text: "❌  Deny", callback_data: `deny:${pending.run.id}` },
           ],
         ],
       },
@@ -87,7 +143,7 @@ async function editMessage(chatId: number, messageId: number, text: string): Pro
   await fetch(`${API}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "Markdown" }),
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "HTML" }),
   });
 }
 
@@ -106,8 +162,26 @@ interface TelegramUpdate {
   readonly callback_query?: {
     readonly id: string;
     readonly data?: string;
-    readonly message?: { readonly chat: { readonly id: number }; readonly message_id: number };
+    readonly message?: { readonly chat: { readonly id: number }; readonly message_id: number; readonly text?: string };
   };
+}
+
+/**
+ * Plain-language outcome block for the edited card. `settle` mirrors `ResumeResult` from
+ * `resume-service.ts` — `detail` there is already written for a human, so this just picks the right
+ * headline and icon rather than dumping the raw object at someone approving a payment from their
+ * phone.
+ */
+function outcomeBlock(decision: "granted" | "denied", settle: unknown): string {
+  if (decision === "denied") {
+    return `❌ <b>Denied</b>\nNothing was charged — the bill stays unpaid.`;
+  }
+  // `s.detail` on success is already a human-safe sentence (see `paidSummary` in
+  // `resume-service.ts`) — e.g. "Paid — $20.00 gift card + $25.99 card." — so it stands alone here.
+  const s = settle as { ok?: boolean; detail?: string } | null;
+  if (s?.ok) return `✅ <b>${escapeHtml(s.detail ?? "Paid.")}</b>`;
+  if (s?.detail) return `✅ <b>Approved</b>\n<i>Not paid yet:</i> ${escapeHtml(s.detail)}`;
+  return `✅ <b>Approved</b>`;
 }
 
 async function handleUpdate(update: TelegramUpdate): Promise<void> {
@@ -120,15 +194,11 @@ async function handleUpdate(update: TelegramUpdate): Promise<void> {
   const decision = action === "approve" ? "granted" : "denied";
   try {
     const result = await decide(runId, decision);
-    const verb = decision === "granted" ? "Approved" : "Denied";
-    const settleNote =
-      decision === "granted" && result.settle && typeof result.settle === "object"
-        ? ` — ${JSON.stringify(result.settle)}`
-        : "";
-    await answerCallback(cb.id, `${verb}`);
-    await editMessage(cb.message.chat.id, cb.message.message_id, `${verb} run \`${runId}\`${settleNote}`);
+    const cardText = cb.message.text ? `${cb.message.text}\n\n${RULE}\n` : "";
+    await answerCallback(cb.id, decision === "granted" ? "Approved ✅" : "Denied ❌");
+    await editMessage(cb.message.chat.id, cb.message.message_id, `${cardText}${outcomeBlock(decision, result.settle)}`);
   } catch (err) {
-    await answerCallback(cb.id, "Error — see agent logs");
+    await answerCallback(cb.id, "Something went wrong — try again from the web inbox");
     console.error("telegram-bot: decide failed:", (err as Error).message);
   }
 }
