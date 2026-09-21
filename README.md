@@ -136,8 +136,26 @@ The same pattern exists for Slack — `pnpm --filter @pay-agent/agent slack-bot`
 channel via Socket Mode (no public URL needed) and calls the identical decide endpoint on tap. Needs
 `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID`.
 
-Next: **M5**, the real Visa gift card and the one guarded live-decline path — the closing beat the
-brain can drive as its finale. Then **M6**, publish.
+A third channel, WhatsApp, exists too (`whatsapp-bot`) — gated to
+[pay-agent Cloud](https://github.com/akivanc88/pay-agent-cloud) pro-plan tenants, since the
+WhatsApp Business API needs Meta Business verification and has real per-message cost. It refuses
+to start against a free-plan API key.
+
+**M5 and M6 done.** The real Visa gift card's guarded live-decline code path landed
+(`apps/store/scripts/live-decline-check.ts` — the physical run itself still needs a local
+machine and a real card in hand, so it stays yours to run and record). The project then
+published: a visual pass across every surface, a deployed test-mode demo
+([store](https://store-production-331d.up.railway.app),
+[web + Agent Console](https://web-production-5a199f.up.railway.app)), and the write-up.
+
+**Beyond the original capstone.** `pay-agent-cloud` — a separate private repo — turns the
+mandate-signing core into a hosted API: tenants and API keys, `POST /v1/mandates`, per-mandate
+usage metering, and Stripe-backed subscription billing (a flat pro-plan price plus a
+metered per-mandate fee, checkout → webhook → plan upgrade). `apps/shopify` is a free
+companion Shopify app (OAuth + HMAC-verified webhooks, including `app/uninstalled` cleanup)
+that shows a merchant their Cloud usage from an embedded admin page. The Telegram, Slack and
+WhatsApp approval channels above are part of this same push — WhatsApp gated to Cloud
+pro-plan tenants specifically to prove the billing tier means something.
 
 See [`docs/DESIGN.md`](docs/DESIGN.md) for exactly what is built, what is simulated, and
 what is simplified. It is kept honest as milestones land rather than written at the end —

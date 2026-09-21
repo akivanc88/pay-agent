@@ -102,6 +102,9 @@ app.use(async (c: Context, next: () => Promise<void>) => {
   await next();
 });
 
+/* Health check — not part of the UCP contract, just for uptime probes. */
+app.get("/health", (c) => c.json({ ok: true, service: "pay-agent-store" }));
+
 /* Discovery endpoints */
 app.get("/.well-known/ucp", discoveryService.getMerchantProfile);
 

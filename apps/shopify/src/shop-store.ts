@@ -21,6 +21,7 @@ export interface ShopStore {
   upsertShop(domain: string, accessToken: string): Shop;
   getShop(domain: string): Shop | null;
   setCloudApiKey(domain: string, cloudApiKey: string): void;
+  deleteShop(domain: string): void;
   close(): void;
 }
 
@@ -58,6 +59,9 @@ export function openShopStore(path: string): ShopStore {
     },
     setCloudApiKey(domain: string, cloudApiKey: string) {
       db.prepare("UPDATE shops SET cloud_api_key = ? WHERE domain = ?").run(cloudApiKey, domain);
+    },
+    deleteShop(domain: string) {
+      db.prepare("DELETE FROM shops WHERE domain = ?").run(domain);
     },
     close() {
       db.close();

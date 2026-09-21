@@ -32,10 +32,16 @@ const REPO_ROOT = join(HERE, "..", "..", "..");
  * would fork us from the upstream sample we deliberately build on. It is allowlisted
  * explicitly rather than by widening the rule, so adding a third location is a visible
  * decision instead of an accident.
+ *
+ * `apps/shopify/src` is the Shopify companion app's own installed-shop store (an access
+ * token and, optionally, a linked pay-agent Cloud API key) — app-local credential storage
+ * for a merchant's Shopify install, not funding-core data, and likewise no part of the
+ * Supabase migration.
  */
 const DRIVER_ALLOWED_DIRS = [
   join("packages", "db", "src", "sqlite"),
   join("apps", "store", "src", "data"),
+  join("apps", "shopify", "src"),
 ];
 
 const SKIP_DIRS = new Set(["node_modules", ".git", ".claude", "dist", "build", ".next", "coverage"]);

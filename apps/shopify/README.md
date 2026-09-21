@@ -41,12 +41,18 @@ pnpm --filter @pay-agent/shopify dev   # http://localhost:3020
 pnpm --filter @pay-agent/shopify test  # OAuth HMAC verification tests, no Shopify account needed
 ```
 
+## pay-agent Cloud linking
+
+If `PAY_AGENT_CLOUD_URL` and `CLOUD_ADMIN_TOKEN` are set, a newly-installed shop is automatically
+provisioned a pay-agent Cloud tenant (`src/cloud-link.ts`, called from the OAuth callback) — the
+returned tenant API key is stored as `shop.cloudApiKey`, and the embedded admin page then shows that
+shop's real mandate usage. Best-effort: a provisioning failure logs and still completes the
+install, it just leaves the shop unlinked (visiting `/auth?shop=...` again retries it, since a shop
+without a `cloudApiKey` gets provisioned on any subsequent OAuth callback). Without those two env
+vars set, the app runs exactly as before — install works, the admin page just shows "not linked".
+
 ## Not yet built (tracked, not hidden)
 
-- Automatic shop → pay-agent Cloud tenant linking at install time (today `shop.cloudApiKey` is
-  never set; wiring this up means calling Cloud's `POST /v1/tenants` from this app's callback,
-  which needs an admin token this app would then hold — a real secret-handling decision to make
-  deliberately, not as a side effect of this scaffold).
 - Shopify App Store listing assets (icon, banner, screenshots) — see `docs/BRAND.md` in the root
   repo for the visual language to build them from.
 - Webhook handling (e.g. `app/uninstalled` to clean up the shop record) — the manifest declares the

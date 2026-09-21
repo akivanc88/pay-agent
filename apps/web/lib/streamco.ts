@@ -11,55 +11,25 @@
  * only mutable bit is whether the bill has been settled, which is kept as an override in a small
  * JSON file so the agent (a separate process, reaching us over HTTP) and the rendered portal agree.
  * `resetAccount` puts a bill back to "due" so the demo can be run again.
+ *
+ * The static facts and types live in `lib/streamco-accounts.ts`, not here, so a client component
+ * can import just those without pulling `node:fs/promises` into a browser bundle. See that file's
+ * header for why that split exists.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import {
+  STREAMCO_DEFAULTS,
+  type StreamCoAccount,
+  type StreamCoSettlement,
+} from "./streamco-accounts";
+
+export type { StreamCoAccount, StreamCoSettlement };
+export { streamCoAccountIds } from "./streamco-accounts";
+
 const DATA_FILE = join(process.cwd(), ".data", "streamco.json");
-
-export interface StreamCoSettlement {
-  /** The PaymentIntent id (or gift-only run id) our settlement layer reported. */
-  readonly handle: string;
-  readonly giftDrawnMinor: number;
-  readonly cardChargedMinor: number;
-  readonly paidAt: string;
-}
-
-export interface StreamCoAccount {
-  readonly id: string;
-  readonly holder: string;
-  readonly plan: string;
-  readonly planBlurb: string;
-  /** The recurring price, shown on the page — deliberately near the amount due, to make a scrape work. */
-  readonly planPriceMinor: number;
-  readonly currency: string;
-  readonly amountDueMinor: number;
-  /** ISO date (no time) the bill is due. */
-  readonly dueDate: string;
-  readonly memberSince: string;
-  readonly cycleLabel: string;
-  /** Card the biller has on file, for display only — a masked last4, never a real number. */
-  readonly cardOnFile: string;
-  readonly status: "due" | "paid";
-  readonly settlement: StreamCoSettlement | null;
-}
-
-/** The immutable facts of each demo account. Amounts are minor units (cents), currency CAD. */
-const DEFAULTS: Record<string, Omit<StreamCoAccount, "status" | "settlement">> = {
-  acct_demo: {
-    id: "acct_demo",
-    holder: "Arpita Das",
-    plan: "Premium 4K + HDR",
-    planBlurb: "Ultra HD on four screens, spatial audio, offline downloads.",
-    planPriceMinor: 4599,
-    currency: "CAD",
-    amountDueMinor: 4599,
-    dueDate: "2026-08-12",
-    memberSince: "2021",
-    cycleLabel: "Aug 12 – Sep 11",
-    cardOnFile: "•••• 4242",
-  },
-};
+const DEFAULTS = STREAMCO_DEFAULTS;
 
 interface Overrides {
   [accountId: string]: { status: "due" | "paid"; settlement: StreamCoSettlement | null };
@@ -76,11 +46,6 @@ async function readOverrides(): Promise<Overrides> {
 async function writeOverrides(overrides: Overrides): Promise<void> {
   await mkdir(dirname(DATA_FILE), { recursive: true });
   await writeFile(DATA_FILE, JSON.stringify(overrides, null, 2), "utf8");
-}
-
-/** The demo account ids, for links and reset. */
-export function streamCoAccountIds(): string[] {
-  return Object.keys(DEFAULTS);
 }
 
 /** An account merged with its mutable settlement override, or null if the id is unknown. */

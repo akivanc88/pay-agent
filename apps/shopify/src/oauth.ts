@@ -50,6 +50,18 @@ export function verifyHmac(query: URLSearchParams, apiSecret: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * Verify the `X-Shopify-Hmac-Sha256` header Shopify signs every webhook body with — a different
+ * algorithm from `verifyHmac` above (raw request body + base64 digest, not a sorted query string).
+ */
+export function verifyWebhookHmac(rawBody: Buffer, header: string | undefined, apiSecret: string): boolean {
+  if (!header) return false;
+  const computed = createHmac("sha256", apiSecret).update(rawBody).digest("base64");
+  const a = Buffer.from(computed, "utf8");
+  const b = Buffer.from(header, "utf8");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export async function exchangeCodeForToken(
   shop: string,
   code: string,

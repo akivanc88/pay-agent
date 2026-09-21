@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
 
-import { isValidShopDomain, verifyHmac } from "../src/oauth.js";
+import { isValidShopDomain, verifyHmac, verifyWebhookHmac } from "../src/oauth.js";
 
 const SECRET = "test-secret";
 
@@ -30,6 +30,24 @@ test("a tampered parameter fails verification", () => {
 test("a missing hmac fails closed", () => {
   const query = new URLSearchParams({ shop: "acme.myshopify.com", code: "abc123" });
   assert.equal(verifyHmac(query, SECRET), false);
+});
+
+test("a genuinely Shopify-signed webhook body verifies", () => {
+  const rawBody = Buffer.from(JSON.stringify({ id: 1, domain: "acme.myshopify.com" }));
+  const header = createHmac("sha256", SECRET).update(rawBody).digest("base64");
+  assert.equal(verifyWebhookHmac(rawBody, header, SECRET), true);
+});
+
+test("a tampered webhook body fails verification", () => {
+  const rawBody = Buffer.from(JSON.stringify({ id: 1, domain: "acme.myshopify.com" }));
+  const header = createHmac("sha256", SECRET).update(rawBody).digest("base64");
+  const tamperedBody = Buffer.from(JSON.stringify({ id: 1, domain: "attacker.myshopify.com" }));
+  assert.equal(verifyWebhookHmac(tamperedBody, header, SECRET), false);
+});
+
+test("a missing webhook hmac header fails closed", () => {
+  const rawBody = Buffer.from(JSON.stringify({ id: 1, domain: "acme.myshopify.com" }));
+  assert.equal(verifyWebhookHmac(rawBody, undefined, SECRET), false);
 });
 
 test("shop domain validation rejects anything not a myshopify.com store", () => {
