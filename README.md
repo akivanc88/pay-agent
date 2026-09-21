@@ -1,8 +1,16 @@
+<img src="docs/assets/logo-mark.svg" width="40" height="40" alt="" align="left" style="margin-right:0.5rem">
+
 # pay-agent
 
 [![CI](https://github.com/akivanc88/pay-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/akivanc88/pay-agent/actions/workflows/ci.yml)
 
-POC agent that can use gift cards to make payments on behalf of a user.
+**The audited consent-and-spend-cap layer for AI agents that pay.** An open-source,
+signed-mandate authorization core — the part that decides an agent may never move more than
+a human explicitly allowed, proves it after the fact, and pauses for approval when it isn't
+sure — sitting underneath real destination protocols (UCP, AP2, ACP, Stripe) rather than
+competing with them. If you're building a shopping agent, an agentic wallet, or a
+merchant/PSP integration that needs to let an agent spend real money safely, this is the
+reference implementation of that pattern.
 
 A user loads gift cards into a wallet. An agent then goes to somewhere that wants money,
 works out what is owed, decides how to pay from that funding, gets human approval when it
@@ -117,8 +125,37 @@ pnpm --filter @pay-agent/agent token-binds       # a scoped token refusing repla
 pnpm --filter @pay-agent/agent seed-consent       # realistic runs, then open http://localhost:3001/activity
 ```
 
-Next: **M5**, the real Visa gift card and the one guarded live-decline path — the closing beat the
-brain can drive as its finale. Then **M6**, publish.
+**Approve from a chat, not just the web inbox.** A paused run's approval doesn't require opening
+the dashboard — `pnpm --filter @pay-agent/agent telegram-bot` watches the same consent store and
+pushes an Approve/Deny card to Telegram the moment a run halts, then calls the same decide endpoint
+the web inbox's buttons call. Needs `TELEGRAM_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather))
+and `TELEGRAM_CHAT_ID` in `.env`; nothing here can settle money on its own — it only ever records the
+same human decision the web inbox does.
+
+The same pattern exists for Slack — `pnpm --filter @pay-agent/agent slack-bot` posts the card into a
+channel via Socket Mode (no public URL needed) and calls the identical decide endpoint on tap. Needs
+`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID`.
+
+A third channel, WhatsApp, exists too (`whatsapp-bot`) — gated to
+[pay-agent Cloud](https://github.com/akivanc88/pay-agent-cloud) pro-plan tenants, since the
+WhatsApp Business API needs Meta Business verification and has real per-message cost. It refuses
+to start against a free-plan API key.
+
+**M5 and M6 done.** The real Visa gift card's guarded live-decline code path landed
+(`apps/store/scripts/live-decline-check.ts` — the physical run itself still needs a local
+machine and a real card in hand, so it stays yours to run and record). The project then
+published: a visual pass across every surface, a deployed test-mode demo
+([store](https://store-production-331d.up.railway.app),
+[web + Agent Console](https://web-production-5a199f.up.railway.app)), and the write-up.
+
+**Beyond the original capstone.** `pay-agent-cloud` — a separate private repo — turns the
+mandate-signing core into a hosted API: tenants and API keys, `POST /v1/mandates`, per-mandate
+usage metering, and Stripe-backed subscription billing (a flat pro-plan price plus a
+metered per-mandate fee, checkout → webhook → plan upgrade). `apps/shopify` is a free
+companion Shopify app (OAuth + HMAC-verified webhooks, including `app/uninstalled` cleanup)
+that shows a merchant their Cloud usage from an embedded admin page. The Telegram, Slack and
+WhatsApp approval channels above are part of this same push — WhatsApp gated to Cloud
+pro-plan tenants specifically to prove the billing tier means something.
 
 See [`docs/DESIGN.md`](docs/DESIGN.md) for exactly what is built, what is simulated, and
 what is simplified. It is kept honest as milestones land rather than written at the end —
@@ -126,7 +163,18 @@ including the places this project currently falls short of its own rules.
 
 ## Running it
 
-Requires Node ≥ 22.9, pnpm, and a Stripe **test** key.
+**Fastest path — one command, no keys, no servers:**
+
+```bash
+pnpm demo   # installs, builds the core, and runs a signed payment in stub mode
+```
+
+That runs the instruct-to-pay demo offline against an in-process stand-in, with the deterministic
+scripted brain (no OpenAI/Anthropic key needed). Pass your own instruction as an argument:
+`pnpm demo "Buy a bouquet of red roses from the flower shop, up to \$50"`.
+
+The rest of this section is the full multi-service demo — a real storefront, real Stripe test
+charges, and the web approval inbox. Requires Node ≥ 22.9, pnpm, and a Stripe **test** key.
 
 ```bash
 pnpm install
