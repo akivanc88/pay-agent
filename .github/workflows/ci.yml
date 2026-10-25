@@ -65,6 +65,9 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      - name: Store runtime (logger worker reuse)
+        run: pnpm --filter @pay-agent/store test:runtime
+
       # First, and named, because this is the reason the workflow exists. Asserts no PAN
       # column can be added to the schema, that the ledger is append-only against raw SQL
       # bypassing the repository, and that nothing outside packages/db imports the driver.

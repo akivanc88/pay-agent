@@ -8,8 +8,7 @@
  * Usage:  pnpm --filter @pay-agent/agent serve     (listens on AGENT_PORT, default 3002)
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { openConsentStore } from "@pay-agent/db";
 import { loadIssuerKey } from "@pay-agent/mandate";
@@ -33,8 +32,9 @@ import type { Funding, PaymentDestination } from "../src/destination.js";
 import { resumeAndSettle, resumeEnv } from "../src/resume-service.js";
 
 const PORT = Number(process.env.AGENT_PORT ?? 3002);
+// Workspace scripts run from apps/agent in both source and compiled production mode.
 const consentPath =
-  process.env.CONSENT_DB_PATH ?? join(dirname(fileURLToPath(import.meta.url)), "../../web/.data/consent.db");
+  process.env.CONSENT_DB_PATH ?? resolve("../web/.data/consent.db");
 
 const issuerKey = loadIssuerKey();
 const env = resumeEnv();
