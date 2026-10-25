@@ -28,7 +28,7 @@
     "@pay-agent/mandate": "workspace:*",
     "@pay-agent/protocol": "workspace:*",
     "stripe": "^22.4.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
