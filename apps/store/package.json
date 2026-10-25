@@ -14,7 +14,8 @@
     "show-ledger": "tsx scripts/show-ledger.ts",
     "stripe-check": "tsx --env-file-if-exists=../../.env scripts/stripe-check.ts",
     "live-decline-check": "tsx --env-file-if-exists=../../.env scripts/live-decline-check.ts",
-    "start": "tsx --env-file-if-exists=../../.env src/index.ts"
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "test:runtime": "node --test test/runtime.test.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.10",

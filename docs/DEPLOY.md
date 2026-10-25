@@ -130,3 +130,22 @@ once).
 
 - Store: https://store-production-331d.up.railway.app
 - Web (+ Agent Console): https://web-production-5a199f.up.railway.app
+
+### Idle memory and production runtimes
+
+The agent production command runs its compiled JavaScript with Node. The store
+keeps its `tsx` launcher because the UCP SDK 0.4.3 ships extensionless ESM imports
+that plain Node cannot resolve. Build the workspace before starting the agent; use `pnpm --filter @pay-agent/agent serve:dev`
+for the source-based agent during development. Run agent workspace scripts from the
+repository root with `pnpm --filter` so its working directory is `apps/agent`; the
+default consent database stays at `apps/web/.data/consent.db` in both modes.
+`CONSENT_DB_PATH` still overrides that default. Store databases remain relative to
+`apps/store`, matching the existing Railway volume mount.
+
+The store owns one request logger and pretty-print transport for the lifetime of
+the process. Never create a transport inside request middleware: each transport
+creates a worker that can retain memory after the request completes.
+
+Serverless sleep is already enabled on the deployed services. Check runtime and
+network-flow metrics after deployment before adjusting resource limits or
+attributing idle activity to polling; private-network traffic also prevents sleep.

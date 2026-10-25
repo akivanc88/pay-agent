@@ -43,27 +43,21 @@ const catalogService = new CatalogService();
 const fundingService = new FundingService();
 const testingService = new TestingService(checkoutService);
 
-// Setup logging for each request
+// One logger/transport per process; creating a transport per request retains workers.
+const requestLogger = pinoHttp({
+  quietReqLogger: true,
+  transport: {
+    target: "pino-http-print",
+    options: { destination: 1, all: true, translateTime: true },
+  },
+});
 app.use(requestId());
 app.use(async (c: Context, next: () => Promise<void>) => {
   c.env.incoming.id = c.var.requestId;
-
   await new Promise<void>((resolve) =>
-    pinoHttp({
-      quietReqLogger: true,
-      transport: {
-        target: "pino-http-print",
-        options: {
-          destination: 1,
-          all: true,
-          translateTime: true,
-        },
-      },
-    })(c.env.incoming, c.env.outgoing, () => resolve())
+    requestLogger(c.env.incoming, c.env.outgoing, () => resolve())
   );
-
   c.set("logger", c.env.incoming.log);
-
   await next();
 });
 
